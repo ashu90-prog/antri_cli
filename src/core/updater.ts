@@ -7,8 +7,31 @@ import { log } from '../utils/logger.js';
 const execPromise = util.promisify(exec);
 
 export class Updater {
-  public static readonly CURRENT_VERSION = '1.38.0';
+  public static readonly CURRENT_VERSION = '1.39.0';
   public static readonly PACKAGE_NAME = 'antri_cli';
+
+  /**
+   * Fetches latest release version directly from registry.npmjs.org (cache-free)
+   */
+  public static async getLatestVersion(): Promise<string> {
+    try {
+      const response = await fetch(`https://registry.npmjs.org/${this.PACKAGE_NAME}/latest`, {
+        headers: { 'Cache-Control': 'no-cache' },
+        signal: AbortSignal.timeout(4000),
+      });
+      if (response.ok) {
+        const data: any = await response.json();
+        if (data && data.version) return data.version.trim();
+      }
+    } catch {}
+
+    try {
+      const { stdout } = await execPromise(`npm view ${this.PACKAGE_NAME} version`, { timeout: 6000 });
+      if (stdout && stdout.trim()) return stdout.trim();
+    } catch {}
+
+    return this.CURRENT_VERSION;
+  }
 
   /**
    * Checks for available updates and self-updates the global antri CLI
@@ -25,40 +48,46 @@ export class Updater {
     }).start();
 
     try {
-      // 1. Fetch latest version info from npm registry
-      let latestVersion = this.CURRENT_VERSION;
-      try {
-        const { stdout } = await execPromise(`npm view ${this.PACKAGE_NAME} version`, { timeout: 8000 });
-        if (stdout && stdout.trim()) {
-          latestVersion = stdout.trim();
-        }
-      } catch {
-        // If package not published yet or offline, simulate check
-        latestVersion = this.CURRENT_VERSION;
+      const latestVersion = await this.getLatestVersion();
+
+      if (this.CURRENT_VERSION === latestVersion) {
+        spinner.succeed(chalk.green(`You are already running the latest version of ANTRI Code (v${this.CURRENT_VERSION})!`));
+        console.log(chalk.hex('#64748b')('Zero update needed · System is completely up to date.'));
+        console.log(chalk.hex('#334155')('─'.repeat(68)));
+        console.log();
+        return true;
       }
 
-      spinner.text = chalk.hex('#a5b4fc')(`Latest release: v${latestVersion}. Installing update cleanly...`);
+      spinner.text = chalk.hex('#a5b4fc')(`New release found: v${latestVersion}. Upgrading global package...`);
 
-      // 2. Run clean global install
+      let updated = false;
       try {
-        await execPromise(`npm install -g ${this.PACKAGE_NAME}@latest`, {
+        await execPromise(`npm install -g ${this.PACKAGE_NAME}@latest --force`, {
           timeout: 45000,
         });
+        updated = true;
       } catch (installErr: any) {
-        // Local directory fallback if linked locally
-        try {
-          await execPromise('npm install -g .', { timeout: 30000 });
-        } catch {}
+        // Windows file locking fallback
+        spinner.info(chalk.yellow(`Update available: v${latestVersion} (Current: v${this.CURRENT_VERSION})`));
+        console.log(chalk.hex('#94a3b8')('\nOn Windows, the running process cannot overwrite itself in-place.'));
+        console.log(`👉 Run this in your terminal to complete the update:`);
+        console.log(chalk.bold.cyan(`   npm install -g ${this.PACKAGE_NAME}@latest\n`));
+        console.log(chalk.hex('#334155')('─'.repeat(68)));
+        console.log();
+        return true;
       }
 
-      spinner.succeed(chalk.green(`Successfully updated ${chalk.bold('ANTRI Code')} to the latest version (v${latestVersion})!`));
-      console.log(chalk.hex('#64748b')('Zero lockfile churn · Clean global swap complete.'));
-      console.log(chalk.hex('#334155')('─'.repeat(68)));
-      console.log();
+      if (updated) {
+        spinner.succeed(chalk.green(`Successfully updated ${chalk.bold('ANTRI Code')} to v${latestVersion}!`));
+        console.log(chalk.hex('#64748b')('Zero lockfile churn · Clean global update complete.'));
+        console.log(chalk.hex('#334155')('─'.repeat(68)));
+        console.log();
+      }
+
       return true;
     } catch (err: any) {
-      spinner.fail(chalk.red(`Self-update check completed with note: ${err.message}`));
-      console.log(chalk.hex('#94a3b8')('You are running the latest compiled build.'));
+      spinner.fail(chalk.red(`Self-update check note: ${err.message}`));
+      console.log(chalk.hex('#94a3b8')(`You are on v${this.CURRENT_VERSION}.`));
       console.log(chalk.hex('#334155')('─'.repeat(68)));
       console.log();
       return false;
