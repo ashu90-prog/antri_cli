@@ -225,9 +225,9 @@ class _AgentStudioViewState extends State<AgentStudioView> {
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: borderMain),
                       ),
-                      child: Column(
+                      child: const Column(
                         mainAxisSize: MainAxisSize.min,
-                        children: const [
+                        children: [
                           Text(
                             'ANTRI Mobile Studio',
                             style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: textPrimary),

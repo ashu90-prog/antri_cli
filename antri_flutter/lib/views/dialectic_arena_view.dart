@@ -102,7 +102,7 @@ class _DialecticArenaViewState extends State<DialecticArenaView> {
               borderRadius: BorderRadius.vertical(top: Radius.circular(9)),
             ),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.between,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: textPrimary)),
                 Text(tag, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Color(0xFF8C827A))),

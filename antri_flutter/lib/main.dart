@@ -28,7 +28,6 @@ class AntriFlutterApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFF1C1917),
           primary: const Color(0xFF1C1917),
-          background: const Color(0xFFFCFBF9),
           surface: const Color(0xFFFFFFFF),
         ),
         textTheme: GoogleFonts.plusJakartaSansTextTheme(

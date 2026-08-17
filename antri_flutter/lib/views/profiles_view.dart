@@ -88,15 +88,21 @@ class _ProfilesViewState extends State<ProfilesView> {
       _profiles.addAll(cloudProfs);
       await widget.storageService.saveProfiles(_profiles);
       _editorController.text = _profiles[_activeProfile]?.content ?? '';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Synced ${cloudProfs.length} profiles from Google Cloud Firestore.')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Synced ${cloudProfs.length} profiles from Google Cloud Firestore.')),
+        );
+      }
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No cloud profiles found or Firestore offline.')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No cloud profiles found or Firestore offline.')),
+        );
+      }
     }
-    setState(() => _isSyncing = false);
+    if (mounted) {
+      setState(() => _isSyncing = false);
+    }
   }
 
   void _createNewProfile() {

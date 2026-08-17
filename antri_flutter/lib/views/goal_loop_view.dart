@@ -95,7 +95,7 @@ class _GoalLoopViewState extends State<GoalLoopView> {
               borderRadius: BorderRadius.vertical(top: Radius.circular(9)),
             ),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.between,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: textPrimary)),
                 Container(

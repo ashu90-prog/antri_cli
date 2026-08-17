@@ -8,7 +8,6 @@ class StorageService {
   static const String _keyConfig = 'antri_flutter_config';
   static const String _keyProfiles = 'antri_flutter_profiles';
   static const String _keyHistory = 'antri_flutter_chat_history';
-  static const String _keySemanticMemory = 'antri_flutter_semantic_memory';
 
   Future<AIConfig> loadConfig() async {
     final prefs = await SharedPreferences.getInstance();

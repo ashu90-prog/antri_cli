@@ -22,7 +22,7 @@ export class FirestoreSyncManager {
     return path.join(os.homedir(), '.antri', 'cloud_sync.json');
   }
 
-  public static getSyncConfig(): { projectId: string; syncKey: string; lastSynced?: string } {
+  public static getSyncConfig(): { projectId: string; syncKey: string; apiKey?: string; lastSynced?: string } {
     const filePath = this.getSyncConfigFile();
     if (fs.existsSync(filePath)) {
       try {
@@ -32,15 +32,16 @@ export class FirestoreSyncManager {
     return {
       projectId: process.env.GOOGLE_CLOUD_PROJECT || process.env.GCP_PROJECT || '',
       syncKey: 'default_user',
+      apiKey: process.env.GEMINI_API_KEY || '',
     };
   }
 
-  public static saveSyncConfig(projectId: string, syncKey = 'default_user'): void {
+  public static saveSyncConfig(projectId: string, syncKey = 'default_user', apiKey = ''): void {
     const dir = path.join(os.homedir(), '.antri');
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(
       this.getSyncConfigFile(),
-      JSON.stringify({ projectId, syncKey, lastSynced: new Date().toISOString() }, null, 2),
+      JSON.stringify({ projectId, syncKey, apiKey, lastSynced: new Date().toISOString() }, null, 2),
       'utf-8'
     );
   }
@@ -49,13 +50,14 @@ export class FirestoreSyncManager {
    * Push local profiles from ~/.antri/profiles/ to Google Cloud Firestore
    */
   public static async pushToFirestore(): Promise<{ success: boolean; count: number; error?: string }> {
-    const { projectId, syncKey } = this.getSyncConfig();
+    const { projectId, syncKey, apiKey } = this.getSyncConfig();
     if (!projectId) {
       return { success: false, count: 0, error: 'Google Cloud Project ID is not configured. Run "antri sync config <project-id>"' };
     }
 
     const profiles = profileManager.listProfiles();
     let synced = 0;
+    const keyParam = apiKey ? `?key=${apiKey}` : '';
 
     for (const p of profiles) {
       const filePath = path.join(os.homedir(), '.antri', 'profiles', `${p.name}.md`);
@@ -64,7 +66,7 @@ export class FirestoreSyncManager {
         content = fs.readFileSync(filePath, 'utf-8');
       }
 
-      const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/antri_sync/${syncKey}/profiles/${p.name}`;
+      const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/antri_sync/${syncKey}/profiles/${p.name}${keyParam}`;
       const payload = JSON.stringify({
         fields: {
           name: { stringValue: p.name },
@@ -81,7 +83,7 @@ export class FirestoreSyncManager {
       }
     }
 
-    this.saveSyncConfig(projectId, syncKey);
+    this.saveSyncConfig(projectId, syncKey, apiKey);
     return { success: true, count: synced };
   }
 

@@ -349,8 +349,29 @@ export class DesktopServer {
           const active = profileManager.getActiveProfileName();
           const filePath = path.join(os.homedir(), '.antri', 'profiles', `${active}.md`);
           fs.writeFileSync(filePath, payload.content, 'utf-8');
+          // Auto-sync to Firestore in background if configured
+          const { FirestoreSyncManager } = await import('../cloud/firestore.js');
+          FirestoreSyncManager.pushToFirestore().catch(() => {});
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ success: true }));
+          return;
+        }
+
+        // POST /api/sync/push (Google Cloud Firestore Push)
+        if (pathname === '/api/sync/push' && req.method === 'POST') {
+          const { FirestoreSyncManager } = await import('../cloud/firestore.js');
+          const result = await FirestoreSyncManager.pushToFirestore();
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify(result));
+          return;
+        }
+
+        // POST /api/sync/pull (Google Cloud Firestore Pull)
+        if (pathname === '/api/sync/pull' && req.method === 'POST') {
+          const { FirestoreSyncManager } = await import('../cloud/firestore.js');
+          const result = await FirestoreSyncManager.pullFromFirestore();
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify(result));
           return;
         }
 
