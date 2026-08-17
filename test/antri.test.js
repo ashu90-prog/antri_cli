@@ -360,10 +360,17 @@ test('ToolExecutor list_dir works on current directory', async () => {
 });
 
 test('FirestoreSyncManager configures project and sync parameters', () => {
-  FirestoreSyncManager.saveSyncConfig('test-gcp-project', 'test-sync-key');
-  const cfg = FirestoreSyncManager.getSyncConfig();
-  assert.strictEqual(cfg.projectId, 'test-gcp-project');
-  assert.strictEqual(cfg.syncKey, 'test-sync-key');
-  assert.ok(cfg.lastSynced);
+  const original = FirestoreSyncManager.getSyncConfig();
+  try {
+    FirestoreSyncManager.saveSyncConfig('test-gcp-project', 'test-sync-key');
+    const cfg = FirestoreSyncManager.getSyncConfig();
+    assert.strictEqual(cfg.projectId, 'test-gcp-project');
+    assert.strictEqual(cfg.syncKey, 'test-sync-key');
+    assert.ok(cfg.lastSynced);
+  } finally {
+    if (original && original.projectId) {
+      FirestoreSyncManager.saveSyncConfig(original.projectId, original.syncKey || 'default_user', original.apiKey || '');
+    }
+  }
 });
 
