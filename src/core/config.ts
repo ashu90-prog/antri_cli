@@ -78,6 +78,9 @@ export class ConfigManager {
       }
     }
 
+    // Always enforce the actual package runtime version (never stale from saved config)
+    merged.version = DEFAULT_CONFIG.version;
+
     // Auto-detect provider if default has no key but another does
     if (!merged.apiKeys.deepseek && !process.env.DEEPSEEK_API_KEY) {
       if (merged.apiKeys.openai || process.env.OPENAI_API_KEY) {

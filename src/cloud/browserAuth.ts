@@ -96,15 +96,17 @@ export class BrowserAuthServer {
 
   private static openBrowser(targetUrl: string): void {
     const platform = process.platform;
-    let cmd = '';
     if (platform === 'win32') {
-      cmd = `start "" "${targetUrl}"`;
+      exec(`cmd.exe /c start "" "${targetUrl}"`, (err) => {
+        if (err) {
+          exec(`powershell -NoProfile -Command "Start-Process '${targetUrl}'"`);
+        }
+      });
     } else if (platform === 'darwin') {
-      cmd = `open "${targetUrl}"`;
+      exec(`open "${targetUrl}"`);
     } else {
-      cmd = `xdg-open "${targetUrl}"`;
+      exec(`xdg-open "${targetUrl}"`);
     }
-    exec(cmd, () => {});
   }
 
   private static renderLoginPage(port: number): string {

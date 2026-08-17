@@ -292,7 +292,7 @@ export class ToolExecutor {
         return {
           tool_call_id: toolCallId,
           name,
-          output: '✕ AUTHENTICATION REQUIRED: You must be logged into an ANTRI account to execute tools or code. Run "/login <email>".',
+          output: '✕ AUTHENTICATION REQUIRED: You must be logged into an ANTRI account to execute tools or code. Type "/login" in CLI or run "antri login".',
           error: true,
         };
       }

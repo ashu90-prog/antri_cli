@@ -97,7 +97,7 @@ Autonomous Guidelines:
 
     const currentUser = AuthManager.getCurrentUser();
     if (!currentUser) {
-      return `🔒 **ANTRI AUTHENTICATION REQUIRED**\n\nYou must be signed in to your ANTRI account to use this agent, execute tools, and access cloud memory.\n\n👉 **To log in:**\n- In CLI: Type \`/login <your-email@example.com>\`\n- In Terminal: Run \`antri login <email>\``;
+      return `🔒 **ANTRI AUTHENTICATION REQUIRED**\n\nYou must be signed in to your ANTRI account to use this agent, execute tools, and access cloud memory.\n\n👉 **To log in:**\n- In CLI: Type \`/login\` to open the web sign-in portal (or \`/login <email>\`)\n- In Terminal: Run \`antri login\``;
     }
 
     const rateCheck = RateLimiter.checkLimit(currentUser.userId, 'chat');
