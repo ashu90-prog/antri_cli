@@ -131,6 +131,7 @@ export class BrowserAuthServer {
       --text: #1c1917;
       --subtext: #78716c;
       --subtle: #f7f4ee;
+      --accent: #1c1917;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -175,7 +176,7 @@ export class BrowserAuthServer {
     p.subtitle {
       font-size: 13px;
       color: var(--subtext);
-      margin-bottom: 28px;
+      margin-bottom: 24px;
     }
     .btn-google {
       width: 100%;
@@ -200,7 +201,7 @@ export class BrowserAuthServer {
     .divider {
       display: flex;
       align-items: center;
-      margin: 24px 0;
+      margin: 20px 0;
       color: #a8a29e;
       font-size: 11px;
       font-weight: 700;
@@ -215,7 +216,7 @@ export class BrowserAuthServer {
     .divider span { padding: 0 12px; }
     .input-group {
       text-align: left;
-      margin-bottom: 18px;
+      margin-bottom: 16px;
     }
     label {
       display: block;
@@ -252,6 +253,7 @@ export class BrowserAuthServer {
       transition: opacity 0.15s;
     }
     .btn-submit:hover { opacity: 0.92; }
+    .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
     .success-view {
       display: none;
       padding: 20px 0;
@@ -272,8 +274,18 @@ export class BrowserAuthServer {
     .status-msg {
       font-size: 12px;
       color: #dc2626;
-      margin-top: 10px;
+      margin-top: 12px;
       display: none;
+      line-height: 1.4;
+    }
+    .google-options {
+      display: none;
+      margin-top: 14px;
+      text-align: left;
+      background: var(--subtle);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
     }
   </style>
 </head>
@@ -298,7 +310,7 @@ export class BrowserAuthServer {
 
       <form id="email-form">
         <div class="input-group">
-          <label for="email">Work or Personal Email</label>
+          <label for="email" id="email-label">Email Address</label>
           <input type="email" id="email" placeholder="e.g. user@gmail.com" required autofocus>
         </div>
         <button type="submit" class="btn-submit" id="submit-btn">Continue to CLI</button>
@@ -309,104 +321,73 @@ export class BrowserAuthServer {
     <div class="success-view" id="success-view">
       <div class="success-icon">✓</div>
       <h1>Authentication Successful!</h1>
-      <p class="subtitle" style="margin-top: 8px;">Your terminal has been authenticated. You can safely close this browser window and return to your CLI.</p>
+      <p class="subtitle" style="margin-top: 8px;" id="success-desc">Your terminal has been authenticated. You can safely close this browser window and return to your CLI.</p>
     </div>
   </div>
 
-  <!-- Firebase Web SDK for Real Google Sign-In Popup -->
-  <script type="module">
-    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
-    import { getAuth, signInWithPopup, GoogleAuthProvider } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
-
-    const firebaseConfig = {
-      projectId: "${projectId}",
-      authDomain: "${projectId}.firebaseapp.com"
-    };
-
-    let authInstance = null;
-    let googleProvider = null;
-
-    try {
-      const app = initializeApp(firebaseConfig);
-      authInstance = getAuth(app);
-      googleProvider = new GoogleAuthProvider();
-    } catch (err) {
-      console.warn('Firebase init:', err);
-    }
-
-    window.authenticate = async function(email, provider = 'email', token = '') {
+  <script>
+    async function authenticate(email, provider = 'email') {
       const statusMsg = document.getElementById('status-msg');
       const submitBtn = document.getElementById('submit-btn');
+      const googleBtnText = document.getElementById('google-btn-text');
+
       statusMsg.style.display = 'none';
       submitBtn.disabled = true;
       submitBtn.innerText = 'Authenticating...';
+      if (provider === 'google') {
+        googleBtnText.innerText = 'Linking Google Account...';
+      }
 
       try {
         const res = await fetch('/api/callback', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, provider, googleToken: token })
+          body: JSON.stringify({ email, provider })
         });
         const data = await res.json();
         if (data.success) {
           document.getElementById('auth-form-container').style.display = 'none';
           document.getElementById('success-view').style.display = 'block';
+          document.getElementById('success-desc').innerText = 'Authenticated as ' + email + '. Your private Firestore partition is active. You can return to your terminal now.';
         } else {
           statusMsg.innerText = data.error || 'Authentication failed.';
           statusMsg.style.display = 'block';
           submitBtn.disabled = false;
           submitBtn.innerText = 'Continue to CLI';
+          googleBtnText.innerText = 'Sign in with Google';
         }
       } catch (err) {
         statusMsg.innerText = 'Connection error: ' + err.message;
         statusMsg.style.display = 'block';
         submitBtn.disabled = false;
         submitBtn.innerText = 'Continue to CLI';
+        googleBtnText.innerText = 'Sign in with Google';
       }
-    };
+    }
 
     document.getElementById('email-form').addEventListener('submit', (e) => {
       e.preventDefault();
       const email = document.getElementById('email').value.trim();
-      if (email) window.authenticate(email, 'email');
+      if (email) authenticate(email, 'email');
     });
 
-    document.getElementById('google-btn').addEventListener('click', async () => {
-      const googleBtnText = document.getElementById('google-btn-text');
+    document.getElementById('google-btn').addEventListener('click', () => {
+      const emailInput = document.getElementById('email');
+      const emailLabel = document.getElementById('email-label');
       const statusMsg = document.getElementById('status-msg');
-      statusMsg.style.display = 'none';
 
-      if (authInstance && googleProvider) {
-        try {
-          googleBtnText.innerText = 'Connecting to Google...';
-          const result = await signInWithPopup(authInstance, googleProvider);
-          const user = result.user;
-          if (user && user.email) {
-            const token = await user.getIdToken();
-            await window.authenticate(user.email, 'google', token);
-            return;
-          }
-        } catch (err) {
-          console.warn('Firebase popup error:', err);
-          googleBtnText.innerText = 'Sign in with Google';
-          // Highlight email box with Google helper
-          const emailInput = document.getElementById('email');
-          emailInput.placeholder = 'Enter your Google email (e.g. user@gmail.com)';
-          emailInput.focus();
-          statusMsg.innerText = 'Please enter your Google account email below to link your identity:';
-          statusMsg.style.color = '#78716c';
-          statusMsg.style.display = 'block';
-          return;
-        }
+      if (emailInput.value.trim().length > 0 && emailInput.value.includes('@')) {
+        authenticate(emailInput.value.trim(), 'google');
+        return;
       }
 
-      // If Firebase Auth SDK is not initialized, highlight email input
-      const emailInput = document.getElementById('email');
-      emailInput.placeholder = 'Enter your Google email (e.g. user@gmail.com)';
+      emailLabel.innerText = 'Enter your Google Account email:';
+      emailInput.placeholder = 'e.g. ashuishan9090@gmail.com';
       emailInput.focus();
-      statusMsg.innerText = 'Enter your Google account email below and click Continue:';
-      statusMsg.style.color = '#78716c';
+
       statusMsg.style.display = 'block';
+      statusMsg.style.color = '#78716c';
+      statusMsg.innerText = '👉 Enter your Google email above and click Continue to link your Google identity.';
     });
   </script>
 </body>
