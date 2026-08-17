@@ -1,6 +1,6 @@
 {
   "name": "antri_cli",
-  "version": "1.26.1",
+  "version": "1.27.0",
   "description": "ANTRI Code - An intelligent, terminal-first AI coding chatbot, proactive facilitator, and autonomous meta-agent",
   "type": "module",
   "bin": {

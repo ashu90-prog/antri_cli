@@ -8,9 +8,9 @@ import { AntriConfig, ProviderType, DebateDepth, AgentMode } from '../types.js';
 dotenv.config();
 
 const DEFAULT_CONFIG: AntriConfig = {
+  version: '1.27.0',
   provider: 'deepseek',
   model: 'deepseek-v4-flash-(latest)',
-  version: '1.26.1',
   mode: 'vibe',
   alwaysAllow: false,
   apiKeys: {
