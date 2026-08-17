@@ -21,8 +21,9 @@ export class BrowserAuthServer {
           const syncCfg = FirestoreSyncManager.getSyncConfig();
           const projectId = syncCfg.projectId || 'antri-agentic-hackathon';
           const apiKey = syncCfg.apiKey || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '';
+          const googleClientId = process.env.GOOGLE_CLIENT_ID || (syncCfg as any).googleClientId || '';
           res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-          res.end(this.renderLoginPage(port, projectId, apiKey));
+          res.end(this.renderLoginPage(port, projectId, apiKey, googleClientId));
           return;
         }
 
@@ -171,7 +172,7 @@ export class BrowserAuthServer {
     }
   }
 
-  private static renderLoginPage(port: number, projectId: string = 'antri-agentic-hackathon', apiKey: string = ''): string {
+  private static renderLoginPage(port: number, projectId: string = 'antri-agentic-hackathon', apiKey: string = '', googleClientId: string = ''): string {
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -181,7 +182,7 @@ export class BrowserAuthServer {
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  ${googleClientId ? '<script src="https://accounts.google.com/gsi/client" async defer></script>' : ''}
   <style>
     :root {
       --bg: #fcfbf9;
@@ -357,7 +358,7 @@ export class BrowserAuthServer {
       <h1>ANTRI CODE</h1>
       <p class="subtitle">Secure authentication for terminal and cloud partition</p>
 
-      <!-- Google Sign In via Google Identity Services -->
+      <!-- Google Sign In Button -->
       <div class="google-container">
         <button class="btn-google" id="google-btn" type="button">
           <svg width="18" height="18" viewBox="0 0 24 24">
@@ -466,12 +467,26 @@ export class BrowserAuthServer {
       }
     });
 
+    const googleClientId = "${googleClientId}";
+
     function openGooglePopup() {
+      if (!googleClientId) {
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const statusMsg = document.getElementById('status-msg');
+        emailInput.placeholder = 'e.g. ashuishan9090@gmail.com';
+        emailInput.focus();
+        statusMsg.style.display = 'block';
+        statusMsg.style.color = '#78716c';
+        statusMsg.innerText = '🔒 Enter your Google email and password below to secure your private cloud partition.';
+        return;
+      }
+
       const googleBtnText = document.getElementById('google-btn-text');
       googleBtnText.innerText = 'Opening Google...';
 
       const authUrl = 'https://accounts.google.com/o/oauth2/v2/auth?' + new URLSearchParams({
-        client_id: '659424855422-e421p0t9b3qg4kff9e47s9a37gcr38l0.apps.googleusercontent.com',
+        client_id: googleClientId,
         redirect_uri: window.location.origin + '/api/google/callback',
         response_type: 'token id_token',
         scope: 'openid email profile',
