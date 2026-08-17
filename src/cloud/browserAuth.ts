@@ -26,7 +26,65 @@ export class BrowserAuthServer {
           return;
         }
 
-        // 2. Auth Callback Endpoint
+        // 2. Google OAuth Popup Callback Endpoint
+        if (url.pathname === '/api/google/callback') {
+          res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+          res.end(`<!DOCTYPE html><html><body style="background:#fcfbf9;font-family:system-ui;text-align:center;padding:40px;">
+            <p>Connecting your Google Account to ANTRI Code...</p>
+            <script>
+              const hash = window.location.hash.substring(1);
+              const params = new URLSearchParams(hash);
+              const idToken = params.get('id_token') || '';
+              const accessToken = params.get('access_token') || '';
+
+              function parseJwt(token) {
+                try {
+                  var base64Url = token.split('.')[1];
+                  var base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                  var jsonPayload = decodeURIComponent(atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+                  return JSON.parse(jsonPayload);
+                } catch(e) { return null; }
+              }
+
+              async function finish() {
+                let email = '';
+                if (idToken) {
+                  const payload = parseJwt(idToken);
+                  if (payload && payload.email) email = payload.email;
+                }
+                if (!email && accessToken) {
+                  try {
+                    const r = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                      headers: { Authorization: 'Bearer ' + accessToken }
+                    });
+                    const d = await r.json();
+                    if (d.email) email = d.email;
+                  } catch(e) {}
+                }
+
+                if (email) {
+                  await fetch('/api/callback', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: email, provider: 'google', googleToken: idToken || accessToken })
+                  });
+                  if (window.opener) {
+                    window.opener.postMessage({ type: 'ANTRI_AUTH_SUCCESS', email: email }, '*');
+                    window.close();
+                  } else {
+                    window.location.href = '/login';
+                  }
+                } else {
+                  document.body.innerHTML = '<p style="color:#dc2626;">Google sign-in completed. Returning to CLI...</p>';
+                }
+              }
+              finish();
+            </script>
+          </body></html>`);
+          return;
+        }
+
+        // 3. Auth Callback Endpoint
         if (url.pathname === '/api/callback' && req.method === 'POST') {
           let body = '';
           req.on('data', (chunk) => (body += chunk));
@@ -400,25 +458,39 @@ export class BrowserAuthServer {
       }
     });
 
-    document.getElementById('google-btn').addEventListener('click', () => {
-      const emailInput = document.getElementById('email');
-      const statusMsg = document.getElementById('status-msg');
-
-      if (window.google && window.google.accounts && window.google.accounts.id) {
-        try {
-          window.google.accounts.id.prompt();
-          return;
-        } catch (e) {
-          console.warn(e);
-        }
+    window.addEventListener('message', (event) => {
+      if (event.data && event.data.type === 'ANTRI_AUTH_SUCCESS') {
+        document.getElementById('auth-form-container').style.display = 'none';
+        document.getElementById('success-view').style.display = 'block';
+        document.getElementById('success-desc').innerText = 'Authenticated with Google as ' + event.data.email + '. Return to your terminal now.';
       }
+    });
 
-      // If Google Identity prompt not ready, guide user to enter Google Account with password protection
-      emailInput.placeholder = 'e.g. ashuishan9090@gmail.com';
-      emailInput.focus();
-      statusMsg.style.display = 'block';
-      statusMsg.style.color = '#78716c';
-      statusMsg.innerText = '🔒 Enter your Google email and choose a password to secure your account.';
+    function openGooglePopup() {
+      const googleBtnText = document.getElementById('google-btn-text');
+      googleBtnText.innerText = 'Opening Google...';
+
+      const authUrl = 'https://accounts.google.com/o/oauth2/v2/auth?' + new URLSearchParams({
+        client_id: '659424855422-e421p0t9b3qg4kff9e47s9a37gcr38l0.apps.googleusercontent.com',
+        redirect_uri: window.location.origin + '/api/google/callback',
+        response_type: 'token id_token',
+        scope: 'openid email profile',
+        nonce: Math.random().toString(36).substring(2),
+        prompt: 'select_account'
+      });
+
+      const width = 500, height = 640;
+      const left = (window.screen.width / 2) - (width / 2);
+      const top = (window.screen.height / 2) - (height / 2);
+      const popup = window.open(authUrl, 'google_signin_popup', 'width=' + width + ',height=' + height + ',top=' + top + ',left=' + left);
+
+      if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+        window.location.href = authUrl;
+      }
+    }
+
+    document.getElementById('google-btn').addEventListener('click', () => {
+      openGooglePopup();
     });
   </script>
 </body>
