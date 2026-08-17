@@ -55,75 +55,6 @@ class _AuthGateViewState extends State<AuthGateView> {
     }
   }
 
-  void _handleGoogleSignIn() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
-
-    // Google Sign-In Account Flow
-    final emailController = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFFFCFBF9),
-        title: const Row(
-          children: [
-            Icon(Icons.g_mobiledata, size: 28, color: Color(0xFF4285F4)),
-            SizedBox(width: 6),
-            Text('Google Account', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Sign in with your Google account email to access your private cloud partition:',
-              style: TextStyle(fontSize: 12, color: Color(0xFF57534E)),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: emailController,
-              autofocus: true,
-              keyboardType: TextInputType.emailAddress,
-              decoration: const InputDecoration(
-                hintText: 'e.g. yourname@gmail.com',
-                hintStyle: TextStyle(fontSize: 13),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              setState(() => _isLoading = false);
-            },
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              final googleEmail = emailController.text.trim().toLowerCase();
-              if (googleEmail.isNotEmpty && googleEmail.contains('@')) {
-                Navigator.pop(ctx);
-                final user = await _authService.login(googleEmail);
-                widget.config.syncKey = user.userId;
-                await widget.storageService.saveConfig(widget.config);
-                widget.onAuthenticated();
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1C1917),
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Continue'),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     const creamBg = Color(0xFFFCFBF9);
@@ -185,44 +116,6 @@ class _AuthGateViewState extends State<AuthGateView> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        // Google Sign In Button
-                        OutlinedButton(
-                          onPressed: _isLoading ? null : _handleGoogleSignIn,
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: borderMain),
-                            padding: const EdgeInsets.symmetric(vertical: 13),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                            backgroundColor: const Color(0xFFF7F4EE),
-                          ),
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.g_mobiledata, color: Color(0xFF4285F4), size: 24),
-                              SizedBox(width: 8),
-                              Text(
-                                'Sign in with Google',
-                                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: textPrimary),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-
-                        Row(
-                          children: [
-                            const Expanded(child: Divider(color: borderMain)),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 12),
-                              child: Text(
-                                'OR EMAIL',
-                                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.grey[500], letterSpacing: 0.8),
-                              ),
-                            ),
-                            const Expanded(child: Divider(color: borderMain)),
-                          ],
-                        ),
-                        const SizedBox(height: 20),
-
                         // Email Field
                         TextField(
                           controller: _emailController,
