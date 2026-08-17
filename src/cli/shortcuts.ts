@@ -13,6 +13,7 @@ import { runProfilePickerWorkflow } from './dialogs/profilePicker.js';
 import { DialecticEngine } from '../core/dialectic.js';
 import { GoalLoopEngine } from '../core/goalLoop.js';
 import { Updater } from '../core/updater.js';
+import { DesktopServer } from '../desktop/server.js';
 import { memoryManager } from '../memory/manager.js';
 import { metaOptimizer } from '../core/metaOptimizer.js';
 import { SkillSynthesizer } from '../core/skillSynthesizer.js';
@@ -41,6 +42,12 @@ export class ShortcutHandler {
     if (trimmed === '/exit' || trimmed === '/quit') {
       console.log(chalk.hex('#64748b')('Bye from ANTRI! 👋'));
       return { handled: true, shouldExit: true };
+    }
+
+    // /desktop (launch visual control plane)
+    if (trimmed === '/desktop' || trimmed === 'desktop') {
+      await DesktopServer.launchDesktop();
+      return { handled: true };
     }
 
     // /clear or /cls
@@ -413,6 +420,7 @@ export class ShortcutHandler {
     const cmds = [
       ['/plan', 'Switch to Plan Mode (collaborative architecture & blueprints before coding)'],
       ['/vibe', 'Switch to Vibe Mode (direct conversation & active fast code implementation)'],
+      ['/desktop', 'Launch the lightweight ANTRI Desktop Control Plane'],
       ['/alwaysallow', 'Toggle Always-Allow permission for sensitive tools (web search, shell, python)'],
       ['/goal [task]', 'Run autonomous multi-step goal loop: plan, critique, refine & deliver'],
       ['/loop [task]', 'Iterate on a task until optimal battle-tested result is achieved'],

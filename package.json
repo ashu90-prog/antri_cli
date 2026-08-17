@@ -18,13 +18,15 @@
   "scripts": {
     "start": "tsx src/index.ts",
     "dev": "tsx src/index.ts",
-    "build": "tsc",
+    "desktop": "tsx src/index.ts desktop",
+    "build": "tsc && node -e \"import('fs').then(fs => fs.cpSync('src/desktop/public', 'dist/desktop/public', {recursive: true, force: true}))\"",
     "lint": "tsc --noEmit",
     "test": "node --test test/antri.test.js",
     "prepublishOnly": "npm run build && npm test"
   },
   "keywords": [
     "cli",
+    "desktop",
     "chatbot",
     "ai",
     "opencode",

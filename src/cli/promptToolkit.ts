@@ -9,6 +9,7 @@ import { configManager } from '../core/config.js';
 export const PROMPT_TOOLKIT_COMMANDS: SlashCommand[] = [
   { name: '/plan', description: 'Switch to Plan Mode: Discuss and design architectural plans with agent before coding' },
   { name: '/vibe', description: 'Switch to Vibe Mode: Direct conversation where agent actively writes code in flow' },
+  { name: '/desktop', description: 'Launch the lightweight ANTRI Desktop Control Plane in app window' },
   { name: '/alwaysallow', description: 'Toggle Always-Allow permission for sensitive tools (web search, python, shell)' },
   { name: '/goal', description: 'Run autonomous multi-step goal loop: plan, critique, refine & deliver' },
   { name: '/loop', description: 'Iterate on a task until optimal battle-tested result is achieved' },

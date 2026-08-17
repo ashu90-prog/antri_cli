@@ -9,6 +9,7 @@ import { DebateDepth, ProviderType, AgentMode } from './types.js';
 import { DialecticEngine } from './core/dialectic.js';
 import { GoalLoopEngine } from './core/goalLoop.js';
 import { Updater } from './core/updater.js';
+import { DesktopServer } from './desktop/server.js';
 
 // Pre-process argv to support -alwaysallow syntax
 const normalizedArgv = process.argv.map((arg) => {
@@ -23,7 +24,7 @@ const currentConfig = configManager.get();
 
 program
   .name('antri')
-  .description('ANTRI Code - An intelligent, terminal-first AI coding chatbot and assistant')
+  .description('ANTRI Code - An intelligent, terminal-first AI coding chatbot, proactive facilitator, and autonomous meta-agent')
   .version(currentConfig.version, '-v, --version', 'Output the current version')
   .option('-p, --prompt <text>', 'One-shot prompt to process directly')
   .option('-g, --goal <objective>', 'Run autonomous multi-iteration goal execution & refinement loop')
@@ -31,8 +32,9 @@ program
   .option('--depth <level>', 'Set debate depth: quick, deep, or rigorous', 'deep')
   .option('--mode <mode>', 'Operating mode: "plan" (collaborative design) or "vibe" (direct coding)')
   .option('--alwaysallow', 'Always allow sensitive tools (web search, shell execution, python) without prompting')
+  .option('--desktop', 'Launch the lightweight ANTRI Desktop Control Plane in app mode')
   .option('-m, --model <name>', 'Specify model to use (e.g. meta/llama-3.1-8b-instruct, gpt-4o, claude-3-7-sonnet)')
-  .option('--provider <name>', 'Specify provider (nvidia-nim, openai, gemini, anthropic, ollama, deepseek, mock)')
+  .option('--provider <name>', 'Specify provider (cerebras, cohere, vortex, opencode, nvidia-nim, openai, gemini, anthropic, ollama, deepseek, mock)')
   .option('-w, --dir <path>', 'Working directory for workspace tools', process.cwd())
   .action(async (options) => {
     // Override configs with CLI options if provided
@@ -56,6 +58,12 @@ program
     }
 
     const config = configManager.get();
+
+    // 0. Desktop Mode Flag
+    if (options.desktop) {
+      await DesktopServer.launchDesktop();
+      return;
+    }
 
     // 1. Goal Loop CLI Mode
     if (options.goal) {
@@ -88,6 +96,14 @@ program
     // 4. Full Continuous Interactive REPL Session
     const agent = new AntriAgent(config);
     await startInteractiveSession(agent);
+  });
+
+// Desktop App Command: antri desktop
+program
+  .command('desktop')
+  .description('Launch the lightweight ANTRI Desktop Control Plane')
+  .action(async () => {
+    await DesktopServer.launchDesktop();
   });
 
 // Self-update command: antri update

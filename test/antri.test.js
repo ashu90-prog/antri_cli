@@ -21,6 +21,7 @@ import { MetaOptimizer } from '../dist/core/metaOptimizer.js';
 import { ProfileManager } from '../dist/profiles/profileManager.js';
 import { Updater } from '../dist/core/updater.js';
 import { GoalLoopEngine } from '../dist/core/goalLoop.js';
+import { DesktopServer } from '../dist/desktop/server.js';
 
 test('ConfigManager initializes with defaults including debateDepth and mode', () => {
   const manager = new ConfigManager();
@@ -94,11 +95,12 @@ test('ToolExecutor has workspace and autonomous web tools defined', () => {
   assert.ok(toolNames.includes('run_command'));
 });
 
-test('Prompt Toolkit commands are registered including /plan, /vibe, /alwaysallow, /goal', () => {
-  assert.ok(PROMPT_TOOLKIT_COMMANDS.length >= 20);
+test('Prompt Toolkit commands are registered including /plan, /vibe, /desktop, /alwaysallow, /goal', () => {
+  assert.ok(PROMPT_TOOLKIT_COMMANDS.length >= 21);
   const names = PROMPT_TOOLKIT_COMMANDS.map((c) => c.name.split(' ')[0]);
   assert.ok(names.includes('/plan'));
   assert.ok(names.includes('/vibe'));
+  assert.ok(names.includes('/desktop'));
   assert.ok(names.includes('/alwaysallow'));
   assert.ok(names.includes('/goal'));
   assert.ok(names.includes('/loop'));
@@ -329,6 +331,14 @@ test('New providers catalogs are accurately defined without cross-contamination'
   assert.ok(opencodeModels.length >= 5);
   assert.ok(opencodeModels.some((m) => m.id === 'opencode/deepseek-coder-v2.5'));
   assert.ok(opencodeModels.every((m) => m.provider === 'opencode'));
+});
+
+test('DesktopServer initializes and starts on an ephemeral port', async () => {
+  const desktop = new DesktopServer();
+  assert.ok(desktop);
+  const port = await desktop.start();
+  assert.ok(port >= 3456);
+  await desktop.stop();
 });
 
 test('ToolExecutor list_dir works on current directory', async () => {

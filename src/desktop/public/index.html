@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ANTRI Code — AI Desktop Control Plane</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body class="antri-app">
+
+  <!-- Top Application Bar -->
+  <header class="app-header">
+    <div class="brand-zone">
+      <div class="logo-badge">⚡ ANTRI</div>
+      <div class="version-tag">v1.26.1 DESKTOP</div>
+    </div>
+
+    <!-- Quick Mode Toggle -->
+    <div class="mode-toggles">
+      <button id="btn-mode-vibe" class="mode-btn active" onclick="switchMode('vibe')">
+        <span class="dot pulse-purple"></span> ⚡ Vibe Mode
+      </button>
+      <button id="btn-mode-plan" class="mode-btn" onclick="switchMode('plan')">
+        <span class="dot pulse-blue"></span> 🗺️ Plan Mode
+      </button>
+    </div>
+
+    <!-- Global Controls -->
+    <div class="header-controls">
+      <div class="control-group">
+        <label>Provider</label>
+        <select id="select-provider" onchange="onProviderChange(this.value)">
+          <option value="cerebras">⚡ Cerebras (CS-3)</option>
+          <option value="cohere">🏢 Cohere (Command R+)</option>
+          <option value="vortex">🌀 Vortex API</option>
+          <option value="opencode">💻 OpenCode</option>
+          <option value="deepseek" selected>🔮 DeepSeek (V3/R1)</option>
+          <option value="nvidia-nim">🟢 NVIDIA NIM</option>
+          <option value="openai">🤖 OpenAI (GPT-4o/o1)</option>
+          <option value="anthropic">🧠 Anthropic (Claude 3.7)</option>
+          <option value="gemini">✨ Google Gemini</option>
+          <option value="ollama">🦙 Ollama (Local)</option>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <label>Model</label>
+        <select id="select-model" onchange="onModelChange(this.value)">
+          <!-- Populated dynamically -->
+        </select>
+      </div>
+
+      <div class="control-group">
+        <label>Profile</label>
+        <select id="select-profile" onchange="onProfileChange(this.value)">
+          <!-- Populated dynamically -->
+        </select>
+      </div>
+
+      <button id="btn-perms-toggle" class="perms-badge" onclick="toggleAlwaysAllow()">
+        🛡️ <span id="perms-text">Ask-First</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <div class="app-body">
+    <!-- Sidebar Navigation -->
+    <nav class="app-sidebar">
+      <button class="nav-item active" onclick="showTab('chat')">
+        <span class="nav-icon">💬</span>
+        <span class="nav-label">Agent Studio</span>
+      </button>
+      <button class="nav-item" onclick="showTab('dialectic')">
+        <span class="nav-icon">🧠</span>
+        <span class="nav-label">Dialectic Arena</span>
+      </button>
+      <button class="nav-item" onclick="showTab('goal')">
+        <span class="nav-icon">🎯</span>
+        <span class="nav-label">Goal Pipeline</span>
+      </button>
+      <button class="nav-item" onclick="showTab('profiles')">
+        <span class="nav-icon">👤</span>
+        <span class="nav-label">Thinking Profiles</span>
+      </button>
+      <button class="nav-item" onclick="showTab('skills')">
+        <span class="nav-icon">🛠️</span>
+        <span class="nav-label">Dynamic Skills</span>
+      </button>
+      <button class="nav-item" onclick="showTab('memory')">
+        <span class="nav-icon">💾</span>
+        <span class="nav-label">Memory Graph</span>
+      </button>
+
+      <div class="sidebar-footer">
+        <div class="sync-status">
+          <span class="pulse-green"></span> Synced with CLI
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main Workspace Area -->
+    <main class="workspace-area">
+
+      <!-- TAB 1: Chat & Agent Studio -->
+      <section id="tab-chat" class="tab-panel active">
+        <div class="chat-container">
+          <div id="chat-messages" class="chat-messages">
+            <div class="welcome-card">
+              <h2>⚡ Welcome to ANTRI Desktop Control Plane</h2>
+              <p>Your local terminal AI coding chatbot now has a visual control center. Shared memory, thinking profiles, dynamic skills, and AI providers stay in sync across CLI and Desktop.</p>
+              <div class="quick-action-pills">
+                <button onclick="setPrompt('Plan the architecture for a real-time collaborative code editor')">🗺️ Plan Editor Architecture</button>
+                <button onclick="setPrompt('/debate What are the trade-offs between WebSockets vs Server-Sent Events?')">🧠 Start Dialectic Debate</button>
+                <button onclick="setPrompt('/goal Implement a zero-dependency LRU cache with TTL in TypeScript')">🎯 Run Goal Loop</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Prompt Box -->
+          <div class="chat-input-bar">
+            <div class="input-container">
+              <textarea id="prompt-input" placeholder="Ask ANTRI, type /plan, /goal, or @ to attach file..." rows="2" onkeydown="handleInputKey(event)"></textarea>
+              <div class="input-actions">
+                <span class="shortcut-tip">Press <b>Ctrl + Enter</b> to send · <b>@</b> for files</span>
+                <button id="send-btn" class="send-btn" onclick="submitPrompt()">
+                  <span>Send</span> ⚡
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 2: Dialectic Arena -->
+      <section id="tab-dialectic" class="tab-panel">
+        <div class="panel-header">
+          <div>
+            <h2>🧠 Dialectic Self-Debate Arena</h2>
+            <p>4 autonomous personas argue with each other, fact-check with web tools, and synthesize optimal truth.</p>
+          </div>
+          <div class="debate-controls">
+            <input type="text" id="debate-query-input" placeholder="Enter question or architecture problem to debate..." />
+            <select id="debate-depth-select">
+              <option value="quick">Quick (2 stages)</option>
+              <option value="deep" selected>Deep (4 stages)</option>
+              <option value="rigorous">Rigorous (6 stages)</option>
+            </select>
+            <button class="action-btn" onclick="startDebate()">Launch Debate ⚔️</button>
+          </div>
+        </div>
+
+        <div class="dialectic-arena-grid">
+          <!-- Persona 1: Proposer -->
+          <div class="persona-card proposer">
+            <div class="persona-header">
+              <span class="persona-icon">💡</span>
+              <div>
+                <h3>The Proposer</h3>
+                <span class="persona-tag">Thesis Formulation</span>
+              </div>
+            </div>
+            <div id="dialectic-thesis" class="persona-body">
+              <div class="placeholder-text">Waiting for debate initiation...</div>
+            </div>
+          </div>
+
+          <!-- Persona 2: Adversary -->
+          <div class="persona-card adversary">
+            <div class="persona-header">
+              <span class="persona-icon">⚔️</span>
+              <div>
+                <h3>The Adversary</h3>
+                <span class="persona-tag">Critique & Vulnerabilities</span>
+              </div>
+            </div>
+            <div id="dialectic-antithesis" class="persona-body">
+              <div class="placeholder-text">Waiting for thesis generation...</div>
+            </div>
+          </div>
+
+          <!-- Persona 3: Verifier -->
+          <div class="persona-card verifier">
+            <div class="persona-header">
+              <span class="persona-icon">🔍</span>
+              <div>
+                <h3>The Researcher</h3>
+                <span class="persona-tag">Web Tool Verification</span>
+              </div>
+            </div>
+            <div id="dialectic-verification" class="persona-body">
+              <div class="placeholder-text">Fact-checking and citation engine standby...</div>
+            </div>
+          </div>
+
+          <!-- Persona 4: Judge -->
+          <div class="persona-card judge">
+            <div class="persona-header">
+              <span class="persona-icon">⚖️</span>
+              <div>
+                <h3>The Judge</h3>
+                <span class="persona-tag">Synthesized Consensus</span>
+              </div>
+            </div>
+            <div id="dialectic-synthesis" class="persona-body">
+              <div class="placeholder-text">Consensus synthesis will appear here...</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 3: Goal Loop Pipeline -->
+      <section id="tab-goal" class="tab-panel">
+        <div class="panel-header">
+          <div>
+            <h2>🎯 Autonomous Goal Loop Canvas</h2>
+            <p>Multi-iteration plan-critique-harden convergence engine.</p>
+          </div>
+          <div class="debate-controls">
+            <input type="text" id="goal-objective-input" placeholder="Enter objective to iteratively accomplish..." />
+            <button class="action-btn" onclick="startGoalLoop()">Execute Goal Loop 🎯</button>
+          </div>
+        </div>
+
+        <div class="goal-pipeline-stages">
+          <!-- Stage 1 -->
+          <div class="goal-stage-card" id="stage-card-1">
+            <div class="stage-num">01</div>
+            <h3>Stage 1: Formulation</h3>
+            <p>Initial solution draft and code synthesis</p>
+            <div id="goal-stage-1-content" class="stage-content">Ready</div>
+          </div>
+
+          <!-- Stage 2 -->
+          <div class="goal-stage-card" id="stage-card-2">
+            <div class="stage-num">02</div>
+            <h3>Stage 2: Adversarial Review & Score</h3>
+            <p>Flaw detection, edge-case probing & quality rating</p>
+            <div id="goal-stage-2-content" class="stage-content">Ready</div>
+          </div>
+
+          <!-- Stage 3 -->
+          <div class="goal-stage-card" id="stage-card-3">
+            <div class="stage-num">03</div>
+            <h3>Stage 3: Optimal Hardened Delivery</h3>
+            <p>Refined, production-ready output with 100% confidence</p>
+            <div id="goal-stage-3-content" class="stage-content">Ready</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 4: Thinking Profiles -->
+      <section id="tab-profiles" class="tab-panel">
+        <div class="panel-header">
+          <div>
+            <h2>👤 Thinking Profile Studio</h2>
+            <p>Manage distinct user thinking profiles and inspect automatically compounded notes.</p>
+          </div>
+          <div class="debate-controls">
+            <input type="text" id="new-profile-name" placeholder="New profile name (e.g. backend_architect)" />
+            <button class="action-btn" onclick="createProfile()">➕ Create Profile</button>
+          </div>
+        </div>
+
+        <div class="profile-studio-layout">
+          <div class="profile-list-sidebar" id="profile-items-list">
+            <!-- Populated via API -->
+          </div>
+          <div class="profile-editor-container">
+            <div class="editor-header">
+              <h3 id="active-profile-title">profile_1.md</h3>
+              <button class="save-btn" onclick="saveActiveProfile()">💾 Save Profile</button>
+            </div>
+            <textarea id="profile-editor" class="profile-textarea" placeholder="Profile markdown content..."></textarea>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 5: Dynamic Skills -->
+      <section id="tab-skills" class="tab-panel">
+        <div class="panel-header">
+          <div>
+            <h2>🛠️ Dynamic Skill Studio</h2>
+            <p>Inspect and test tools synthesized autonomously by the agent in <code>~/.agent-cli/skills/</code>.</p>
+          </div>
+        </div>
+
+        <div class="skills-grid" id="skills-catalog-grid">
+          <!-- Populated dynamically -->
+        </div>
+      </section>
+
+      <!-- TAB 6: Memory Graph -->
+      <section id="tab-memory" class="tab-panel">
+        <div class="panel-header">
+          <div>
+            <h2>💾 Lifelong Memory & Vector Store</h2>
+            <p>128-dimensional dense semantic embeddings, episodic interaction logs, and workspace conventions.</p>
+          </div>
+        </div>
+
+        <div class="memory-dashboard-layout">
+          <div class="memory-card">
+            <h3>🧠 Semantic Memory Store</h3>
+            <div id="semantic-memory-list" class="memory-stream">
+              <!-- Populated via API -->
+            </div>
+          </div>
+          <div class="memory-card">
+            <h3>📜 Episodic Interaction Logs</h3>
+            <div id="episodic-memory-list" class="memory-stream">
+              <!-- Populated via API -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
