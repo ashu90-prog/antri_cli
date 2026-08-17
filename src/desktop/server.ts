@@ -1,6 +1,7 @@
 import http from 'http';
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 import { fileURLToPath } from 'url';
 import { spawn } from 'child_process';
 import { configManager } from '../core/config.js';
@@ -12,6 +13,8 @@ import { memoryManager } from '../memory/manager.js';
 import { SkillSynthesizer } from '../core/skillSynthesizer.js';
 import { getAllActiveTools, ToolExecutor } from '../core/tools.js';
 import { PROVIDER_CATALOGS, getAvailableModels } from '../providers/models.js';
+import { PROMPT_TOOLKIT_COMMANDS } from '../cli/promptToolkit.js';
+import { FilePickerService } from '../cli/dialogs/filePicker.js';
 import { log, colors } from '../utils/logger.js';
 import chalk from 'chalk';
 
@@ -61,7 +64,7 @@ export class DesktopServer {
 
         // 1. API Endpoints
         if (pathname.startsWith('/api/')) {
-          await this.handleApi(pathname, req, res);
+          await this.handleApi(pathname, url, req, res);
           return;
         }
 
@@ -79,6 +82,9 @@ export class DesktopServer {
           '.json': 'application/json',
           '.png': 'image/png',
           '.svg': 'image/svg+xml',
+          '.jpg': 'image/jpeg',
+          '.jpeg': 'image/jpeg',
+          '.webp': 'image/webp',
         };
 
         try {
@@ -116,7 +122,7 @@ export class DesktopServer {
     });
   }
 
-  private async handleApi(pathname: string, req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
+  private async handleApi(pathname: string, url: URL, req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
     const config = configManager.get();
 
     // GET /api/status
@@ -129,6 +135,22 @@ export class DesktopServer {
           toolsCount: getAllActiveTools().length,
         })
       );
+      return;
+    }
+
+    // GET /api/commands (Prompt Toolkit Slash Commands)
+    if (pathname === '/api/commands' && req.method === 'GET') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ commands: PROMPT_TOOLKIT_COMMANDS }));
+      return;
+    }
+
+    // GET /api/files (Prompt Toolkit File Browser for @)
+    if (pathname === '/api/files' && req.method === 'GET') {
+      const query = url.searchParams.get('query') || '';
+      const { currentDir, items } = FilePickerService.listDirectory(config.workingDir, query);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ currentDir, items }));
       return;
     }
 
@@ -175,6 +197,38 @@ export class DesktopServer {
     req.on('end', async () => {
       try {
         const payload = body ? JSON.parse(body) : {};
+
+        // POST /api/upload (File and Image Uploader)
+        if (pathname === '/api/upload' && req.method === 'POST') {
+          const fileName = payload.fileName || `upload_${Date.now()}.bin`;
+          const fileData = payload.data || ''; // Base64 or text data
+          const fileType = payload.fileType || 'text/plain';
+
+          const uploadDir = path.join(os.homedir(), '.antri', 'attachments');
+          if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+          }
+
+          const savedPath = path.join(uploadDir, fileName);
+          if (fileData.startsWith('data:')) {
+            const base64Data = fileData.split(',')[1];
+            fs.writeFileSync(savedPath, Buffer.from(base64Data, 'base64'));
+          } else {
+            fs.writeFileSync(savedPath, fileData, 'utf-8');
+          }
+
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(
+            JSON.stringify({
+              success: true,
+              filePath: savedPath,
+              fileName,
+              fileType,
+              isImage: fileType.startsWith('image/'),
+            })
+          );
+          return;
+        }
 
         // POST /api/chat (SSE Streaming)
         if (pathname === '/api/chat' && req.method === 'POST') {
@@ -293,7 +347,7 @@ export class DesktopServer {
         // POST /api/profile/save
         if (pathname === '/api/profile/save' && req.method === 'POST') {
           const active = profileManager.getActiveProfileName();
-          const filePath = path.join(process.env.HOME || process.env.USERPROFILE || '.', '.antri', 'profiles', `${active}.md`);
+          const filePath = path.join(os.homedir(), '.antri', 'profiles', `${active}.md`);
           fs.writeFileSync(filePath, payload.content, 'utf-8');
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ success: true }));
@@ -323,7 +377,7 @@ export class DesktopServer {
     const url = `http://localhost:${port}`;
 
     console.log();
-    console.log(chalk.bgHex('#7c3aed').bold.white(' ⚡ ANTRI DESKTOP APP LAUNCHED '));
+    console.log(chalk.bgHex('#7c3aed').bold.white(' ANTRI DESKTOP APP LAUNCHED '));
     console.log(chalk.hex('#a5b4fc')(`Local Desktop Control Plane running at: ${chalk.bold.cyan(url)}`));
     console.log(chalk.hex('#64748b')('Shared Memory, Thinking Profiles, Skills & Providers actively synced with CLI.'));
     console.log();
@@ -332,7 +386,6 @@ export class DesktopServer {
     const platform = process.platform;
     try {
       if (platform === 'win32') {
-        // Try launching Microsoft Edge or Chrome in standalone App Mode window
         spawn('cmd.exe', ['/c', 'start', 'msedge', `--app=${url}`], { detached: true, stdio: 'ignore' });
       } else if (platform === 'darwin') {
         spawn('open', ['-a', 'Google Chrome', `--args`, `--app=${url}`], { detached: true, stdio: 'ignore' });

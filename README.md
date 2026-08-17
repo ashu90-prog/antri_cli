@@ -2,7 +2,7 @@
 
 # ANTRI Code (`antri_cli`)
 
-**An intelligent, terminal-first AI coding chatbot, autonomous meta-agent, and desktop control plane inspired by OpenCode.**
+**An intelligent, terminal-first AI coding chatbot, autonomous meta-agent, desktop control plane, and mobile ecosystem inspired by OpenCode.**
 
 [![npm version](https://img.shields.io/npm/v/antri_cli.svg?style=flat-square&color=8b5cf6)](https://www.npmjs.com/package/antri_cli)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
@@ -18,11 +18,11 @@
 
 ## Why ANTRI Code?
 
-ANTRI Code turns your developer workspace into an integrated, autonomous coding ecosystem across the **Terminal CLI** and **Desktop Control Plane**. It doesn't just wait for prompts — it breaks tasks down step-by-step, asks clarifying questions on architecture trade-offs, runs multi-iteration self-improvement loops, debates solutions against itself to hunt edge cases, and writes its own custom dynamic tools.
+ANTRI Code turns your developer workspace into an integrated, autonomous coding ecosystem across the **Terminal CLI**, **Desktop Control Plane**, and **Mobile App**. It doesn't just wait for prompts — it breaks tasks down step-by-step, asks clarifying questions on architecture trade-offs, runs multi-iteration self-improvement loops, debates solutions against itself to hunt edge cases, and writes its own custom dynamic tools.
 
 ---
 
-## Visual Interfaces
+## Visual Interfaces & Multi-Surface Ecosystem
 
 ### 1. Terminal CLI Interface
 The lightning-fast, keyboard-driven terminal REPL with interactive `@` file attachment picking, mode badges, and instant response streaming.
@@ -34,11 +34,16 @@ The lightning-fast, keyboard-driven terminal REPL with interactive `@` file atta
 <br />
 
 ### 2. Desktop Control Plane
-A minimalist cream-white desktop control center with visual agent studio, live dialectic debate cards, iterative goal pipelines, thinking profile editors, and memory graph inspectors.
+A minimalist cream-white desktop control center with visual agent studio, live dialectic debate cards, iterative goal pipelines, thinking profile editors, memory graph inspectors, **`+` file/image uploader**, and **interactive prompt toolkit autocomplete menu**.
 
 <div align="center">
   <img src="./assets/desktop_panel.png" alt="ANTRI Desktop Control Plane" width="850" />
 </div>
+
+<br />
+
+### 3. Mobile App & PWA
+A standalone, touch-optimized mobile control center designed for iOS and Android. Runs independently with **on-device standalone thinking profiles**, camera/gallery **`+` image upload button**, dialectic debates, goal loops, and local memory.
 
 ---
 
@@ -66,6 +71,14 @@ antri desktop
 ```
 *(or type `/desktop` from inside the CLI)*
 
+### Launch Mobile App Server
+Start the standalone mobile app server accessible on phone or local network:
+
+```bash
+antri mobile
+```
+*(or type `/mobile` from inside the CLI)*
+
 ### Zero-Lockfile Self-Updating
 Update globally to the latest version anytime:
 
@@ -81,7 +94,12 @@ antri update
 - **Plan Mode (`/plan` or `antri --mode plan`)**: The agent enters an interactive blueprinting session. It analyzes architecture, drafts roadmaps, specifies file changes, and asks clarifying questions before making code edits.
 - **Vibe Mode (`/vibe` or `antri --mode vibe`)**: Continuous conversational coding. The agent immediately writes code, creates files, executes tools, and builds solutions in real time.
 
-### 2. Privacy & Security Tool Permission Gate
+### 2. Multi-File & Multimodal Uploads (`+` Button & `@` Mentions)
+- **Desktop & Mobile `+` Attachment Button**: Upload screenshots, code files, architecture diagrams, or take live camera photos directly in chat.
+- **Interactive `@` File Attachment Picker**: Type `@` in the prompt box to trigger an interactive folder & file explorer. Navigate with arrow keys, hit Enter, and inject full file contexts directly into your conversation.
+- **Interactive `/` Prompt Toolkit Palette**: Type `/` in the Desktop and Terminal prompt box for live command autocomplete with full keyboard navigation.
+
+### 3. Privacy & Security Tool Permission Gate
 To safeguard your privacy and workspace integrity:
 - Sensitive actions (web search, page scraping, shell execution, python runtime, dynamic skill authoring) prompt for explicit approval:
   ```text
@@ -93,7 +111,7 @@ To safeguard your privacy and workspace integrity:
   antri -alwaysallow
   ```
 
-### 3. Autonomous Goal Loop (`/goal`, `/loop`, `antri --goal`)
+### 4. Autonomous Goal Loop (`/goal`, `/loop`, `antri --goal`)
 Forces the agent through a multi-iteration self-refinement cycle:
 1. **Stage 1 (Formulation)**: Drafts initial solution & code.
 2. **Stage 2 (Adversarial Critique & Score)**: Critiques edge cases, security flaws, and assigns a 0-100% quality score.
@@ -103,13 +121,13 @@ Forces the agent through a multi-iteration self-refinement cycle:
 antri --goal "Refactor user authentication to support distributed Redis sessions"
 ```
 
-### 4. Multi-Profile Thinking System (`/profile`, `/notes`)
-- Maintains distinct Markdown thinking profiles (`~/.antri/profiles/profile_1.md`, `profile_2.md`).
+### 5. Multi-Profile Thinking System (`/profile`, `/notes`)
+- Maintains distinct Markdown thinking profiles (`~/.antri/profiles/profile_1.md`, `profile_2.md` on Desktop/CLI, and dedicated on-device profiles on Mobile).
 - **Interactive Profile Selector**: Switch profiles on the fly with `/profile`.
 - **Live Note-Taking**: Observes your feedback and coding preferences during chat and compounds insights directly into the active profile.
 - View captured notes anytime with `/notes`.
 
-### 5. Dialectic Reasoning Engine (`/debate`, `antri --debate`)
+### 6. Dialectic Reasoning Engine (`/debate`, `antri --debate`)
 Multi-persona self-debate pipeline arguing with itself before delivering consensus:
 - **The Proposer (Thesis)**: Generates initial solutions and hypotheses.
 - **The Adversary / Critic (Antithesis)**: Hunts bugs, assumptions, and logical flaws.
@@ -117,21 +135,18 @@ Multi-persona self-debate pipeline arguing with itself before delivering consens
 - **The Judge (Synthesis)**: Reconciles contradictions and outputs a robust answer.
 - Configurable debate depth: `quick`, `deep`, or `rigorous` (`/depth <level>`).
 
-### 6. Multi-Tiered Persistent Memory (Lifelong Learning)
+### 7. Multi-Tiered Persistent Memory (Lifelong Learning)
 - **Episodic Store**: Session transcripts and debate histories.
 - **Semantic Memory**: Dense 128-dimensional vector store with cosine similarity.
 - **Workspace Conventions**: Remembers repository-specific patterns (`.antri/conventions.md`).
 - **Autonomous Self-Recall**: Queries past solutions before answering new prompts.
 - `/memory` (inspect store) · `/consolidate` (run reflection) · `/learn <text>` (save rule).
 
-### 7. The Meta-Agent (Autonomous Self-Evolution)
+### 8. The Meta-Agent (Autonomous Self-Evolution)
 - **Sandboxed Python Runtime (`execute_python`)**: Safe execution of code snippets.
 - **Autonomous Self-Debugging**: Intercepts stack traces, analyzes root causes, creates patches, and retries automatically.
 - **Dynamic Skill Synthesis (`synthesize_skill`)**: The agent writes its own Python/JS tools, verifies them via dry-run, and persists them in `~/.agent-cli/skills/`.
 - **Meta-Optimization (`/meta`)**: Tracks tool latency, success rates, and refines prompt heuristics.
-
-### 8. Interactive `@` File Attachment Picker
-Type `@` in the prompt box to trigger an interactive folder & file explorer. Navigate with arrow keys, hit Enter, and inject full file contexts directly into your conversation.
 
 ---
 
@@ -161,6 +176,7 @@ ANTRI includes built-in support for 11+ AI providers with dedicated model catalo
 ```bash
 antri                                # Launch interactive session
 antri desktop                        # Launch desktop control plane
+antri mobile                         # Launch standalone mobile PWA server
 antri --mode plan                    # Launch in Plan Mode (collaborative architecture)
 antri --mode vibe                    # Launch in Vibe Mode (direct coding flow)
 antri -alwaysallow                   # Launch with tool permission prompts bypassed
@@ -179,6 +195,7 @@ antri --provider <name>              # Specify provider
 | `/plan` | Switch to **Plan Mode** (collaborative architecture before coding) |
 | `/vibe` | Switch to **Vibe Mode** (direct fast coding flow) |
 | `/desktop` | Launch the **Desktop Control Plane** in standalone window |
+| `/mobile` | Launch the **Mobile App PWA server** |
 | `/alwaysallow` | Toggle permission prompts for sensitive tools |
 | `/goal [task]` | Run autonomous goal execution & refinement loop |
 | `/loop [task]` | Alias for `/goal` loop |
@@ -254,7 +271,7 @@ npm install
 # 3. Build TypeScript & assets
 npm run build
 
-# 4. Run automated test suite (25 unit tests)
+# 4. Run automated test suite (26 unit tests)
 npm test
 
 # 5. Run in dev mode

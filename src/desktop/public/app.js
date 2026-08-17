@@ -2,10 +2,16 @@
 
 let currentConfig = null;
 let activeTab = 'chat';
+let attachedFiles = [];
+let availableCommands = [];
+let activePaletteMatches = [];
+let paletteSelectedIndex = 0;
+let activePaletteMode = null; // 'slash' | 'file' | null
 
 // Initialize on Load
 document.addEventListener('DOMContentLoaded', async () => {
   await loadStatus();
+  await loadCommands();
   await loadProfiles();
   await loadSkills();
   await loadMemory();
@@ -31,6 +37,17 @@ async function loadStatus() {
     await loadModels();
   } catch (err) {
     console.error('Failed to load status:', err);
+  }
+}
+
+// Load Slash Commands for Prompt Toolkit
+async function loadCommands() {
+  try {
+    const res = await fetch('/api/commands');
+    const data = await res.json();
+    availableCommands = data.commands || [];
+  } catch (err) {
+    console.error('Failed to load commands:', err);
   }
 }
 
@@ -132,13 +149,243 @@ function showTab(tabName) {
   if (navButtons[navIndex]) navButtons[navIndex].classList.add('active');
 }
 
+// File Upload Handler (Images & Files)
+async function handleFileSelected(event) {
+  const files = event.target.files;
+  if (!files || files.length === 0) return;
+
+  for (const file of files) {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const data = e.target.result;
+      try {
+        const res = await fetch('/api/upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fileName: file.name,
+            fileType: file.type || 'text/plain',
+            data,
+          }),
+        });
+        const uploadRes = await res.json();
+        if (uploadRes.success) {
+          attachedFiles.push({
+            name: file.name,
+            path: uploadRes.filePath,
+            isImage: uploadRes.isImage,
+            dataUrl: uploadRes.isImage ? data : null,
+          });
+          renderAttachmentChips();
+        }
+      } catch (err) {
+        console.error('File upload failed:', err);
+      }
+    };
+    if (file.type.startsWith('image/')) {
+      reader.readAsDataURL(file);
+    } else {
+      reader.readAsText(file);
+    }
+  }
+
+  // Reset input
+  event.target.value = '';
+}
+
+function renderAttachmentChips() {
+  const tray = document.getElementById('attachment-preview-tray');
+  if (!tray) return;
+
+  if (attachedFiles.length === 0) {
+    tray.classList.add('hidden');
+    tray.innerHTML = '';
+    return;
+  }
+
+  tray.classList.remove('hidden');
+  tray.innerHTML = '';
+
+  attachedFiles.forEach((file, index) => {
+    const chip = document.createElement('div');
+    chip.className = 'attachment-chip';
+    if (file.isImage && file.dataUrl) {
+      chip.innerHTML = `
+        <img src="${file.dataUrl}" alt="preview" />
+        <span>${file.name}</span>
+        <button class="remove-chip-btn" onclick="removeAttachment(${index})">×</button>
+      `;
+    } else {
+      chip.innerHTML = `
+        <span>${file.name}</span>
+        <button class="remove-chip-btn" onclick="removeAttachment(${index})">×</button>
+      `;
+    }
+    tray.appendChild(chip);
+  });
+}
+
+function removeAttachment(index) {
+  attachedFiles.splice(index, 1);
+  renderAttachmentChips();
+}
+
+// Prompt Toolkit Text & Key Handler
+async function handleInputText(event) {
+  const val = event.target.value;
+  const cursorPos = event.target.selectionStart;
+
+  // 1. Slash command mode
+  if (val.startsWith('/')) {
+    const query = val.toLowerCase();
+    activePaletteMatches = availableCommands.filter((cmd) => {
+      const baseName = cmd.name.split(' ')[0].toLowerCase();
+      return baseName.startsWith(query) || cmd.name.toLowerCase().startsWith(query);
+    });
+    activePaletteMode = 'slash';
+    renderPalette('Commands', activePaletteMatches);
+    return;
+  }
+
+  // 2. Attachment file mode (@)
+  const lastAt = val.lastIndexOf('@', cursorPos - 1);
+  if (lastAt !== -1 && (lastAt === 0 || val[lastAt - 1] === ' ')) {
+    const query = val.slice(lastAt + 1, cursorPos);
+    if (!query.includes(' ')) {
+      try {
+        const res = await fetch(`/api/files?query=${encodeURIComponent(query)}`);
+        const data = await res.json();
+        activePaletteMatches = data.items.map((item) => ({
+          name: item.name,
+          description: item.isDirectory ? 'Directory' : item.relativePath,
+          relativePath: item.relativePath,
+          isDirectory: item.isDirectory,
+        }));
+        activePaletteMode = 'file';
+        renderPalette(`Files: ${data.currentDir}`, activePaletteMatches);
+        return;
+      } catch (e) {}
+    }
+  }
+
+  hidePalette();
+}
+
+function renderPalette(title, items) {
+  const palette = document.getElementById('prompt-toolkit-palette');
+  const header = document.getElementById('palette-header');
+  const list = document.getElementById('palette-list');
+
+  if (!palette || !items || items.length === 0) {
+    hidePalette();
+    return;
+  }
+
+  header.textContent = title;
+  list.innerHTML = '';
+  paletteSelectedIndex = Math.min(paletteSelectedIndex, items.length - 1);
+  if (paletteSelectedIndex < 0) paletteSelectedIndex = 0;
+
+  items.slice(0, 10).forEach((item, idx) => {
+    const el = document.createElement('div');
+    el.className = `palette-item ${idx === paletteSelectedIndex ? 'active' : ''}`;
+    el.innerHTML = `
+      <span class="palette-name">${item.name}</span>
+      <span class="palette-desc">${item.description || ''}</span>
+      ${item.isDirectory ? '<span class="palette-tag">dir</span>' : ''}
+    `;
+    el.onclick = () => selectPaletteItem(idx);
+    list.appendChild(el);
+  });
+
+  palette.classList.remove('hidden');
+}
+
+function hidePalette() {
+  const palette = document.getElementById('prompt-toolkit-palette');
+  if (palette) palette.classList.add('hidden');
+  activePaletteMode = null;
+  activePaletteMatches = [];
+  paletteSelectedIndex = 0;
+}
+
+function selectPaletteItem(index) {
+  const item = activePaletteMatches[index];
+  if (!item) return;
+
+  const input = document.getElementById('prompt-input');
+
+  if (activePaletteMode === 'slash') {
+    const rawCmd = item.name.split(' ')[0];
+    input.value = rawCmd + ' ';
+    hidePalette();
+    input.focus();
+  } else if (activePaletteMode === 'file') {
+    const val = input.value;
+    const cursorPos = input.selectionStart;
+    const lastAt = val.lastIndexOf('@', cursorPos - 1);
+    if (lastAt !== -1) {
+      input.value = val.slice(0, lastAt) + '@' + item.relativePath + ' ' + val.slice(cursorPos);
+    }
+    hidePalette();
+    input.focus();
+  }
+}
+
+function handleInputKey(event) {
+  const palette = document.getElementById('prompt-toolkit-palette');
+  const isPaletteVisible = palette && !palette.classList.contains('hidden');
+
+  if (isPaletteVisible && activePaletteMatches.length > 0) {
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      paletteSelectedIndex = (paletteSelectedIndex - 1 + activePaletteMatches.length) % activePaletteMatches.length;
+      renderPalette(document.getElementById('palette-header').textContent, activePaletteMatches);
+      return;
+    }
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      paletteSelectedIndex = (paletteSelectedIndex + 1) % activePaletteMatches.length;
+      renderPalette(document.getElementById('palette-header').textContent, activePaletteMatches);
+      return;
+    }
+    if (event.key === 'Tab' || event.key === 'Enter') {
+      if (!event.ctrlKey && !event.metaKey) {
+        event.preventDefault();
+        selectPaletteItem(paletteSelectedIndex);
+        return;
+      }
+    }
+    if (event.key === 'Escape') {
+      hidePalette();
+      return;
+    }
+  }
+
+  // Ctrl + Enter to submit prompt
+  if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+    event.preventDefault();
+    submitPrompt();
+  }
+}
+
 // Chat Prompt Submission with SSE Streaming
 async function submitPrompt() {
   const input = document.getElementById('prompt-input');
-  const prompt = input.value.trim();
+  let prompt = input.value.trim();
+
+  // Attach any uploaded files to prompt
+  if (attachedFiles.length > 0) {
+    const attachmentsText = attachedFiles.map((f) => `\n[Attached File: ${f.name} (${f.path})]`).join('');
+    prompt = prompt + '\n' + attachmentsText;
+    attachedFiles = [];
+    renderAttachmentChips();
+  }
+
   if (!prompt) return;
 
   input.value = '';
+  hidePalette();
 
   // Intercept /debate or /goal inside chat
   if (prompt.startsWith('/debate')) {
@@ -230,13 +477,6 @@ function setPrompt(text) {
   const input = document.getElementById('prompt-input');
   input.value = text;
   input.focus();
-}
-
-function handleInputKey(event) {
-  if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
-    event.preventDefault();
-    submitPrompt();
-  }
 }
 
 // Dialectic Debate Runner

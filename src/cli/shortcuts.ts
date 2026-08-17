@@ -14,6 +14,7 @@ import { DialecticEngine } from '../core/dialectic.js';
 import { GoalLoopEngine } from '../core/goalLoop.js';
 import { Updater } from '../core/updater.js';
 import { DesktopServer } from '../desktop/server.js';
+import { MobileServer } from '../mobile/server.js';
 import { memoryManager } from '../memory/manager.js';
 import { metaOptimizer } from '../core/metaOptimizer.js';
 import { SkillSynthesizer } from '../core/skillSynthesizer.js';
@@ -47,6 +48,12 @@ export class ShortcutHandler {
     // /desktop (launch visual control plane)
     if (trimmed === '/desktop' || trimmed === 'desktop') {
       await DesktopServer.launchDesktop();
+      return { handled: true };
+    }
+
+    // /mobile (launch standalone mobile PWA server)
+    if (trimmed === '/mobile' || trimmed === 'mobile') {
+      await MobileServer.launchMobile();
       return { handled: true };
     }
 

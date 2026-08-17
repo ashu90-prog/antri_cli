@@ -10,6 +10,7 @@ import { DialecticEngine } from './core/dialectic.js';
 import { GoalLoopEngine } from './core/goalLoop.js';
 import { Updater } from './core/updater.js';
 import { DesktopServer } from './desktop/server.js';
+import { MobileServer } from './mobile/server.js';
 
 // Pre-process argv to support -alwaysallow syntax
 const normalizedArgv = process.argv.map((arg) => {
@@ -33,6 +34,7 @@ program
   .option('--mode <mode>', 'Operating mode: "plan" (collaborative design) or "vibe" (direct coding)')
   .option('--alwaysallow', 'Always allow sensitive tools (web search, shell execution, python) without prompting')
   .option('--desktop', 'Launch the lightweight ANTRI Desktop Control Plane in app mode')
+  .option('--mobile', 'Launch the standalone ANTRI Mobile App server')
   .option('-m, --model <name>', 'Specify model to use (e.g. meta/llama-3.1-8b-instruct, gpt-4o, claude-3-7-sonnet)')
   .option('--provider <name>', 'Specify provider (cerebras, cohere, vortex, opencode, nvidia-nim, openai, gemini, anthropic, ollama, deepseek, mock)')
   .option('-w, --dir <path>', 'Working directory for workspace tools', process.cwd())
@@ -59,9 +61,15 @@ program
 
     const config = configManager.get();
 
-    // 0. Desktop Mode Flag
+    // 0a. Desktop Mode Flag
     if (options.desktop) {
       await DesktopServer.launchDesktop();
+      return;
+    }
+
+    // 0b. Mobile Mode Flag
+    if (options.mobile) {
+      await MobileServer.launchMobile();
       return;
     }
 
@@ -104,6 +112,14 @@ program
   .description('Launch the lightweight ANTRI Desktop Control Plane')
   .action(async () => {
     await DesktopServer.launchDesktop();
+  });
+
+// Mobile App Command: antri mobile
+program
+  .command('mobile')
+  .description('Launch the standalone ANTRI Mobile App server')
+  .action(async () => {
+    await MobileServer.launchMobile();
   });
 
 // Self-update command: antri update

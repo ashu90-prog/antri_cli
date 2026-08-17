@@ -116,12 +116,32 @@
             </div>
           </div>
 
-          <!-- Bottom Prompt Box -->
+          <!-- Bottom Prompt Box & Prompt Toolkit -->
           <div class="chat-input-bar">
+            <!-- Prompt Toolkit Dropdown Palette -->
+            <div id="prompt-toolkit-palette" class="prompt-toolkit-palette hidden">
+              <div class="palette-header" id="palette-header">Commands</div>
+              <div class="palette-list" id="palette-list">
+                <!-- Dynamically populated -->
+              </div>
+            </div>
+
+            <!-- Attached Files Preview Tray -->
+            <div id="attachment-preview-tray" class="attachment-preview-tray hidden"></div>
+
             <div class="input-container">
-              <textarea id="prompt-input" placeholder="Ask ANTRI, type /plan, /goal, or @ to attach files..." rows="2" onkeydown="handleInputKey(event)"></textarea>
+              <!-- Hidden File Input -->
+              <input type="file" id="file-upload-input" multiple accept="image/*,.txt,.ts,.js,.json,.py,.md,.csv,.html,.css" style="display:none;" onchange="handleFileSelected(event)" />
+              
+              <div class="input-row">
+                <button id="btn-attach-file" class="attach-btn" title="Upload image or file" onclick="document.getElementById('file-upload-input').click()">
+                  +
+                </button>
+                <textarea id="prompt-input" placeholder="Ask ANTRI, type / for commands, @ for files..." rows="2" onkeydown="handleInputKey(event)" oninput="handleInputText(event)"></textarea>
+              </div>
+
               <div class="input-actions">
-                <span class="shortcut-tip">Press Ctrl + Enter to send · @ for files</span>
+                <span class="shortcut-tip">Press <b>Ctrl + Enter</b> to send · <b>/</b> commands · <b>@</b> files</span>
                 <button id="send-btn" class="send-btn" onclick="submitPrompt()">
                   <span>Send</span>
                 </button>

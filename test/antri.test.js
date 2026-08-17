@@ -22,6 +22,7 @@ import { ProfileManager } from '../dist/profiles/profileManager.js';
 import { Updater } from '../dist/core/updater.js';
 import { GoalLoopEngine } from '../dist/core/goalLoop.js';
 import { DesktopServer } from '../dist/desktop/server.js';
+import { MobileServer } from '../dist/mobile/server.js';
 
 test('ConfigManager initializes with defaults including debateDepth and mode', () => {
   const manager = new ConfigManager();
@@ -339,6 +340,15 @@ test('DesktopServer initializes and starts on an ephemeral port', async () => {
   const port = await desktop.start();
   assert.ok(port >= 3456);
   await desktop.stop();
+});
+
+test('MobileServer initializes and starts on an ephemeral port', async () => {
+  const mobile = new MobileServer();
+  assert.ok(mobile);
+  const { port, localIp } = await mobile.start();
+  assert.ok(port >= 3457);
+  assert.ok(localIp);
+  await mobile.stop();
 });
 
 test('ToolExecutor list_dir works on current directory', async () => {
