@@ -17,8 +17,11 @@ export class BrowserAuthServer {
 
         // 1. Serve Minimalist Cream-White Web Login UI
         if (url.pathname === '/' || url.pathname === '/login') {
+          const { FirestoreSyncManager } = await import('./firestore.js');
+          const syncCfg = FirestoreSyncManager.getSyncConfig();
+          const projectId = syncCfg.projectId || 'antri-agentic-hackathon';
           res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-          res.end(this.renderLoginPage(port));
+          res.end(this.renderLoginPage(port, projectId));
           return;
         }
 
@@ -109,7 +112,7 @@ export class BrowserAuthServer {
     }
   }
 
-  private static renderLoginPage(port: number): string {
+  private static renderLoginPage(port: number, projectId: string = 'antri-agentic-hackathon'): string {
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -287,7 +290,7 @@ export class BrowserAuthServer {
           <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
           <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
         </svg>
-        Sign in with Google
+        <span id="google-btn-text">Sign in with Google</span>
       </button>
 
       <div class="divider"><span>OR EMAIL</span></div>
@@ -309,8 +312,28 @@ export class BrowserAuthServer {
     </div>
   </div>
 
-  <script>
-    async function authenticate(email, provider = 'email') {
+  <!-- Firebase Web SDK for Real Google Sign-In Popup -->
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+    import { getAuth, signInWithPopup, GoogleAuthProvider } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
+
+    const firebaseConfig = {
+      projectId: "${projectId}",
+      authDomain: "${projectId}.firebaseapp.com"
+    };
+
+    let authInstance = null;
+    let googleProvider = null;
+
+    try {
+      const app = initializeApp(firebaseConfig);
+      authInstance = getAuth(app);
+      googleProvider = new GoogleAuthProvider();
+    } catch (err) {
+      console.warn('Firebase init:', err);
+    }
+
+    window.authenticate = async function(email, provider = 'email', token = '') {
       const statusMsg = document.getElementById('status-msg');
       const submitBtn = document.getElementById('submit-btn');
       statusMsg.style.display = 'none';
@@ -321,7 +344,7 @@ export class BrowserAuthServer {
         const res = await fetch('/api/callback', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, provider })
+          body: JSON.stringify({ email, provider, googleToken: token })
         });
         const data = await res.json();
         if (data.success) {
@@ -339,18 +362,47 @@ export class BrowserAuthServer {
         submitBtn.disabled = false;
         submitBtn.innerText = 'Continue to CLI';
       }
-    }
+    };
 
     document.getElementById('email-form').addEventListener('submit', (e) => {
       e.preventDefault();
       const email = document.getElementById('email').value.trim();
-      if (email) authenticate(email, 'email');
+      if (email) window.authenticate(email, 'email');
     });
 
-    document.getElementById('google-btn').addEventListener('click', () => {
+    document.getElementById('google-btn').addEventListener('click', async () => {
+      const googleBtnText = document.getElementById('google-btn-text');
+      const statusMsg = document.getElementById('status-msg');
+      statusMsg.style.display = 'none';
+
+      if (authInstance && googleProvider) {
+        try {
+          googleBtnText.innerText = 'Connecting to Google...';
+          const result = await signInWithPopup(authInstance, googleProvider);
+          const user = result.user;
+          if (user && user.email) {
+            const token = await user.getIdToken();
+            await window.authenticate(user.email, 'google', token);
+            return;
+          }
+        } catch (err) {
+          console.warn('Firebase popup error:', err);
+          // If popup failed due to domain authorization or popup blocker, fall back to email
+          const email = prompt('Enter your Google Account email (e.g. user@gmail.com):');
+          if (email && email.includes('@')) {
+            await window.authenticate(email.trim(), 'google');
+            return;
+          }
+          statusMsg.innerText = err.message || 'Google sign-in error';
+          statusMsg.style.display = 'block';
+          googleBtnText.innerText = 'Sign in with Google';
+          return;
+        }
+      }
+
       const email = prompt('Enter your Google Account email (e.g. user@gmail.com):');
       if (email && email.includes('@')) {
-        authenticate(email.trim(), 'google');
+        await window.authenticate(email.trim(), 'google');
       }
     });
   </script>
