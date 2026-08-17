@@ -1,0 +1,282 @@
+import ora, { Ora } from 'ora';
+import chalk from 'chalk';
+import { AntriConfig, ChatMessage, ToolCall, ToolResult } from '../types.js';
+import { createProvider } from '../providers/index.js';
+import { ConversationHistory } from './history.js';
+import { getAllActiveTools, ToolExecutor } from './tools.js';
+import { TerminalRenderer } from '../cli/renderer.js';
+import { FilePickerService } from '../cli/dialogs/filePicker.js';
+import { CitationEngine } from './citations.js';
+import { memoryManager } from '../memory/manager.js';
+import { profileManager } from '../profiles/profileManager.js';
+import { SelfDebugger } from './debugger.js';
+import { metaOptimizer } from './metaOptimizer.js';
+import { log } from '../utils/logger.js';
+
+export class AntriAgent {
+  private config: AntriConfig;
+  private history: ConversationHistory;
+  private toolExecutor: ToolExecutor;
+  private citationEngine: CitationEngine;
+
+  constructor(config: AntriConfig, history?: ConversationHistory) {
+    this.config = config;
+    this.history = history || new ConversationHistory();
+    this.toolExecutor = new ToolExecutor(config.workingDir);
+    this.citationEngine = new CitationEngine();
+  }
+
+  public getHistory(): ConversationHistory {
+    return this.history;
+  }
+
+  public updateConfig(newConfig: AntriConfig): void {
+    this.config = newConfig;
+    this.toolExecutor = new ToolExecutor(newConfig.workingDir);
+  }
+
+  private buildSystemPrompt(recalledMemoryContext = ''): string {
+    const activeProfileName = profileManager.getActiveProfileName();
+    const activeProfileContent = profileManager.getActiveProfileContent();
+    const mode = this.config.mode || 'vibe';
+
+    let modeDirective = '';
+    if (mode === 'plan') {
+      modeDirective = `
+⚡ ACTIVE OPERATING MODE: PLAN MODE
+- You are in PLAN MODE. Your primary goal is to collaborate with the user on high-level architecture, design specifications, and step-by-step implementation blueprints BEFORE writing code.
+- Propose structured phased roadmaps (Phase 1, Phase 2, etc.) and list necessary file additions/modifications.
+- Ask sharp clarifying questions regarding trade-offs, tech choices, or edge cases.
+- Do NOT prematurely modify codebase files or execute destructive actions without presenting the plan first and getting user alignment.`;
+    } else {
+      modeDirective = `
+⚡ ACTIVE OPERATING MODE: VIBE MODE
+- You are in VIBE MODE. You directly chat with the user and immediately implement features, write code, run commands, and execute tools in continuous flow.
+- Deliver working, high-quality, production-ready code with maximum speed and precision.`;
+    }
+
+    const basePrompt = `You are ANTRI Code, an intelligent, terminal-first AI coding companion, proactive facilitator, and autonomous meta-agent.
+
+Core Behavioral Principles:
+1. Lead the Way & Guide Step-by-Step: Don't just give passive answers. Proactively lead the way, lay out step-by-step execution roadmaps, and propose the next logical milestones.
+2. Ask Clarifying Questions: Whenever a requirement is underspecified, has multiple architectural paths, or involves technical trade-offs, ask concise, targeted clarifying questions to ensure perfect alignment with the user's vision.
+3. Adaptive Note-Taking & Feedback Capture: Pay close attention to user feedback, preferred conventions, and mental models. Continuously adapt your explanations and code to their unique thinking style.
+${modeDirective}
+
+Tooling & Workspace Capabilities:
+1. Workspace Tools: read_file, write_file, list_dir, search_files, run_command.
+2. Sandboxed Runtime: execute_python (run safe isolated Python code scripts).
+3. Skill Synthesis: synthesize_skill (create, test, and register new permanent Python tools to ~/.agent-cli/skills/).
+4. Web & Research Tools: web_search (multi-provider search without API key), scrape_url (deep readable content extraction into Markdown), and crawl_docs (recursive documentation crawler).
+5. Persistent Lifelong Memory & Multi-Profile Thinking: Adhere strictly to the active profile markdown context and project conventions.
+
+Autonomous Guidelines:
+- If a user asks for complex calculation, data analysis, or scripting, use 'execute_python'.
+- If a user asks to create a reusable tool or skill, use 'synthesize_skill'.
+- If a user asks for external information, documentation, or libraries, autonomously call 'web_search', 'scrape_url', or 'crawl_docs'.
+- If a user attaches a file ([Attached File: ...]), examine the provided content directly.
+- Cite sources clearly when using web research.
+- Write clean, production-grade, typed code.`;
+
+    const profileSection = activeProfileContent
+      ? `\n\n--- Active Thinking Profile [${activeProfileName}] ---\n${activeProfileContent}\n---------------------------------------------`
+      : '';
+
+    const context = `\n\nWorkspace context:
+- Current Working Directory: ${this.config.workingDir}
+- Active Model: ${this.config.model}
+- Active Mode: ${mode.toUpperCase()}
+- Active Profile: ${activeProfileName}${profileSection}${recalledMemoryContext}`;
+
+    return basePrompt + context;
+  }
+
+  public async chat(userPrompt: string): Promise<string> {
+    const startTime = Date.now();
+    this.citationEngine.clear();
+
+    // 1. Capture feedback / note into active profile
+    const activeProfileName = profileManager.getActiveProfileName();
+    const notedInsight = profileManager.extractAndRecordNotes(userPrompt);
+    if (notedInsight) {
+      console.log(chalk.hex('#38bdf8')(`📝 Noted in profile [${activeProfileName}]: "${notedInsight}"`));
+    }
+
+    // 2. Autonomous Self-Recall into Persistent Memory Hierarchy
+    const geminiKey = this.config.apiKeys.gemini || process.env.GEMINI_API_KEY;
+    const { contextText, recalled } = await memoryManager.selfRecall(
+      userPrompt,
+      this.config.workingDir,
+      geminiKey
+    );
+
+    if (recalled.hasMemories && (recalled.semanticInsights.length > 0 || recalled.workspaceConventions.length > 0)) {
+      const matchCount = recalled.semanticInsights.length + recalled.workspaceConventions.length;
+      console.log(chalk.hex('#818cf8')(`🧠 Recalled ${matchCount} relevant memory item(s) from persistent store`));
+    }
+
+    // 3. Resolve any @file attachments in userPrompt
+    const { enhancedPrompt, attachedFiles } = FilePickerService.extractAndReadAttachments(
+      userPrompt,
+      this.config.workingDir
+    );
+
+    if (attachedFiles.length > 0) {
+      console.log(chalk.hex('#64748b')(`📎 Attached file(s): ${attachedFiles.map((f) => chalk.cyan(f)).join(', ')}`));
+    }
+
+    // 4. Add user message to history
+    this.history.addMessage({
+      role: 'user',
+      content: enhancedPrompt,
+    });
+
+    const response = await this.runAgentLoop(0, contextText);
+
+    // 5. Record interaction into persistent episodic memory & meta-optimizer
+    memoryManager.recordInteraction(userPrompt, response);
+    const duration = Date.now() - startTime;
+    metaOptimizer.recordQuerySuccess(duration);
+
+    const elapsed = Math.max(0.1, duration / 1000).toFixed(0);
+    const modeTag = (this.config.mode || 'vibe').toUpperCase();
+    console.log(chalk.hex('#64748b')(`* Worked for ${elapsed}s · Mode: ${modeTag} · Profile: ${activeProfileName}`));
+    console.log();
+
+    return response;
+  }
+
+  private async runAgentLoop(depth = 0, memoryContext = ''): Promise<string> {
+    if (depth > 6) {
+      log.warn('Max agent tool iteration depth reached.');
+      return '';
+    }
+
+    const provider = createProvider(this.config);
+    const systemPrompt = this.buildSystemPrompt(memoryContext);
+
+    const messagesWithSystem: ChatMessage[] = [
+      { role: 'system', content: systemPrompt },
+      ...this.history.getMessages(),
+    ];
+
+    const modeLabel = this.config.mode === 'plan' ? 'Planning & Designing Roadmap...' : 'Thinking & Writing Code...';
+    let spinner: Ora | null = ora({
+      text: chalk.hex('#a5b4fc')(modeLabel),
+      spinner: 'dots',
+      color: 'cyan',
+    }).start();
+
+    let hasStreamedTokens = false;
+    let fullResponse = '';
+    const pendingToolCalls: ToolCall[] = [];
+
+    try {
+      const activeTools = this.config.autoExecuteTools ? getAllActiveTools() : [];
+
+      fullResponse = await provider.sendMessageStream(
+        messagesWithSystem,
+        activeTools,
+        {
+          onToken: (token: string) => {
+            if (spinner) {
+              spinner.stop();
+              spinner = null;
+            }
+            if (!hasStreamedTokens) {
+              hasStreamedTokens = true;
+            }
+            TerminalRenderer.printToken(token);
+          },
+          onToolCall: (toolCall: ToolCall) => {
+            if (spinner) {
+              spinner.stop();
+              spinner = null;
+            }
+            pendingToolCalls.push(toolCall);
+          },
+        }
+      );
+
+      if (spinner) {
+        spinner.stop();
+        spinner = null;
+      }
+
+      if (hasStreamedTokens) {
+        console.log(); // Newline after stream
+        console.log();
+      }
+
+      // Record assistant message
+      this.history.addMessage({
+        role: 'assistant',
+        content: fullResponse,
+        tool_calls: pendingToolCalls.length > 0 ? pendingToolCalls : undefined,
+      });
+
+      // If LLM produced tool calls, execute them and continue loop
+      if (pendingToolCalls.length > 0) {
+        for (const tc of pendingToolCalls) {
+          let parsedArgs: any = {};
+          try {
+            parsedArgs = JSON.parse(tc.function.arguments || '{}');
+          } catch {
+            parsedArgs = {};
+          }
+
+          const toolStart = Date.now();
+          let result: ToolResult = await this.toolExecutor.execute(tc.function.name, parsedArgs, tc.id);
+
+          // Autonomous Self-Debugging Loop on tool failure
+          if (result.error) {
+            metaOptimizer.recordToolExecution(tc.function.name, Date.now() - toolStart, true);
+            const repair = await SelfDebugger.autoDebugAndRepair(
+              tc,
+              result,
+              this.config,
+              (n, a, id) => this.toolExecutor.execute(n, a, id)
+            );
+
+            if (repair.repaired && repair.repairedResult) {
+              result = repair.repairedResult;
+              metaOptimizer.recordSelfHealing();
+            }
+          } else {
+            metaOptimizer.recordToolExecution(tc.function.name, Date.now() - toolStart, false);
+          }
+
+          // Track citations if web search or scrape
+          if (tc.function.name === 'web_search' && parsedArgs.query) {
+            this.citationEngine.addSource(`Web Search: ${parsedArgs.query}`, `https://duckduckgo.com/?q=${encodeURIComponent(parsedArgs.query)}`, undefined, 'DuckDuckGo');
+          } else if (tc.function.name === 'scrape_url' && parsedArgs.url) {
+            this.citationEngine.addSource(`Scraped URL`, parsedArgs.url, undefined, 'Web Reader');
+          } else if (tc.function.name === 'crawl_docs' && parsedArgs.url) {
+            this.citationEngine.addSource(`Documentation Root`, parsedArgs.url, undefined, 'Doc Crawler');
+          }
+
+          // Output compact single-line tool usage
+          TerminalRenderer.printToolCompact(tc, result);
+
+          this.history.addMessage({
+            role: 'tool',
+            name: tc.function.name,
+            tool_call_id: tc.id,
+            content: result.output,
+          });
+        }
+
+        // Loop back to let assistant interpret tool results
+        return await this.runAgentLoop(depth + 1, memoryContext);
+      }
+
+      return fullResponse;
+    } catch (err: any) {
+      if (spinner) {
+        spinner.stop();
+      }
+      log.error(`Request failed: ${err.message}`);
+      return '';
+    }
+  }
+}

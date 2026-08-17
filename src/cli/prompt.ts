@@ -1,0 +1,60 @@
+import chalk from 'chalk';
+import { configManager } from '../core/config.js';
+import { AntriAgent } from '../core/agent.js';
+import { renderBanner } from './banner.js';
+import { ShortcutHandler } from './shortcuts.js';
+import { promptBoxReader } from './promptToolkit.js';
+
+export async function startInteractiveSession(initialAgent?: AntriAgent): Promise<void> {
+  const config = configManager.get();
+  const agent = initialAgent || new AntriAgent(config);
+  const shortcutHandler = new ShortcutHandler(agent);
+
+  // Clear screen and show banner matching Home.png
+  console.clear();
+  renderBanner(config);
+
+  // Continuous REPL loop - runs indefinitely until user exits
+  while (true) {
+    try {
+      const currentConfig = configManager.get();
+      promptBoxReader.updateModel(currentConfig.model);
+      promptBoxReader.updateWorkingDir(currentConfig.workingDir);
+
+      // Read boxed prompt with live prompt_toolkit autocomplete on '/'
+      const input = await promptBoxReader.readPrompt('Ask your question...');
+      const trimmed = (input || '').trim();
+
+      if (!trimmed) {
+        continue;
+      }
+
+      // Check shortcuts and slash commands
+      const shortcutResult = await shortcutHandler.handle(trimmed, currentConfig);
+
+      if (shortcutResult.shouldExit) {
+        break;
+      }
+
+      if (shortcutResult.shouldClear) {
+        continue;
+      }
+
+      if (shortcutResult.handled) {
+        console.log();
+        continue;
+      }
+
+      // Output single user prompt badge pill for chat queries
+      promptBoxReader.printSubmittedPrompt(trimmed);
+
+      // Normal chat query to the agent
+      await agent.chat(trimmed);
+      // Next iteration of loop will render the active prompt box at the new bottom!
+    } catch (err: any) {
+      console.error(chalk.red(`\nError: ${err.message}\n`));
+    }
+  }
+
+  process.exit(0);
+}

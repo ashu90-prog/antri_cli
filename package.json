@@ -1,0 +1,61 @@
+{
+  "name": "antri_cli",
+  "version": "1.26.1",
+  "description": "ANTRI Code - An intelligent, terminal-first AI coding chatbot, proactive facilitator, and autonomous meta-agent",
+  "type": "module",
+  "bin": {
+    "antri": "./bin/antri.js",
+    "antri_cli": "./bin/antri.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "bin",
+    "assets",
+    "README.md"
+  ],
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "dev": "tsx src/index.ts",
+    "build": "tsc",
+    "lint": "tsc --noEmit",
+    "test": "node --test test/antri.test.js",
+    "prepublishOnly": "npm run build && npm test"
+  },
+  "keywords": [
+    "cli",
+    "chatbot",
+    "ai",
+    "opencode",
+    "terminal",
+    "deepseek",
+    "cerebras",
+    "cohere",
+    "gemini",
+    "openai",
+    "anthropic",
+    "coding-assistant",
+    "autonomous-agent"
+  ],
+  "author": "Antri Team",
+  "license": "MIT",
+  "dependencies": {
+    "chalk": "^5.4.1",
+    "cli-highlight": "^2.1.11",
+    "commander": "^13.1.0",
+    "dotenv": "^16.4.7",
+    "marked": "^15.0.7",
+    "marked-terminal": "^7.3.0",
+    "ora": "^8.2.0"
+  },
+  "devDependencies": {
+    "@types/marked-terminal": "^6.1.1",
+    "@types/node": "^22.13.9",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
