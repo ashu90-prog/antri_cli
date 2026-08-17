@@ -65,7 +65,7 @@ test('ToolExecutor identifies privacy & security sensitive tools', () => {
 
 test('Updater reports correct package name and current version', () => {
   assert.strictEqual(Updater.PACKAGE_NAME, 'antri_cli');
-  assert.strictEqual(Updater.CURRENT_VERSION, '1.33.0');
+  assert.strictEqual(Updater.CURRENT_VERSION, '1.34.0');
 });
 
 test('GoalLoopEngine initializes with active configuration', () => {

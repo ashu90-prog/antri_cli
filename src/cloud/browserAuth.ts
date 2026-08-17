@@ -20,8 +20,9 @@ export class BrowserAuthServer {
           const { FirestoreSyncManager } = await import('./firestore.js');
           const syncCfg = FirestoreSyncManager.getSyncConfig();
           const projectId = syncCfg.projectId || 'antri-agentic-hackathon';
+          const apiKey = syncCfg.apiKey || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '';
           res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-          res.end(this.renderLoginPage(port, projectId));
+          res.end(this.renderLoginPage(port, projectId, apiKey));
           return;
         }
 
@@ -112,7 +113,7 @@ export class BrowserAuthServer {
     }
   }
 
-  private static renderLoginPage(port: number, projectId: string = 'antri-agentic-hackathon'): string {
+  private static renderLoginPage(port: number, projectId: string = 'antri-agentic-hackathon', apiKey: string = ''): string {
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -387,23 +388,25 @@ export class BrowserAuthServer {
           }
         } catch (err) {
           console.warn('Firebase popup error:', err);
-          // If popup failed due to domain authorization or popup blocker, fall back to email
-          const email = prompt('Enter your Google Account email (e.g. user@gmail.com):');
-          if (email && email.includes('@')) {
-            await window.authenticate(email.trim(), 'google');
-            return;
-          }
-          statusMsg.innerText = err.message || 'Google sign-in error';
-          statusMsg.style.display = 'block';
           googleBtnText.innerText = 'Sign in with Google';
+          // Highlight email box with Google helper
+          const emailInput = document.getElementById('email');
+          emailInput.placeholder = 'Enter your Google email (e.g. user@gmail.com)';
+          emailInput.focus();
+          statusMsg.innerText = 'Please enter your Google account email below to link your identity:';
+          statusMsg.style.color = '#78716c';
+          statusMsg.style.display = 'block';
           return;
         }
       }
 
-      const email = prompt('Enter your Google Account email (e.g. user@gmail.com):');
-      if (email && email.includes('@')) {
-        await window.authenticate(email.trim(), 'google');
-      }
+      // If Firebase Auth SDK is not initialized, highlight email input
+      const emailInput = document.getElementById('email');
+      emailInput.placeholder = 'Enter your Google email (e.g. user@gmail.com)';
+      emailInput.focus();
+      statusMsg.innerText = 'Enter your Google account email below and click Continue:';
+      statusMsg.style.color = '#78716c';
+      statusMsg.style.display = 'block';
     });
   </script>
 </body>
