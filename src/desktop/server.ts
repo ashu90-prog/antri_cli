@@ -378,6 +378,15 @@ export class DesktopServer {
           return;
         }
 
+        // POST /api/auth/google (Google Sign-In)
+        if (pathname === '/api/auth/google' && req.method === 'POST') {
+          const { AuthManager } = await import('../cloud/auth.js');
+          const result = await AuthManager.loginWithGoogle(payload.email, payload.googleToken);
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify(result));
+          return;
+        }
+
         // POST /api/auth/logout
         if (pathname === '/api/auth/logout' && req.method === 'POST') {
           const { AuthManager } = await import('../cloud/auth.js');

@@ -92,11 +92,24 @@ Autonomous Guidelines:
   }
 
   public async chat(userPrompt: string): Promise<string> {
-    const startTime = Date.now();
-    this.citationEngine.clear();
+    const { AuthManager } = await import('../cloud/auth.js');
+    const { RateLimiter } = await import('../security/rateLimiter.js');
 
-    // 1. Capture feedback / note into active profile
+    const currentUser = AuthManager.getCurrentUser();
+    if (!currentUser) {
+      return `🔒 **ANTRI AUTHENTICATION REQUIRED**\n\nYou must be signed in to your ANTRI account to use this agent, execute tools, and access cloud memory.\n\n👉 **To log in:**\n- In CLI: Type \`/login <your-email@example.com>\`\n- In Terminal: Run \`antri login <email>\``;
+    }
+
+    const rateCheck = RateLimiter.checkLimit(currentUser.userId, 'chat');
+    if (!rateCheck.allowed) {
+      return `⚠️ **RATE LIMIT EXCEEDED**\n\nRequest throttled for security. Please wait **${rateCheck.retryAfterSeconds}s** before sending another message.`;
+    }
+
+    const startTime = Date.now();
     const activeProfileName = profileManager.getActiveProfileName();
+    const activeProfileContent = profileManager.getActiveProfileContent();
+
+    // 1. Extract Real-Time Insights & Thinking Style Preferences into Profile
     const notedInsight = profileManager.extractAndRecordNotes(userPrompt);
     if (notedInsight) {
       console.log(chalk.hex('#38bdf8')(`📝 Noted in profile [${activeProfileName}]: "${notedInsight}"`));

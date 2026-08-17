@@ -25,6 +25,7 @@ import { DesktopServer } from '../dist/desktop/server.js';
 import { MobileServer } from '../dist/mobile/server.js';
 import { FirestoreSyncManager } from '../dist/cloud/firestore.js';
 import { AuthManager } from '../dist/cloud/auth.js';
+import { RateLimiter } from '../dist/security/rateLimiter.js';
 
 test('ConfigManager initializes with defaults including debateDepth and mode', () => {
   const manager = new ConfigManager();
@@ -353,8 +354,15 @@ test('MobileServer initializes and starts on an ephemeral port', async () => {
   await mobile.stop();
 });
 
-test('ToolExecutor list_dir works on current directory', async () => {
+test('ToolExecutor enforces authentication gate and executes when logged in', async () => {
+  AuthManager.logout();
   const executor = new ToolExecutor(process.cwd());
+  const unauthedRes = await executor.execute('list_dir', { dir_path: '.' }, 'test-unauthed');
+  assert.strictEqual(unauthedRes.error, true);
+  assert.ok(unauthedRes.output.includes('AUTHENTICATION REQUIRED'));
+
+  // Log in and verify execution
+  await AuthManager.login('test_suite@example.com');
   const res = await executor.execute('list_dir', { dir_path: '.' }, 'test-1');
   assert.strictEqual(res.error, undefined);
   assert.ok(res.output.includes('package.json'));
@@ -391,6 +399,25 @@ test('AuthManager generates unique partition IDs, logins, and logs out', async (
   AuthManager.logout();
   const loggedOut = AuthManager.getCurrentUser();
   assert.strictEqual(loggedOut, null);
+});
+
+test('RateLimiter enforces token bucket limits and throttles rapid requests', () => {
+  const testUser = 'user_flood_test';
+  RateLimiter.reset(testUser);
+
+  // Consume all 25 chat tokens
+  for (let i = 0; i < 25; i++) {
+    const res = RateLimiter.checkLimit(testUser, 'chat');
+    assert.strictEqual(res.allowed, true);
+  }
+
+  // 26th request should be throttled
+  const blocked = RateLimiter.checkLimit(testUser, 'chat');
+  assert.strictEqual(blocked.allowed, false);
+  assert.ok(blocked.retryAfterSeconds > 0);
+
+  // Clean up
+  RateLimiter.reset(testUser);
 });
 
 

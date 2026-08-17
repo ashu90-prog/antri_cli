@@ -284,6 +284,29 @@ export class ToolExecutor {
 
   public async execute(name: string, args: Record<string, any>, toolCallId: string): Promise<ToolResult> {
     try {
+      const { AuthManager } = await import('../cloud/auth.js');
+      const { RateLimiter } = await import('../security/rateLimiter.js');
+
+      const user = AuthManager.getCurrentUser();
+      if (!user) {
+        return {
+          tool_call_id: toolCallId,
+          name,
+          output: '✕ AUTHENTICATION REQUIRED: You must be logged into an ANTRI account to execute tools or code. Run "/login <email>".',
+          error: true,
+        };
+      }
+
+      const limitCheck = RateLimiter.checkLimit(user.userId, name === 'execute_python' ? 'sandbox' : 'tools');
+      if (!limitCheck.allowed) {
+        return {
+          tool_call_id: toolCallId,
+          name,
+          output: `✕ RATE LIMIT EXCEEDED: Tool execution throttled for security. Please retry in ${limitCheck.retryAfterSeconds}s.`,
+          error: true,
+        };
+      }
+
       // Check permission for sensitive tools
       const allowed = await ToolExecutor.promptForPermission(name, args);
       if (!allowed) {

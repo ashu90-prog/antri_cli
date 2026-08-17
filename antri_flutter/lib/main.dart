@@ -8,6 +8,7 @@ import 'views/dialectic_arena_view.dart';
 import 'views/goal_loop_view.dart';
 import 'views/profiles_view.dart';
 import 'views/settings_view.dart';
+import 'views/auth_view.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -73,6 +74,14 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       return const Scaffold(
         backgroundColor: Color(0xFFFCFBF9),
         body: Center(child: CircularProgressIndicator(color: Color(0xFF1C1917))),
+      );
+    }
+
+    if (_config.syncKey.isEmpty || _config.syncKey == 'default_user') {
+      return AuthGateView(
+        storageService: _storageService,
+        config: _config,
+        onAuthenticated: () => setState(() {}),
       );
     }
 
