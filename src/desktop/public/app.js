@@ -93,15 +93,10 @@ async function toggleAlwaysAllow() {
 
 function updatePermsBadge(alwaysAllow) {
   const badge = document.getElementById('perms-text');
-  const btn = document.getElementById('btn-perms-toggle');
   if (alwaysAllow) {
     badge.textContent = 'Always-Allow';
-    btn.style.background = '#14532d';
-    btn.style.color = '#4ade80';
   } else {
     badge.textContent = 'Ask-First';
-    btn.style.background = '#451a03';
-    btn.style.color = '#fbbf24';
   }
 }
 
@@ -198,7 +193,7 @@ async function submitPrompt() {
               // Tool call badge
               const toolBadge = document.createElement('div');
               toolBadge.className = 'tool-badge-pill';
-              toolBadge.textContent = `• Tool used: ${data.name}`;
+              toolBadge.textContent = `Tool: ${data.name}`;
               assistantMsgEl.insertBefore(toolBadge, contentEl);
             }
           } catch (e) {}
@@ -209,7 +204,7 @@ async function submitPrompt() {
     contentEl.textContent = `Error: ${err.message}`;
   } finally {
     sendBtn.disabled = false;
-    sendBtn.innerHTML = '<span>Send</span> ⚡';
+    sendBtn.innerHTML = '<span>Send</span>';
   }
 }
 
@@ -349,14 +344,14 @@ async function loadProfiles() {
       // Dropdown option
       const opt = document.createElement('option');
       opt.value = p.name;
-      opt.textContent = `👤 ${p.name}`;
+      opt.textContent = p.name;
       if (p.name === data.activeName) opt.selected = true;
       select.appendChild(opt);
 
       // List button
       const btn = document.createElement('button');
       btn.className = `profile-item-btn ${p.name === data.activeName ? 'active' : ''}`;
-      btn.textContent = `👤 ${p.name}.md`;
+      btn.textContent = `${p.name}.md`;
       btn.onclick = () => selectProfile(p.name);
       list.appendChild(btn);
     });
@@ -399,7 +394,7 @@ async function saveActiveProfile() {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ content }),
   });
-  alert('Profile saved!');
+  alert('Profile saved.');
 }
 
 async function onProfileChange(name) {
@@ -418,9 +413,9 @@ async function loadSkills() {
       const card = document.createElement('div');
       card.className = 'skill-card';
       card.innerHTML = `
-        <h4>⚡ ${t.name}</h4>
+        <h4>${t.name}</h4>
         <p>${t.description}</p>
-        <button class="skill-btn" onclick="testSkill('${t.name}')">▶ Dry-Run Skill</button>
+        <button class="skill-btn" onclick="testSkill('${t.name}')">Dry-Run Skill</button>
       `;
       grid.appendChild(card);
     });
@@ -452,11 +447,11 @@ async function loadMemory() {
     const episodicList = document.getElementById('episodic-memory-list');
 
     semanticList.innerHTML = (data.semanticItems || [])
-      .map((item) => `<div style="margin-bottom: 0.75rem; border-bottom: 1px solid #1e293b; padding-bottom: 0.5rem;"><b>[${item.category}]</b> ${item.text}</div>`)
+      .map((item) => `<div style="margin-bottom: 0.75rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;"><b>[${item.category}]</b> ${item.text}</div>`)
       .join('') || '<div>No semantic vectors stored yet.</div>';
 
     episodicList.innerHTML = (data.episodes || [])
-      .map((ep) => `<div style="margin-bottom: 0.75rem; border-bottom: 1px solid #1e293b; padding-bottom: 0.5rem;"><b>Query:</b> ${ep.query}<br/><span style="color: #64748b;">${ep.response.slice(0, 100)}...</span></div>`)
+      .map((ep) => `<div style="margin-bottom: 0.75rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;"><b>Query:</b> ${ep.query}<br/><span style="color: var(--text-tertiary);">${ep.response.slice(0, 100)}...</span></div>`)
       .join('') || '<div>No episodes recorded in current session.</div>';
   } catch (err) {
     console.error('Failed to load memory:', err);
