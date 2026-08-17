@@ -165,6 +165,57 @@ program
     console.log(chalk.hex('#64748b')('\nCommands:\n  antri sync config <gcp-project-id> [sync-key]\n  antri sync push\n  antri sync pull\n'));
   });
 
+// Account Auth Commands: antri login / antri register / antri whoami / antri logout
+program
+  .command('login [email]')
+  .description('Log in to your ANTRI account to access your private Firestore cloud profiles & memory')
+  .action(async (email) => {
+    const { AuthManager } = await import('./cloud/auth.js');
+    let targetEmail = email;
+    if (!targetEmail) {
+      const rl = (await import('readline')).createInterface({ input: process.stdin, output: process.stdout });
+      const promptAsync = (q: string) => new Promise<string>((res) => rl.question(q, res));
+      console.log(chalk.bold.hex('#c084fc')('\n🔐 ANTRI Account Login'));
+      targetEmail = await promptAsync(chalk.cyan('Enter your email: '));
+      rl.close();
+    }
+
+    if (targetEmail) {
+      const res = await AuthManager.login(targetEmail);
+      if (res.success && res.user) {
+        console.log(chalk.green(`\n✅ Logged in as: ${chalk.bold.white(res.user.email)} (Partition: ${res.user.userId})`));
+        console.log(chalk.gray('Your private thinking profiles and memory are now active and synced to your account.\n'));
+      } else {
+        console.log(chalk.red(`\n❌ Login failed: ${res.error}\n`));
+      }
+    }
+  });
+
+program
+  .command('whoami')
+  .description('Show currently authenticated ANTRI user account')
+  .action(async () => {
+    const { AuthManager } = await import('./cloud/auth.js');
+    const user = AuthManager.getCurrentUser();
+    if (user) {
+      console.log(chalk.bold.hex('#c084fc')('\n👤 Active Account'));
+      console.log(`• Email:     ${chalk.green(user.email)}`);
+      console.log(`• User ID:   ${chalk.cyan(user.userId)}`);
+      console.log(`• Logged In: ${chalk.gray(user.loggedInAt)}\n`);
+    } else {
+      console.log(chalk.yellow('\nℹ Not logged in. Using local profile storage. Run "antri login <email>" to sign in.\n'));
+    }
+  });
+
+program
+  .command('logout')
+  .description('Log out from your ANTRI account')
+  .action(async () => {
+    const { AuthManager } = await import('./cloud/auth.js');
+    AuthManager.logout();
+    console.log(chalk.green('\n✅ Logged out successfully. Reverted to local session.\n'));
+  });
+
 // Self-update command: antri update
 program
   .command('update')

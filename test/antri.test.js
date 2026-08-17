@@ -24,6 +24,7 @@ import { GoalLoopEngine } from '../dist/core/goalLoop.js';
 import { DesktopServer } from '../dist/desktop/server.js';
 import { MobileServer } from '../dist/mobile/server.js';
 import { FirestoreSyncManager } from '../dist/cloud/firestore.js';
+import { AuthManager } from '../dist/cloud/auth.js';
 
 test('ConfigManager initializes with defaults including debateDepth and mode', () => {
   const manager = new ConfigManager();
@@ -373,4 +374,23 @@ test('FirestoreSyncManager configures project and sync parameters', () => {
     }
   }
 });
+
+test('AuthManager generates unique partition IDs, logins, and logs out', async () => {
+  const email = 'test_dev@example.com';
+  const userId = AuthManager.generateUserId(email);
+  assert.ok(userId.startsWith('test_dev_'));
+
+  const loginRes = await AuthManager.login(email);
+  assert.strictEqual(loginRes.success, true);
+  assert.strictEqual(loginRes.user.email, email);
+
+  const current = AuthManager.getCurrentUser();
+  assert.ok(current);
+  assert.strictEqual(current.email, email);
+
+  AuthManager.logout();
+  const loggedOut = AuthManager.getCurrentUser();
+  assert.strictEqual(loggedOut, null);
+});
+
 

@@ -82,6 +82,46 @@ export class ShortcutHandler {
       return { handled: true };
     }
 
+    // /login <email>
+    if (trimmed.startsWith('/login')) {
+      const { AuthManager } = await import('../cloud/auth.js');
+      const email = trimmed.replace('/login', '').trim();
+      if (!email) {
+        log.warn('Usage: /login <your-email@example.com>');
+      } else {
+        const res = await AuthManager.login(email);
+        if (res.success && res.user) {
+          log.success(`Logged in as ${colors.primary(res.user.email)} (Cloud Partition: ${res.user.userId})`);
+        } else {
+          log.error(`Login failed: ${res.error}`);
+        }
+      }
+      return { handled: true };
+    }
+
+    // /whoami
+    if (trimmed === '/whoami' || trimmed === '/user') {
+      const { AuthManager } = await import('../cloud/auth.js');
+      const user = AuthManager.getCurrentUser();
+      if (user) {
+        console.log(chalk.bold.hex('#c084fc')('\n👤 Authenticated Account'));
+        console.log(`• Email:     ${chalk.green(user.email)}`);
+        console.log(`• User ID:   ${chalk.cyan(user.userId)}`);
+        console.log(`• Logged In: ${chalk.gray(user.loggedInAt)}\n`);
+      } else {
+        log.info('Not logged in. Using local profile storage. Type /login <email> to sign in.');
+      }
+      return { handled: true };
+    }
+
+    // /logout
+    if (trimmed === '/logout') {
+      const { AuthManager } = await import('../cloud/auth.js');
+      AuthManager.logout();
+      log.success('Logged out successfully. Reverted to local session.');
+      return { handled: true };
+    }
+
     // /clear or /cls
     if (trimmed === '/clear' || trimmed === '/cls' || trimmed.startsWith('/clear')) {
       console.clear();

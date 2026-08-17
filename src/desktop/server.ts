@@ -127,14 +127,26 @@ export class DesktopServer {
 
     // GET /api/status
     if (pathname === '/api/status' && req.method === 'GET') {
+      const { AuthManager } = await import('../cloud/auth.js');
+      const currentUser = AuthManager.getCurrentUser();
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(
         JSON.stringify({
           config,
           activeProfile: profileManager.getActiveProfileName(),
           toolsCount: getAllActiveTools().length,
+          user: currentUser,
         })
       );
+      return;
+    }
+
+    // GET /api/auth/user
+    if (pathname === '/api/auth/user' && req.method === 'GET') {
+      const { AuthManager } = await import('../cloud/auth.js');
+      const user = AuthManager.getCurrentUser();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ user }));
       return;
     }
 
@@ -352,6 +364,24 @@ export class DesktopServer {
           // Auto-sync to Firestore in background if configured
           const { FirestoreSyncManager } = await import('../cloud/firestore.js');
           FirestoreSyncManager.pushToFirestore().catch(() => {});
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: true }));
+          return;
+        }
+
+        // POST /api/auth/login
+        if (pathname === '/api/auth/login' && req.method === 'POST') {
+          const { AuthManager } = await import('../cloud/auth.js');
+          const result = await AuthManager.login(payload.email, payload.password);
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify(result));
+          return;
+        }
+
+        // POST /api/auth/logout
+        if (pathname === '/api/auth/logout' && req.method === 'POST') {
+          const { AuthManager } = await import('../cloud/auth.js');
+          AuthManager.logout();
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ success: true }));
           return;

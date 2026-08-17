@@ -114,6 +114,7 @@ class _SettingsViewState extends State<SettingsView> {
     const cardBg = Color(0xFFFFFFFF);
     const textPrimary = Color(0xFF1C1917);
     const borderMain = Color(0xFFE6E0D4);
+    const subtleBg = Color(0xFFF7F4EE);
 
     return Scaffold(
       backgroundColor: creamBg,
@@ -125,6 +126,106 @@ class _SettingsViewState extends State<SettingsView> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          // USER ACCOUNT SYSTEM SECTION
+          Container(
+            padding: const EdgeInsets.all(16),
+            margin: const EdgeInsets.only(bottom: 16),
+            decoration: BoxDecoration(
+              color: cardBg,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: borderMain),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('USER ACCOUNT & CLOUD PARTITION', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: textPrimary, letterSpacing: 0.5)),
+                const SizedBox(height: 6),
+                Text(
+                  widget.config.syncKey.isNotEmpty && widget.config.syncKey != 'default_user'
+                      ? 'Logged in with partition: ${widget.config.syncKey}'
+                      : 'Log in to isolate your private profiles and memory in Firestore.',
+                  style: const TextStyle(fontSize: 12, color: Color(0xFF57534E)),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          final emailCtrl = TextEditingController();
+                          showDialog(
+                            context: context,
+                            builder: (ctx) => AlertDialog(
+                              title: const Text('Account Login / Switch', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                              content: TextField(
+                                controller: emailCtrl,
+                                decoration: const InputDecoration(
+                                  hintText: 'Enter your email (e.g. user@gmail.com)',
+                                  hintStyle: TextStyle(fontSize: 13),
+                                ),
+                              ),
+                              actions: [
+                                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                                ElevatedButton(
+                                  onPressed: () {
+                                    final email = emailCtrl.text.trim().toLowerCase();
+                                    if (email.isNotEmpty && email.contains('@')) {
+                                      final prefix = email.split('@')[0].replaceAll(RegExp(r'[^a-z0-9_-]'), '_');
+                                      final hash = email.hashCode.toRadixString(16).padLeft(8, '0');
+                                      final userId = '${prefix}_$hash';
+                                      setState(() {
+                                        widget.config.syncKey = userId;
+                                        _syncKeyController.text = userId;
+                                      });
+                                      widget.storageService.saveConfig(widget.config);
+                                      widget.onConfigSaved();
+                                      Navigator.pop(ctx);
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(content: Text('Logged in as $email (Partition: $userId)')),
+                                      );
+                                    }
+                                  },
+                                  child: const Text('Sign In'),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: subtleBg,
+                          foregroundColor: textPrimary,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6), side: const BorderSide(color: borderMain)),
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                        ),
+                        child: const Text('Login with Email', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+                      ),
+                    ),
+                    if (widget.config.syncKey.isNotEmpty && widget.config.syncKey != 'default_user') ...[
+                      const SizedBox(width: 8),
+                      OutlinedButton(
+                        onPressed: () {
+                          setState(() {
+                            widget.config.syncKey = 'default_user';
+                            _syncKeyController.text = 'default_user';
+                          });
+                          widget.storageService.saveConfig(widget.config);
+                          widget.onConfigSaved();
+                        },
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFFDC2626),
+                          side: const BorderSide(color: Color(0xFFFCA5A5)),
+                          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+                        ),
+                        child: const Text('Logout', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ),
+          ),
+
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
