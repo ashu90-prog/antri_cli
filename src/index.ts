@@ -168,26 +168,25 @@ program
 // Account Auth Commands: antri login / antri register / antri whoami / antri logout
 program
   .command('login [email]')
-  .description('Log in to your ANTRI account to access your private Firestore cloud profiles & memory')
+  .description('Log in to your ANTRI account via Google / Email web UI or CLI')
   .action(async (email) => {
-    const { AuthManager } = await import('./cloud/auth.js');
-    let targetEmail = email;
-    if (!targetEmail) {
-      const rl = (await import('readline')).createInterface({ input: process.stdin, output: process.stdout });
-      const promptAsync = (q: string) => new Promise<string>((res) => rl.question(q, res));
-      console.log(chalk.bold.hex('#c084fc')('\n🔐 ANTRI Account Login'));
-      targetEmail = await promptAsync(chalk.cyan('Enter your email: '));
-      rl.close();
+    if (!email) {
+      const { BrowserAuthServer } = await import('./cloud/browserAuth.js');
+      const user = await BrowserAuthServer.startLoginFlow();
+      if (user) {
+        console.log(chalk.green(`\n✅ Authenticated as: ${chalk.bold.white(user.email)} (Partition: ${user.userId})`));
+        console.log(chalk.gray('Your private thinking profiles and memory are now active and synced to your account.\n'));
+      }
+      return;
     }
 
-    if (targetEmail) {
-      const res = await AuthManager.login(targetEmail);
-      if (res.success && res.user) {
-        console.log(chalk.green(`\n✅ Logged in as: ${chalk.bold.white(res.user.email)} (Partition: ${res.user.userId})`));
-        console.log(chalk.gray('Your private thinking profiles and memory are now active and synced to your account.\n'));
-      } else {
-        console.log(chalk.red(`\n❌ Login failed: ${res.error}\n`));
-      }
+    const { AuthManager } = await import('./cloud/auth.js');
+    const res = await AuthManager.login(email);
+    if (res.success && res.user) {
+      console.log(chalk.green(`\n✅ Logged in as: ${chalk.bold.white(res.user.email)} (Partition: ${res.user.userId})`));
+      console.log(chalk.gray('Your private thinking profiles and memory are now active and synced to your account.\n'));
+    } else {
+      console.log(chalk.red(`\n❌ Login failed: ${res.error}\n`));
     }
   });
 

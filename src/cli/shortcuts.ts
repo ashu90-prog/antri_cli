@@ -82,13 +82,17 @@ export class ShortcutHandler {
       return { handled: true };
     }
 
-    // /login <email>
+    // /login or /login <email>
     if (trimmed.startsWith('/login')) {
-      const { AuthManager } = await import('../cloud/auth.js');
       const email = trimmed.replace('/login', '').trim();
       if (!email) {
-        log.warn('Usage: /login <your-email@example.com>');
+        const { BrowserAuthServer } = await import('../cloud/browserAuth.js');
+        const user = await BrowserAuthServer.startLoginFlow();
+        if (user) {
+          log.success(`Logged in as ${colors.primary(user.email)} (Cloud Partition: ${user.userId})`);
+        }
       } else {
+        const { AuthManager } = await import('../cloud/auth.js');
         const res = await AuthManager.login(email);
         if (res.success && res.user) {
           log.success(`Logged in as ${colors.primary(res.user.email)} (Cloud Partition: ${res.user.userId})`);
