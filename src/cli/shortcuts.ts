@@ -57,6 +57,31 @@ export class ShortcutHandler {
       return { handled: true };
     }
 
+    // /sync (Google Cloud Firestore sync)
+    if (trimmed === '/sync' || trimmed.startsWith('/sync')) {
+      const { FirestoreSyncManager } = await import('../cloud/firestore.js');
+      const parts = trimmed.split(' ');
+      const action = parts[1] || 'status';
+      if (action === 'push') {
+        log.info('Pushing profiles to Google Cloud Firestore...');
+        const res = await FirestoreSyncManager.pushToFirestore();
+        if (res.success) log.success(`Pushed ${res.count} profiles to Google Cloud Firestore.`);
+        else log.error(`Sync error: ${res.error}`);
+      } else if (action === 'pull') {
+        log.info('Pulling profiles from Google Cloud Firestore...');
+        const res = await FirestoreSyncManager.pullFromFirestore();
+        if (res.success) log.success(`Pulled ${res.count} profiles from Google Cloud Firestore.`);
+        else log.error(`Pull error: ${res.error}`);
+      } else {
+        const cfg = FirestoreSyncManager.getSyncConfig();
+        console.log(chalk.bold.hex('#c084fc')('\n☁️ Google Cloud Firestore Sync'));
+        console.log(`• Project ID:  ${cfg.projectId ? chalk.green(cfg.projectId) : chalk.yellow('Not set (/sync config <project-id>)')}`);
+        console.log(`• Sync Key:    ${chalk.cyan(cfg.syncKey)}`);
+        console.log(`• Last Synced: ${chalk.gray(cfg.lastSynced || 'Never')}`);
+      }
+      return { handled: true };
+    }
+
     // /clear or /cls
     if (trimmed === '/clear' || trimmed === '/cls' || trimmed.startsWith('/clear')) {
       console.clear();

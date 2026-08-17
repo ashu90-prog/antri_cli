@@ -23,6 +23,7 @@ import { Updater } from '../dist/core/updater.js';
 import { GoalLoopEngine } from '../dist/core/goalLoop.js';
 import { DesktopServer } from '../dist/desktop/server.js';
 import { MobileServer } from '../dist/mobile/server.js';
+import { FirestoreSyncManager } from '../dist/cloud/firestore.js';
 
 test('ConfigManager initializes with defaults including debateDepth and mode', () => {
   const manager = new ConfigManager();
@@ -357,3 +358,12 @@ test('ToolExecutor list_dir works on current directory', async () => {
   assert.strictEqual(res.error, undefined);
   assert.ok(res.output.includes('package.json'));
 });
+
+test('FirestoreSyncManager configures project and sync parameters', () => {
+  FirestoreSyncManager.saveSyncConfig('test-gcp-project', 'test-sync-key');
+  const cfg = FirestoreSyncManager.getSyncConfig();
+  assert.strictEqual(cfg.projectId, 'test-gcp-project');
+  assert.strictEqual(cfg.syncKey, 'test-sync-key');
+  assert.ok(cfg.lastSynced);
+});
+

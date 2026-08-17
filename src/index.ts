@@ -122,6 +122,49 @@ program
     await MobileServer.launchMobile();
   });
 
+// Google Cloud Firestore Sync command: antri sync [push|pull|config]
+program
+  .command('sync [action] [param1] [param2]')
+  .description('Synchronize Thinking Profiles and Memory with Google Cloud Firestore')
+  .action(async (action, param1, param2) => {
+    const { FirestoreSyncManager } = await import('./cloud/firestore.js');
+    if (action === 'config') {
+      const projectId = param1 || '';
+      const syncKey = param2 || 'default_user';
+      FirestoreSyncManager.saveSyncConfig(projectId, syncKey);
+      console.log(chalk.green(`Google Cloud Firestore sync configured for project: ${chalk.bold.white(projectId)} (Key: ${syncKey})`));
+      return;
+    }
+    if (action === 'push') {
+      console.log(chalk.cyan('Pushing local profiles to Google Cloud Firestore...'));
+      const res = await FirestoreSyncManager.pushToFirestore();
+      if (res.success) {
+        console.log(chalk.green(`Successfully pushed ${res.count} profiles to Google Cloud Firestore.`));
+      } else {
+        console.log(chalk.red(`Sync failed: ${res.error}`));
+      }
+      return;
+    }
+    if (action === 'pull') {
+      console.log(chalk.cyan('Pulling profiles from Google Cloud Firestore...'));
+      const res = await FirestoreSyncManager.pullFromFirestore();
+      if (res.success) {
+        console.log(chalk.green(`Successfully pulled ${res.count} profiles from Google Cloud Firestore.`));
+      } else {
+        console.log(chalk.red(`Pull failed: ${res.error}`));
+      }
+      return;
+    }
+
+    // Default status
+    const cfg = FirestoreSyncManager.getSyncConfig();
+    console.log(chalk.bold.hex('#c084fc')('\n☁️ Google Cloud Firestore Sync Status'));
+    console.log(`• Project ID:  ${cfg.projectId ? chalk.green(cfg.projectId) : chalk.yellow('Not configured (Run "antri sync config <project-id>")')}`);
+    console.log(`• Sync Key:    ${chalk.cyan(cfg.syncKey)}`);
+    console.log(`• Last Synced: ${chalk.gray(cfg.lastSynced || 'Never')}`);
+    console.log(chalk.hex('#64748b')('\nCommands:\n  antri sync config <gcp-project-id> [sync-key]\n  antri sync push\n  antri sync pull\n'));
+  });
+
 // Self-update command: antri update
 program
   .command('update')
@@ -132,3 +175,4 @@ program
   });
 
 program.parse(normalizedArgv);
+
