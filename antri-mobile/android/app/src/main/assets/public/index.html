@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>ANTRI Mobile</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#f7f4ee">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="mobile-app">
+
+  <!-- Mobile Top Header -->
+  <header class="mobile-header">
+    <div class="brand-zone">
+      <span class="logo-mark">ANTRI</span>
+      <span class="version-tag">MOBILE</span>
+    </div>
+
+    <!-- Mode Selector -->
+    <div class="mode-toggles">
+      <button id="btn-mode-vibe" class="mode-btn active" onclick="switchMode('vibe')">
+        <span class="indicator-dot"></span> Vibe
+      </button>
+      <button id="btn-mode-plan" class="mode-btn" onclick="switchMode('plan')">
+        <span class="indicator-dot"></span> Plan
+      </button>
+    </div>
+  </header>
+
+  <!-- Mobile Workspace Container -->
+  <main class="mobile-main">
+
+    <!-- VIEW 1: Chat Studio -->
+    <section id="view-chat" class="mobile-view active">
+      <div id="chat-messages" class="chat-messages">
+        <div class="welcome-card">
+          <h2>ANTRI Mobile</h2>
+          <p>Standalone mobile coding intelligence with local thinking profiles, dialectic reasoning, and multimodal image inspection.</p>
+          <div class="quick-pills">
+            <button onclick="setPrompt('Analyze software architecture trade-offs')">Architecture</button>
+            <button onclick="setPrompt('/debate What are the limits of LLM context windows?')">Debate</button>
+            <button onclick="setPrompt('/goal Build a zero-dependency LRU cache')">Goal Loop</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Attachment Tray -->
+      <div id="mobile-attachment-tray" class="mobile-attachment-tray hidden"></div>
+
+      <!-- Mobile Chat Input Bar -->
+      <div class="mobile-input-bar">
+        <!-- Hidden File & Camera Input -->
+        <input type="file" id="mobile-file-input" multiple accept="image/*,.txt,.ts,.js,.json,.py,.md" style="display:none;" onchange="handleMobileFile(event)" />
+
+        <div class="mobile-input-container">
+          <button id="mobile-attach-btn" class="mobile-attach-btn" title="Upload image or take photo" onclick="document.getElementById('mobile-file-input').click()">
+            +
+          </button>
+          <textarea id="mobile-prompt-input" placeholder="Message ANTRI..." rows="1" oninput="autoGrowTextarea(this)"></textarea>
+          <button id="mobile-send-btn" class="mobile-send-btn" onclick="submitMobilePrompt()">
+            Send
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 2: Dialectic Arena -->
+    <section id="view-dialectic" class="mobile-view">
+      <div class="mobile-panel-header">
+        <h2>Dialectic Arena</h2>
+        <p>4 autonomous personas debate, test hypotheses, and synthesize solutions.</p>
+      </div>
+
+      <div class="mobile-debate-input-card">
+        <input type="text" id="mobile-debate-query" placeholder="Enter problem or architecture question..." />
+        <div class="mobile-debate-actions">
+          <select id="mobile-debate-depth">
+            <option value="quick">Quick (2 stages)</option>
+            <option value="deep" selected>Deep (4 stages)</option>
+            <option value="rigorous">Rigorous (6 stages)</option>
+          </select>
+          <button class="mobile-action-btn" onclick="startMobileDebate()">Debate</button>
+        </div>
+      </div>
+
+      <div class="mobile-persona-cards">
+        <div class="mobile-card">
+          <div class="card-header">
+            <h4>The Proposer</h4>
+            <span class="card-tag">Thesis Formulation</span>
+          </div>
+          <div id="m-dialectic-thesis" class="card-body">Awaiting debate initiation...</div>
+        </div>
+
+        <div class="mobile-card">
+          <div class="card-header">
+            <h4>The Adversary</h4>
+            <span class="card-tag">Critique & Flaws</span>
+          </div>
+          <div id="m-dialectic-antithesis" class="card-body">Awaiting thesis generation...</div>
+        </div>
+
+        <div class="mobile-card">
+          <div class="card-header">
+            <h4>The Researcher</h4>
+            <span class="card-tag">Reference Verification</span>
+          </div>
+          <div id="m-dialectic-verification" class="card-body">Verification standby...</div>
+        </div>
+
+        <div class="mobile-card">
+          <div class="card-header">
+            <h4>The Judge</h4>
+            <span class="card-tag">Consensus Synthesis</span>
+          </div>
+          <div id="m-dialectic-synthesis" class="card-body">Consensus will appear here...</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 3: Goal Loop Pipeline -->
+    <section id="view-goal" class="mobile-view">
+      <div class="mobile-panel-header">
+        <h2>Goal Loop Pipeline</h2>
+        <p>Iterative task formulation, adversarial critique, and hardened output generation.</p>
+      </div>
+
+      <div class="mobile-debate-input-card">
+        <input type="text" id="mobile-goal-objective" placeholder="Enter objective to iteratively accomplish..." />
+        <button class="mobile-action-btn" onclick="startMobileGoalLoop()">Run Goal Loop</button>
+      </div>
+
+      <div class="mobile-goal-stages">
+        <div class="mobile-card">
+          <div class="card-header">
+            <h4>Stage 1: Formulation</h4>
+            <span class="card-tag">Draft Solution</span>
+          </div>
+          <div id="m-goal-stage-1" class="card-body">Ready</div>
+        </div>
+
+        <div class="mobile-card">
+          <div class="card-header">
+            <h4>Stage 2: Adversarial Review</h4>
+            <span class="card-tag">Critique & Score</span>
+          </div>
+          <div id="m-goal-stage-2" class="card-body">Ready</div>
+        </div>
+
+        <div class="mobile-card">
+          <div class="card-header">
+            <h4>Stage 3: Hardened Delivery</h4>
+            <span class="card-tag">Final Output</span>
+          </div>
+          <div id="m-goal-stage-3" class="card-body">Ready</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 4: Thinking Profiles -->
+    <section id="view-profiles" class="mobile-view">
+      <div class="mobile-panel-header">
+        <h2>Thinking Profiles</h2>
+        <p>Manage standalone on-device profiles and personal coding style rules.</p>
+      </div>
+
+      <div class="mobile-profile-controls">
+        <select id="mobile-profile-select" onchange="onMobileProfileSelect(this.value)">
+          <!-- Populated dynamically -->
+        </select>
+        <button class="mobile-subtle-btn" onclick="createMobileProfile()">New</button>
+      </div>
+
+      <div class="mobile-profile-editor-card">
+        <div class="card-header">
+          <h4 id="mobile-profile-title">mobile_profile.md</h4>
+          <button class="mobile-save-btn" onclick="saveMobileProfile()">Save</button>
+        </div>
+        <textarea id="mobile-profile-editor" placeholder="Profile markdown instructions..."></textarea>
+      </div>
+    </section>
+
+    <!-- VIEW 5: Memory & Knowledge -->
+    <section id="view-memory" class="mobile-view">
+      <div class="mobile-panel-header">
+        <h2>On-Device Memory</h2>
+        <p>Local interaction episodes and vector knowledge store.</p>
+      </div>
+
+      <div class="mobile-card">
+        <div class="card-header">
+          <h4>Semantic Memory</h4>
+        </div>
+        <div id="mobile-semantic-list" class="card-body">
+          No semantic items recorded yet.
+        </div>
+      </div>
+
+      <div class="mobile-card" style="margin-top: 1rem;">
+        <div class="card-header">
+          <h4>Episodic Interaction Logs</h4>
+        </div>
+        <div id="mobile-episodic-list" class="card-body">
+          No recent episodes.
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 6: Settings -->
+    <section id="view-settings" class="mobile-view">
+      <div class="mobile-panel-header">
+        <h2>AI Provider Settings</h2>
+        <p>Configure your API keys stored securely on your mobile device.</p>
+      </div>
+
+      <div class="mobile-settings-card">
+        <div class="setting-item">
+          <label>Active Provider</label>
+          <select id="mobile-provider-select" onchange="onMobileProviderChange(this.value)">
+            <option value="deepseek">DeepSeek (V3/R1)</option>
+            <option value="openai">OpenAI (GPT-4o/o1)</option>
+            <option value="anthropic">Anthropic (Claude 3.7)</option>
+            <option value="gemini">Google Gemini</option>
+            <option value="cerebras">Cerebras (CS-3)</option>
+            <option value="cohere">Cohere (Command R+)</option>
+            <option value="vortex">Vortex API</option>
+            <option value="opencode">OpenCode</option>
+            <option value="nvidia-nim">NVIDIA NIM</option>
+            <option value="ollama">Ollama (Local / Tailscale)</option>
+            <option value="custom">Custom Endpoint</option>
+          </select>
+        </div>
+
+        <div class="setting-item">
+          <label>Active Model</label>
+          <input type="text" id="mobile-model-input" placeholder="Model name (e.g. deepseek-chat, gpt-4o)" />
+        </div>
+
+        <div class="setting-item">
+          <label>API Key</label>
+          <input type="password" id="mobile-api-key-input" placeholder="sk-..." />
+        </div>
+
+        <div class="setting-item">
+          <label>Base URL (Optional)</label>
+          <input type="text" id="mobile-base-url-input" placeholder="https://api..." />
+        </div>
+
+        <button class="mobile-action-btn" style="width: 100%; margin-top: 1rem;" onclick="saveMobileSettings()">
+          Save Settings
+        </button>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Mobile Bottom Navigation Bar -->
+  <nav class="mobile-bottom-nav">
+    <button class="nav-btn active" onclick="switchMobileView('chat')">
+      <span class="nav-label">Studio</span>
+    </button>
+    <button class="nav-btn" onclick="switchMobileView('dialectic')">
+      <span class="nav-label">Debate</span>
+    </button>
+    <button class="nav-btn" onclick="switchMobileView('goal')">
+      <span class="nav-label">Goal</span>
+    </button>
+    <button class="nav-btn" onclick="switchMobileView('profiles')">
+      <span class="nav-label">Profile</span>
+    </button>
+    <button class="nav-btn" onclick="switchMobileView('memory')">
+      <span class="nav-label">Memory</span>
+    </button>
+    <button class="nav-btn" onclick="switchMobileView('settings')">
+      <span class="nav-label">Settings</span>
+    </button>
+  </nav>
+
+  <script src="app.js"></script>
+</body>
+</html>
