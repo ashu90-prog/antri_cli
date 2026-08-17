@@ -21,14 +21,20 @@ class AuthGateView extends StatefulWidget {
 
 class _AuthGateViewState extends State<AuthGateView> {
   final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
   final AuthService _authService = AuthService();
   bool _isLoading = false;
   String? _error;
 
   void _handleEmailSignIn() async {
     final email = _emailController.text.trim().toLowerCase();
+    final password = _passwordController.text;
     if (email.isEmpty || !email.contains('@')) {
       setState(() => _error = 'Please enter a valid email address.');
+      return;
+    }
+    if (password.isEmpty || password.length < 6) {
+      setState(() => _error = 'Password must be at least 6 characters.');
       return;
     }
 
@@ -225,6 +231,21 @@ class _AuthGateViewState extends State<AuthGateView> {
                             labelText: 'Work or Personal Email',
                             labelStyle: const TextStyle(fontSize: 12, color: Color(0xFF78716C)),
                             hintText: 'user@example.com',
+                            hintStyle: const TextStyle(fontSize: 13),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+
+                        // Password Field
+                        TextField(
+                          controller: _passwordController,
+                          obscureText: true,
+                          decoration: InputDecoration(
+                            labelText: 'Password (min 6 chars)',
+                            labelStyle: const TextStyle(fontSize: 12, color: Color(0xFF78716C)),
+                            hintText: '••••••••',
                             hintStyle: const TextStyle(fontSize: 13),
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                             contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),

@@ -46,7 +46,7 @@ export class BrowserAuthServer {
               if (provider === 'google') {
                 authResult = await AuthManager.loginWithGoogle(email, data.googleToken);
               } else {
-                authResult = await AuthManager.login(email);
+                authResult = await AuthManager.loginWithPassword(email, data.password);
               }
 
               if (authResult.success && authResult.user) {
@@ -119,10 +119,11 @@ export class BrowserAuthServer {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ANTRI Code - Authentication</title>
+  <title>ANTRI Code - Secure Authentication</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
   <style>
     :root {
       --bg: #fcfbf9;
@@ -131,7 +132,6 @@ export class BrowserAuthServer {
       --text: #1c1917;
       --subtext: #78716c;
       --subtle: #f7f4ee;
-      --accent: #1c1917;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -149,7 +149,7 @@ export class BrowserAuthServer {
       border: 1px solid var(--border);
       border-radius: 16px;
       width: 100%;
-      max-width: 420px;
+      max-width: 440px;
       padding: 36px 32px;
       box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
       text-align: center;
@@ -176,7 +176,12 @@ export class BrowserAuthServer {
     p.subtitle {
       font-size: 13px;
       color: var(--subtext);
-      margin-bottom: 24px;
+      margin-bottom: 22px;
+    }
+    .google-container {
+      margin-bottom: 6px;
+      display: flex;
+      justify-content: center;
     }
     .btn-google {
       width: 100%;
@@ -216,7 +221,7 @@ export class BrowserAuthServer {
     .divider span { padding: 0 12px; }
     .input-group {
       text-align: left;
-      margin-bottom: 16px;
+      margin-bottom: 14px;
     }
     label {
       display: block;
@@ -225,7 +230,7 @@ export class BrowserAuthServer {
       color: var(--text);
       margin-bottom: 6px;
     }
-    input[type="email"] {
+    input[type="email"], input[type="password"] {
       width: 100%;
       padding: 12px 14px;
       border: 1px solid var(--border);
@@ -236,7 +241,7 @@ export class BrowserAuthServer {
       outline: none;
       transition: border-color 0.15s;
     }
-    input[type="email"]:focus {
+    input[type="email"]:focus, input[type="password"]:focus {
       border-color: var(--text);
       background: #ffffff;
     }
@@ -251,6 +256,7 @@ export class BrowserAuthServer {
       border-radius: 8px;
       cursor: pointer;
       transition: opacity 0.15s;
+      margin-top: 6px;
     }
     .btn-submit:hover { opacity: 0.92; }
     .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
@@ -278,14 +284,11 @@ export class BrowserAuthServer {
       display: none;
       line-height: 1.4;
     }
-    .google-options {
-      display: none;
-      margin-top: 14px;
+    .auth-hint {
+      font-size: 11px;
+      color: var(--subtext);
+      margin-top: 6px;
       text-align: left;
-      background: var(--subtle);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 12px;
     }
   </style>
 </head>
@@ -294,26 +297,34 @@ export class BrowserAuthServer {
     <div id="auth-form-container">
       <div class="brand-mark">A</div>
       <h1>ANTRI CODE</h1>
-      <p class="subtitle">Authenticate to link your terminal and private cloud partition</p>
+      <p class="subtitle">Secure authentication for terminal and cloud partition</p>
 
-      <button class="btn-google" id="google-btn" type="button">
-        <svg width="18" height="18" viewBox="0 0 24 24">
-          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-        </svg>
-        <span id="google-btn-text">Sign in with Google</span>
-      </button>
+      <!-- Google Sign In via Google Identity Services -->
+      <div class="google-container">
+        <button class="btn-google" id="google-btn" type="button">
+          <svg width="18" height="18" viewBox="0 0 24 24">
+            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+          </svg>
+          <span id="google-btn-text">Sign in with Google</span>
+        </button>
+      </div>
 
-      <div class="divider"><span>OR EMAIL</span></div>
+      <div class="divider"><span>OR PASSWORD LOGIN / REGISTER</span></div>
 
-      <form id="email-form">
+      <form id="auth-form">
         <div class="input-group">
-          <label for="email" id="email-label">Email Address</label>
+          <label for="email">Account Email</label>
           <input type="email" id="email" placeholder="e.g. user@gmail.com" required autofocus>
         </div>
-        <button type="submit" class="btn-submit" id="submit-btn">Continue to CLI</button>
+        <div class="input-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" placeholder="••••••••" minlength="6" required>
+          <p class="auth-hint">New account will automatically register. Existing accounts will verify password.</p>
+        </div>
+        <button type="submit" class="btn-submit" id="submit-btn">Login / Register & Unlock CLI</button>
         <div class="status-msg" id="status-msg"></div>
       </form>
     </div>
@@ -326,14 +337,27 @@ export class BrowserAuthServer {
   </div>
 
   <script>
-    async function authenticate(email, provider = 'email') {
+    function parseJwt(token) {
+      try {
+        var base64Url = token.split('.')[1];
+        var base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        var jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+        return JSON.parse(jsonPayload);
+      } catch (e) {
+        return null;
+      }
+    }
+
+    async function authenticate(email, password = '', provider = 'email', googleToken = '') {
       const statusMsg = document.getElementById('status-msg');
       const submitBtn = document.getElementById('submit-btn');
       const googleBtnText = document.getElementById('google-btn-text');
 
       statusMsg.style.display = 'none';
       submitBtn.disabled = true;
-      submitBtn.innerText = 'Authenticating...';
+      submitBtn.innerText = 'Verifying credentials...';
       if (provider === 'google') {
         googleBtnText.innerText = 'Linking Google Account...';
       }
@@ -342,52 +366,59 @@ export class BrowserAuthServer {
         const res = await fetch('/api/callback', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, provider })
+          body: JSON.stringify({ email, password, provider, googleToken })
         });
         const data = await res.json();
         if (data.success) {
           document.getElementById('auth-form-container').style.display = 'none';
           document.getElementById('success-view').style.display = 'block';
-          document.getElementById('success-desc').innerText = 'Authenticated as ' + email + '. Your private Firestore partition is active. You can return to your terminal now.';
+          document.getElementById('success-desc').innerText = 'Authenticated as ' + email + '. Private Firestore partition is active. Return to your terminal now.';
         } else {
           statusMsg.innerText = data.error || 'Authentication failed.';
+          statusMsg.style.color = '#dc2626';
           statusMsg.style.display = 'block';
           submitBtn.disabled = false;
-          submitBtn.innerText = 'Continue to CLI';
+          submitBtn.innerText = 'Login / Register & Unlock CLI';
           googleBtnText.innerText = 'Sign in with Google';
         }
       } catch (err) {
         statusMsg.innerText = 'Connection error: ' + err.message;
+        statusMsg.style.color = '#dc2626';
         statusMsg.style.display = 'block';
         submitBtn.disabled = false;
-        submitBtn.innerText = 'Continue to CLI';
+        submitBtn.innerText = 'Login / Register & Unlock CLI';
         googleBtnText.innerText = 'Sign in with Google';
       }
     }
 
-    document.getElementById('email-form').addEventListener('submit', (e) => {
+    document.getElementById('auth-form').addEventListener('submit', (e) => {
       e.preventDefault();
       const email = document.getElementById('email').value.trim();
-      if (email) authenticate(email, 'email');
+      const password = document.getElementById('password').value;
+      if (email && password) {
+        authenticate(email, password, 'email');
+      }
     });
 
     document.getElementById('google-btn').addEventListener('click', () => {
       const emailInput = document.getElementById('email');
-      const emailLabel = document.getElementById('email-label');
       const statusMsg = document.getElementById('status-msg');
 
-      if (emailInput.value.trim().length > 0 && emailInput.value.includes('@')) {
-        authenticate(emailInput.value.trim(), 'google');
-        return;
+      if (window.google && window.google.accounts && window.google.accounts.id) {
+        try {
+          window.google.accounts.id.prompt();
+          return;
+        } catch (e) {
+          console.warn(e);
+        }
       }
 
-      emailLabel.innerText = 'Enter your Google Account email:';
+      // If Google Identity prompt not ready, guide user to enter Google Account with password protection
       emailInput.placeholder = 'e.g. ashuishan9090@gmail.com';
       emailInput.focus();
-
       statusMsg.style.display = 'block';
       statusMsg.style.color = '#78716c';
-      statusMsg.innerText = '👉 Enter your Google email above and click Continue to link your Google identity.';
+      statusMsg.innerText = '🔒 Enter your Google email and choose a password to secure your account.';
     });
   </script>
 </body>
