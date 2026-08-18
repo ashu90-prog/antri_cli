@@ -94,7 +94,7 @@ export class ConfigManager {
         merged.model = 'claude-3-7-sonnet-20250219';
       } else if (merged.apiKeys.cerebras || process.env.CEREBRAS_API_KEY) {
         merged.provider = 'cerebras';
-        merged.model = 'llama-3.3-70b';
+        merged.model = 'gpt-oss-120b';
       } else if (merged.apiKeys.cohere || process.env.COHERE_API_KEY) {
         merged.provider = 'cohere';
         merged.model = 'command-r-plus-08-2024';
@@ -159,7 +159,7 @@ export class ConfigManager {
     } else {
       switch (provider) {
         case 'cerebras':
-          this.config.model = 'llama-3.3-70b';
+          this.config.model = 'gpt-oss-120b';
           break;
         case 'cohere':
           this.config.model = 'command-r-plus-08-2024';

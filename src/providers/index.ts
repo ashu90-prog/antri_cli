@@ -14,7 +14,7 @@ export function createProvider(config: AntriConfig): LLMProvider {
         name: 'cerebras',
         apiKey: config.apiKeys.cerebras || process.env.CEREBRAS_API_KEY,
         baseUrl: config.customBaseUrls?.cerebras || 'https://api.cerebras.ai/v1',
-        model: config.model || 'llama-3.3-70b',
+        model: config.model || 'gpt-oss-120b',
       });
 
     case 'cohere':

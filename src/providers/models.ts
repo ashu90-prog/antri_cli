@@ -21,6 +21,22 @@ export const PROVIDER_CATALOGS: Record<ProviderType, ModelInfo[]> = {
   // Cerebras (Ultra-fast Cerebras CS-3 wafer scale engine)
   'cerebras': [
     {
+      id: 'gpt-oss-120b',
+      name: 'GPT OSS 120B (Cerebras)',
+      provider: 'cerebras',
+      category: 'Cerebras Ultra-Fast',
+      description: 'Flagship 120B reasoning model running at ultra-fast speeds on Cerebras CS-3',
+      contextWindow: 128000,
+    },
+    {
+      id: 'gemma-4-31b',
+      name: 'Gemma 4 31B (Cerebras)',
+      provider: 'cerebras',
+      category: 'Cerebras Ultra-Fast',
+      description: 'Ultra-fast 31B model with sub-10ms response latency on Cerebras CS-3',
+      contextWindow: 128000,
+    },
+    {
       id: 'llama-3.3-70b',
       name: 'Llama 3.3 70B (Cerebras)',
       provider: 'cerebras',
