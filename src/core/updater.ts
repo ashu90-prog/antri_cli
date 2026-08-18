@@ -7,8 +7,8 @@ import { log } from '../utils/logger.js';
 const execPromise = util.promisify(exec);
 
 export class Updater {
-  public static readonly CURRENT_VERSION = '1.45.0';
   public static readonly PACKAGE_NAME = 'antri_cli';
+  public static readonly CURRENT_VERSION = '1.46.0';
 
   /**
    * Fetches latest release version directly from registry.npmjs.org (cache-free)

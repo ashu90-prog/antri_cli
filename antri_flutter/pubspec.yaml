@@ -1,7 +1,7 @@
 name: antri_flutter
-description: "ANTRI Mobile - Flutter Cross-Platform Client for Autonomous AI Coding, Dialectic Reasoning, and Cloud Sync"
+description: "ANTRI Code - Cognitive Flutter Client & Profile Synchronization"
 publish_to: 'none'
-version: 1.45.0+1
+version: 1.46.0+1
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
