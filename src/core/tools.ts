@@ -244,18 +244,25 @@ export function getAllActiveTools(): ToolDefinition[] {
   return combined;
 }
 
+export type PermissionHandler = (name: string, args: Record<string, any>) => Promise<boolean>;
+
 export class ToolExecutor {
   private workingDir: string;
+  private customPermissionHandler?: PermissionHandler;
 
   constructor(workingDir: string = process.cwd()) {
     this.workingDir = workingDir;
+  }
+
+  public setPermissionHandler(handler?: PermissionHandler): void {
+    this.customPermissionHandler = handler;
   }
 
   public static isSensitive(name: string): boolean {
     return SENSITIVE_TOOLS.has(name);
   }
 
-  public static async promptForPermission(name: string, args: Record<string, any>): Promise<boolean> {
+  public async promptForPermission(name: string, args: Record<string, any>): Promise<boolean> {
     const config = configManager.get();
     if (config.alwaysAllow) {
       return true;
@@ -263,6 +270,10 @@ export class ToolExecutor {
 
     if (!ToolExecutor.isSensitive(name)) {
       return true;
+    }
+
+    if (this.customPermissionHandler) {
+      return await this.customPermissionHandler(name, args);
     }
 
     const argsSummary = Object.entries(args)
@@ -317,6 +328,19 @@ export class ToolExecutor {
         };
       }
 
+      // Empathy & Personal statement guard: Never web search personal emotions, grief, or personal background
+      if (name === 'web_search' && args.query) {
+        const personalKeywords = /(?:father|mother|dad|mom|parent|grandpa|grandma|died|passed away|lost my|loss of|grief|sad|depressed|bereavement|funeral|my name is|lost father|lost mother)/i;
+        if (personalKeywords.test(args.query)) {
+          return {
+            tool_call_id: toolCallId,
+            name,
+            output: '[SYSTEM NOTICE]: Web search is disabled for personal and emotional statements. Respond directly and compassionately to the user with genuine empathy, active listening, and heartfelt support.',
+            error: false,
+          };
+        }
+      }
+
       const limitCheck = RateLimiter.checkLimit(user.userId, name === 'execute_python' ? 'sandbox' : 'tools');
       if (!limitCheck.allowed) {
         return {
@@ -328,7 +352,7 @@ export class ToolExecutor {
       }
 
       // Check permission for sensitive tools
-      const allowed = await ToolExecutor.promptForPermission(name, args);
+      const allowed = await this.promptForPermission(name, args);
       if (!allowed) {
         return {
           tool_call_id: toolCallId,

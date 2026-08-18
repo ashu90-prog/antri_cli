@@ -456,7 +456,24 @@ async function submitPrompt() {
         if (line.startsWith('data: ')) {
           try {
             const data = JSON.parse(line.slice(6));
-            if (data.token) {
+            if (data.requestId && data.name && data.args !== undefined) {
+              // Interactive Permission Request Card
+              const permCard = document.createElement('div');
+              permCard.className = 'permission-prompt-card';
+              permCard.id = `card-${data.requestId}`;
+              permCard.innerHTML = `
+                <div class="perm-title">⚠️ Privacy & Security Permission Request</div>
+                <div class="perm-desc">Agent requested to execute tool: <b style="color:var(--accent-primary);">${data.name}</b></div>
+                <pre class="perm-args">${JSON.stringify(data.args, null, 2)}</pre>
+                <div class="perm-actions">
+                  <button class="perm-btn perm-allow" onclick="respondDesktopPermission('${data.requestId}', true, false)">Allow Once</button>
+                  <button class="perm-btn perm-always" onclick="respondDesktopPermission('${data.requestId}', true, true)">Always Allow</button>
+                  <button class="perm-btn perm-deny" onclick="respondDesktopPermission('${data.requestId}', false, false)">Deny</button>
+                </div>
+              `;
+              assistantMsgEl.insertBefore(permCard, contentEl);
+              scrollToBottom();
+            } else if (data.token) {
               accumulated += data.token;
               contentEl.textContent = accumulated;
               scrollToBottom();
@@ -477,6 +494,26 @@ async function submitPrompt() {
   } finally {
     sendBtn.disabled = false;
     sendBtn.innerHTML = '<span>Send</span>';
+  }
+}
+
+async function respondDesktopPermission(requestId, allowed, alwaysAllow) {
+  const card = document.getElementById(`card-${requestId}`);
+  if (card) {
+    card.innerHTML = `<div style="font-size:12px;font-weight:600;color:${allowed ? '#10b981' : '#f43f5e'};padding:4px 0;">${allowed ? '✓ Permission granted by user.' : '✕ Permission denied by user.'}</div>`;
+  }
+  try {
+    await fetch('/api/permission/response', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ requestId, allowed, alwaysAllow }),
+    });
+    if (alwaysAllow) {
+      showToast('Permissions set to Always-Allow.');
+      await loadStatus();
+    }
+  } catch (e) {
+    console.error('Failed to submit permission response:', e);
   }
 }
 

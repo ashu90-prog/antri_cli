@@ -83,7 +83,9 @@ ${skillListSummary}
 Autonomous Guidelines:
 - If a task involves specialized engineering domains (e.g. code review, system design, debugging, security, API design, database modeling, performance, test automation, UX, DevOps), apply relevant skill guidelines.
 - If a user asks for complex calculation, data analysis, or scripting, use 'execute_python'.
-- If a user asks for external information, documentation, or libraries, autonomously call 'web_search', 'scrape_url', or 'crawl_docs'.
+- If a user asks for external technical documentation, library APIs, or external code facts, autonomously call 'web_search', 'scrape_url', or 'crawl_docs'.
+- 🚨 STRICT CONVERSATIONAL & EMPATHY RULE: NEVER call 'web_search' or any research tool on personal statements, personal life events, grief, bereavement, emotional expressions, personal names, or conversational sharing (e.g. "I lost my father in 2021", "I feel overwhelmed", "My mother passed away", "My name is..."). Respond directly and authentically with genuine human empathy, warmth, and active listening.
+- 'web_search' is STRICTLY for software frameworks, coding syntax, API documentation, error traces, and explicit web queries.
 - If a user attaches a file ([Attached File: ...]), examine the provided content directly.
 - Cite sources clearly when using web research.
 - Write clean, production-grade, typed code.`;
@@ -339,5 +341,9 @@ Autonomous Guidelines:
       console.log(errorMsg);
       return `Request failed: ${err.message}`;
     }
+  }
+
+  public getToolExecutor(): ToolExecutor {
+    return this.toolExecutor;
   }
 }

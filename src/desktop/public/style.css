@@ -1248,3 +1248,74 @@ body.antri-app {
   background: #b91c1c;
 }
 
+/* Tool Permission Prompt Card */
+.permission-prompt-card {
+  background: var(--bg-surface-elevated, #18181b);
+  border: 1px solid #f59e0b;
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin: 10px 0;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.1);
+}
+
+.perm-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #f59e0b;
+  margin-bottom: 4px;
+}
+
+.perm-desc {
+  font-size: 13px;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.perm-args {
+  background: var(--bg-surface, #09090b);
+  border: 1px solid var(--border-color);
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  max-height: 120px;
+  overflow-y: auto;
+  margin-bottom: 10px;
+  color: #38bdf8;
+}
+
+.perm-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.perm-btn {
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: opacity 0.15s;
+}
+
+.perm-btn:hover {
+  opacity: 0.9;
+}
+
+.perm-allow {
+  background: #10b981;
+  color: #fff;
+}
+
+.perm-always {
+  background: #6366f1;
+  color: #fff;
+}
+
+.perm-deny {
+  background: #ef4444;
+  color: #fff;
+}
+
+

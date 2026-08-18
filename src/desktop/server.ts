@@ -39,9 +39,39 @@ export class DesktopServer {
   private server: http.Server | null = null;
   private port = 3456;
   private activeAgent: AntriAgent;
+  private pendingPermissions = new Map<string, (allowed: boolean) => void>();
+  private currentSseSender: ((event: string, data: any) => void) | null = null;
 
   constructor() {
     this.activeAgent = new AntriAgent(configManager.get());
+    this.setupPermissionHandler();
+  }
+
+  private setupPermissionHandler(): void {
+    this.activeAgent.getToolExecutor().setPermissionHandler(async (name, args) => {
+      const cfg = configManager.get();
+      if (cfg.alwaysAllow) return true;
+      if (!ToolExecutor.isSensitive(name)) return true;
+
+      const reqId = `perm_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+      if (this.currentSseSender) {
+        this.currentSseSender('permission_request', {
+          requestId: reqId,
+          name,
+          args,
+        });
+      }
+
+      return new Promise<boolean>((resolve) => {
+        this.pendingPermissions.set(reqId, resolve);
+        setTimeout(() => {
+          if (this.pendingPermissions.has(reqId)) {
+            this.pendingPermissions.delete(reqId);
+            resolve(false);
+          }
+        }, 90000);
+      });
+    });
   }
 
   public async start(): Promise<number> {
@@ -244,6 +274,23 @@ export class DesktopServer {
           return;
         }
 
+        // POST /api/permission/response (Desktop tool confirmation response)
+        if (pathname === '/api/permission/response' && req.method === 'POST') {
+          const { requestId, allowed, alwaysAllow } = payload;
+          if (alwaysAllow) {
+            configManager.setAlwaysAllow(true);
+            this.activeAgent.updateConfig(configManager.get());
+          }
+          const resolver = this.pendingPermissions.get(requestId);
+          if (resolver) {
+            this.pendingPermissions.delete(requestId);
+            resolver(!!allowed);
+          }
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: true }));
+          return;
+        }
+
         // POST /api/chat (Real-Time SSE Token Streaming)
         if (pathname === '/api/chat' && req.method === 'POST') {
           res.writeHead(200, {
@@ -256,6 +303,7 @@ export class DesktopServer {
             res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
           };
 
+          this.currentSseSender = sendEvent;
           const userPrompt = payload.prompt || '';
           this.activeAgent.updateConfig(configManager.get());
 
@@ -277,6 +325,8 @@ export class DesktopServer {
           } catch (err: any) {
             sendEvent('error', { message: err.message });
             res.end();
+          } finally {
+            this.currentSseSender = null;
           }
           return;
         }
