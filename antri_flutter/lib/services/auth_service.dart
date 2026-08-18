@@ -34,7 +34,16 @@ class AuthService {
     final raw = prefs.getString(_keyUser);
     if (raw != null) {
       try {
-        return UserAccount.fromJson(jsonDecode(raw));
+        final parsed = UserAccount.fromJson(jsonDecode(raw));
+        if (parsed.email.isNotEmpty) {
+          final correctId = generateUserId(parsed.email);
+          if (parsed.userId != correctId) {
+            final updated = UserAccount(email: parsed.email, userId: correctId, loggedInAt: parsed.loggedInAt);
+            await prefs.setString(_keyUser, jsonEncode(updated.toJson()));
+            return updated;
+          }
+        }
+        return parsed;
       } catch (_) {}
     }
     return null;

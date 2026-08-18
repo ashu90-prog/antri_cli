@@ -3,12 +3,20 @@ import '../services/storage_service.dart';
 import '../services/firestore_sync_service.dart';
 
 class NoteSynthesizer {
-  static final RegExp _prefRegex = RegExp(
-    r'(?:i prefer|i want|always use|never use|make sure to|remember that|my preference|in flutter|in typescript|in python|format with|clean architecture|keep it concise|don\x27t use|please use|style:|pattern:)\s+([^\.\n]+)',
-    caseSensitive: false,
-  );
+  static final List<RegExp> _extractPatterns = [
+    // 1. Name & Identity
+    RegExp(r'(?:my name is|call me|i am|i\x27m)\s+([a-zA-Z0-9_\s]{2,30})', caseSensitive: false),
+    // 2. Personal Life Events, Family & Bereavement
+    RegExp(r'(?:i lost (?:my )?(?:father|farher|mother|mom|dad|brother|sister|parent|family|friend)[^\.\n]*)', caseSensitive: false),
+    RegExp(r'(?:my (?:father|farher|mother|mom|dad|brother|sister|parent) (?:passed away|died|left us)[^\.\n]*)', caseSensitive: false),
+    RegExp(r'(?:in (?:19\d{2}|20\d{2}) (?:i lost|my father|my mother|i graduated|i started)[^\.\n]*)', caseSensitive: false),
+    // 3. Hobbies, Music & Interests
+    RegExp(r'(?:i like|i love|i enjoy|i listen|my hobby|in my free time)\s+(?:to |listening to |listning ot )?([^\.\n]+)', caseSensitive: false),
+    // 4. Preferences & Coding Rules
+    RegExp(r'(?:i prefer|i want|always use|never use|make sure to|remember that|my preference|in flutter|in typescript|in python|format with|clean architecture|keep it concise|don\x27t use|please use|style:|pattern:)\s+([^\.\n]+)', caseSensitive: false),
+  ];
 
-  /// Analyzes a chat turn and extracts preferences, constraints, or decisions
+  /// Analyzes a chat turn and extracts preferences, constraints, or personal notes
   static Future<String?> extractAndRecordNote({
     required String userPrompt,
     required String activeProfileName,
@@ -18,16 +26,29 @@ class NoteSynthesizer {
     required String? projectId,
     FirestoreSyncService? firestoreService,
   }) async {
-    final match = _prefRegex.firstMatch(userPrompt);
+    final cleanPrompt = userPrompt.trim();
+    if (cleanPrompt.length < 4) return null;
+
     String? extractedNote;
 
-    if (match != null && match.group(1) != null) {
-      extractedNote = match.group(1)!.trim();
-    } else if (userPrompt.toLowerCase().contains('prefer') ||
-        userPrompt.toLowerCase().contains('always') ||
-        userPrompt.toLowerCase().contains('remember') ||
-        userPrompt.toLowerCase().contains('architecture')) {
-      extractedNote = userPrompt.trim();
+    for (final regex in _extractPatterns) {
+      final match = regex.firstMatch(cleanPrompt);
+      if (match != null) {
+        final captured = match.group(0)?.trim();
+        if (captured != null && captured.length > 4 && captured.length < 250) {
+          extractedNote = captured;
+          break;
+        }
+      }
+    }
+
+    if (extractedNote == null && (cleanPrompt.toLowerCase().contains('prefer') ||
+        cleanPrompt.toLowerCase().contains('always') ||
+        cleanPrompt.toLowerCase().contains('remember') ||
+        cleanPrompt.toLowerCase().contains('architecture') ||
+        cleanPrompt.toLowerCase().contains('music') ||
+        cleanPrompt.toLowerCase().contains('father'))) {
+      extractedNote = cleanPrompt;
       if (extractedNote.length > 80) {
         extractedNote = '${extractedNote.substring(0, 77)}...';
       }

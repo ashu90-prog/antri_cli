@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'models/ai_config.dart';
 import 'services/ai_service.dart';
 import 'services/storage_service.dart';
+import 'services/auth_service.dart';
 import 'views/agent_studio_view.dart';
 import 'views/dialectic_arena_view.dart';
 import 'views/goal_loop_view.dart';
@@ -62,6 +63,13 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   Future<void> _initApp() async {
     final cfg = await _storageService.loadConfig();
+    final authService = AuthService();
+    final user = await authService.getCurrentUser();
+    if (user != null && user.email.isNotEmpty) {
+      final normalizedKey = AuthService.generateUserId(user.email);
+      cfg.syncKey = normalizedKey;
+      await _storageService.saveConfig(cfg);
+    }
     setState(() {
       _config = cfg;
       _isReady = true;

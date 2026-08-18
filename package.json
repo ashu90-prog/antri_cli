@@ -1,6 +1,6 @@
 {
   "name": "antri_cli",
-  "version": "1.46.0",
+  "version": "1.47.0",
   "description": "Terminal-First AI Agent & Cognitive Memory Engine with Dialectic Multi-Stage Reasoning",
   "type": "module",
   "bin": {

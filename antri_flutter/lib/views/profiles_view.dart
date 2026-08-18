@@ -92,22 +92,27 @@ class _ProfilesViewState extends State<ProfilesView> with SingleTickerProviderSt
   }
 
   Future<void> _pushToCloud() async {
-    if (!_profiles.containsKey(_activeProfile)) return;
     final projectId = widget.config.firestoreProjectId.isNotEmpty ? widget.config.firestoreProjectId : 'antri-agentic-hackathon';
 
     setState(() => _isSyncing = true);
-    final ok = await _firestoreService.syncProfileToFirestore(
-      projectId: projectId,
-      syncKey: widget.config.syncKey,
-      profile: _profiles[_activeProfile]!,
-    );
+    int count = 0;
+    for (final prof in _profiles.values) {
+      if (prof.content.trim().isNotEmpty) {
+        final ok = await _firestoreService.syncProfileToFirestore(
+          projectId: projectId,
+          syncKey: widget.config.syncKey,
+          profile: prof,
+        );
+        if (ok) count++;
+      }
+    }
     setState(() => _isSyncing = false);
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(ok ? 'Pushed "$_activeProfile" to Google Cloud Firestore!' : 'Failed to push to Firestore. Check connection.'),
-          backgroundColor: ok ? const Color(0xFF15803D) : const Color(0xFFDC2626),
+          content: Text(count > 0 ? 'Pushed $count profiles to Google Cloud Firestore!' : 'Failed to push to Firestore. Check connection.'),
+          backgroundColor: count > 0 ? const Color(0xFF15803D) : const Color(0xFFDC2626),
         ),
       );
     }

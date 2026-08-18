@@ -66,7 +66,7 @@ test('ToolExecutor identifies privacy & security sensitive tools', () => {
 
 test('Updater reports correct package name and current version', () => {
   assert.strictEqual(Updater.PACKAGE_NAME, 'antri_cli');
-  assert.strictEqual(Updater.CURRENT_VERSION, '1.46.0');
+  assert.strictEqual(Updater.CURRENT_VERSION, '1.47.0');
 });
 
 test('GoalLoopEngine initializes with active configuration', () => {
@@ -499,6 +499,26 @@ test('ToolExecutor read_file executes with start_line and line count metadata', 
   assert.ok(res.output.includes('lines 1-'));
 
   // Clean up test authentication session so it doesn't pollute user environment
+  AuthManager.logout();
+});
+
+test('ProfileManager extracts life events, family background, and music hobbies', () => {
+  const profileMgr = new ProfileManager();
+  
+  const note1 = profileMgr.extractAndRecordNotes('I lost my father in 2021 and it changed my life.', process.cwd());
+  assert.ok(note1);
+  assert.ok(note1.includes('father'));
+
+  const note2 = profileMgr.extractAndRecordNotes('I like to listning ot music when I write code.', process.cwd());
+  assert.ok(note2);
+  assert.ok(note2.includes('music'));
+});
+
+test('ToolExecutor empathy guard prevents web_search on bereavement and personal grief', async () => {
+  await AuthManager.login('test_dev@example.com');
+  const executor = new ToolExecutor();
+  const res = await executor.execute('web_search', { query: 'lost father 2021' }, 'call_search_1');
+  assert.ok(res.output.includes('Web search is disabled for personal and emotional statements'));
   AuthManager.logout();
 });
 

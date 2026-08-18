@@ -324,25 +324,27 @@ Do NOT ask the user to repeat their name, preferences, or established convention
   }
 
   /**
-   * Real-time feedback, identity and preference extractor
+   * Real-time feedback, identity, personal context, and preference extractor
    */
   public extractAndRecordNotes(userPrompt: string, workingDir?: string): string | null {
     this.ensureWorkspaceProfiles(workingDir || process.cwd());
+    const cleanPrompt = userPrompt.trim();
+    if (!cleanPrompt || cleanPrompt.length < 5) return null;
 
     // 1. Check for Name / Identity patterns
     const namePatterns = [
-      /(?:my name is|call me|i am|i'm)\s+([a-zA-Z0-9_\s]{2,30})/i,
-      /(?:remember that my name is|remember my name is)\s+([a-zA-Z0-9_\s]{2,30})/i,
+      /(?:my name is|call me|i am|i'm)\s+([a-zA-Z0-9_\s]{2,40})/i,
+      /(?:remember that my name is|remember my name is)\s+([a-zA-Z0-9_\s]{2,40})/i,
     ];
 
     for (const pattern of namePatterns) {
-      const match = userPrompt.match(pattern);
+      const match = cleanPrompt.match(pattern);
       if (match && match[1]) {
-        const rawName = match[1].replace(/[.!?\n].*$/, '').trim();
-        // Ignore generic verbs or common words
-        if (rawName && !['a', 'an', 'the', 'trying', 'working', 'building', 'ready', 'here'].includes(rawName.toLowerCase())) {
-          this.userName = rawName;
-          const noteEntry = `User Name is ${rawName}`;
+        const namePart = match[1].split(/\s+(?:and|who|from|is|working|trying|who's|who\b|with)\b|[.!?,\n]/i)[0].trim();
+        const ignoreList = ['a', 'an', 'the', 'trying', 'working', 'building', 'ready', 'here', 'sorry', 'going', 'not', 'just', 'also'];
+        if (namePart && !ignoreList.includes(namePart.toLowerCase()) && namePart.split(' ').length <= 4) {
+          this.userName = namePart;
+          const noteEntry = `User Name is ${namePart}`;
           this.appendNoteToActiveProfile(noteEntry);
           this.appendToNotesFiles(noteEntry, workingDir);
           return noteEntry;
@@ -350,16 +352,56 @@ Do NOT ask the user to repeat their name, preferences, or established convention
       }
     }
 
-    // 2. Check for explicit preference / feedback patterns
+    // 2. Check for Personal Life Events, Family, Bereavement & Milestones
+    const lifeEventPatterns = [
+      /(?:i lost (?:my )?(?:father|farher|mother|mom|dad|brother|sister|parent|family|friend)[^.!?\n]*)/i,
+      /(?:my (?:father|farher|mother|mom|dad|brother|sister|parent) (?:passed away|died|left us)[^.!?\n]*)/i,
+      /(?:in (?:19\d{2}|20\d{2}) (?:i lost|my father|my mother|i graduated|i started)[^.!?\n]*)/i,
+      /(?:i work (?:as|at)|i live in|i am from|i study|my background is)\s+([^.!?\n]+)/i,
+    ];
+
+    for (const pattern of lifeEventPatterns) {
+      const match = cleanPrompt.match(pattern);
+      if (match) {
+        const extracted = match[0].trim();
+        if (extracted.length > 5 && extracted.length < 250) {
+          const noteEntry = `Personal Context: ${extracted}`;
+          this.appendNoteToActiveProfile(noteEntry);
+          this.appendToNotesFiles(noteEntry, workingDir);
+          return noteEntry;
+        }
+      }
+    }
+
+    // 3. Check for Hobbies, Interests & Music Preferences (with typo tolerance)
+    const hobbyPatterns = [
+      /(?:i like|i love|i enjoy|i listen|my hobby|my hobbies|in my free time)\s+(?:to |listening to |listning ot )?([^.!?\n]+)/i,
+      /(?:i am into|i like listening|i listen to)\s+([^.!?\n]+)/i,
+    ];
+
+    for (const pattern of hobbyPatterns) {
+      const match = cleanPrompt.match(pattern);
+      if (match && match[0]) {
+        const extracted = match[0].trim();
+        if (extracted.length > 5 && extracted.length < 250) {
+          const noteEntry = `Personal Interest/Hobby: ${extracted}`;
+          this.appendNoteToActiveProfile(noteEntry);
+          this.appendToNotesFiles(noteEntry, workingDir);
+          return noteEntry;
+        }
+      }
+    }
+
+    // 4. Check for Coding Preferences, Directives & Architectural Rules
     const prefPatterns = [
-      /(?:i prefer|i like|i always use|my style is|always use|never use|don't use|do not use)\s+([^.!?\n]+)/i,
+      /(?:i prefer|i always use|my style is|always use|never use|don't use|do not use)\s+([^.!?\n]+)/i,
       /(?:from now on|remember that|keep in mind that|note that)\s+([^.!?\n]+)/i,
       /(?:i want you to|make sure to|focus on|i think of this as)\s+([^.!?\n]+)/i,
       /(?:let's do|instead of .+ let's use)\s+([^.!?\n]+)/i,
     ];
 
     for (const pattern of prefPatterns) {
-      const match = userPrompt.match(pattern);
+      const match = cleanPrompt.match(pattern);
       if (match && match[1] && match[1].length > 4 && match[1].length < 200) {
         const extracted = match[0].trim();
         this.appendNoteToActiveProfile(extracted);
