@@ -52,12 +52,13 @@ export class FirestoreSyncManager {
   /**
    * Push local profiles from ~/.antri/profiles/ to Google Cloud Firestore
    */
-  public static async pushToFirestore(): Promise<{ success: boolean; count: number; error?: string }> {
+  public static async pushToFirestore(): Promise<{ success: boolean; count: number; notesSynced?: boolean; total?: number; error?: string }> {
     const { projectId, syncKey, apiKey } = this.getSyncConfig();
     const targetProject = projectId || 'antri-agentic-hackathon';
 
     const profiles = profileManager.listProfiles();
-    let synced = 0;
+    let profileCount = 0;
+    let notesSynced = false;
     const keyParam = apiKey ? `?key=${apiKey}` : '';
 
     // Push all profile files
@@ -85,7 +86,7 @@ export class FirestoreSyncManager {
 
       try {
         await this.httpRequest(url, 'PATCH', payload);
-        synced++;
+        profileCount++;
       } catch (err: any) {
         // Continue attempting others
       }
@@ -105,18 +106,18 @@ export class FirestoreSyncManager {
       });
       try {
         await this.httpRequest(url, 'PATCH', payload);
-        synced++;
+        notesSynced = true;
       } catch {}
     }
 
     this.saveSyncConfig(targetProject, syncKey, apiKey);
-    return { success: true, count: synced };
+    return { success: true, count: profileCount, notesSynced, total: profileCount + (notesSynced ? 1 : 0) };
   }
 
   /**
    * Pull profiles from Google Cloud Firestore to ~/.antri/profiles/
    */
-  public static async pullFromFirestore(): Promise<{ success: boolean; count: number; error?: string }> {
+  public static async pullFromFirestore(): Promise<{ success: boolean; count: number; notesSynced?: boolean; total?: number; error?: string }> {
     const { projectId, syncKey } = this.getSyncConfig();
     const targetProject = projectId || 'antri-agentic-hackathon';
 
@@ -129,7 +130,8 @@ export class FirestoreSyncManager {
       const dir = path.join(os.homedir(), '.antri', 'profiles');
       if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 
-      let count = 0;
+      let profileCount = 0;
+      let notesSynced = false;
       let firstProfileName = '';
 
       for (const doc of docs) {
@@ -142,9 +144,13 @@ export class FirestoreSyncManager {
         if (cleanName && content) {
           const fileName = cleanName === 'notes' ? 'notes.md' : `${cleanName}.md`;
           fs.writeFileSync(path.join(dir, fileName), content, 'utf-8');
-          count++;
-          if (cleanName !== 'notes' && !firstProfileName) {
-            firstProfileName = cleanName;
+          if (cleanName === 'notes') {
+            notesSynced = true;
+          } else {
+            profileCount++;
+            if (!firstProfileName) {
+              firstProfileName = cleanName;
+            }
           }
         }
       }
@@ -154,7 +160,7 @@ export class FirestoreSyncManager {
       }
 
       this.saveSyncConfig(targetProject, syncKey);
-      return { success: true, count };
+      return { success: true, count: profileCount, notesSynced, total: profileCount + (notesSynced ? 1 : 0) };
     } catch (err: any) {
       return { success: false, count: 0, error: err.message };
     }

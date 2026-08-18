@@ -30,7 +30,7 @@ class FirestoreSyncService {
     }
   }
 
-  Future<Map<String, ThinkingProfile>> pullProfilesFromFirestore({
+  Future<Map<String, dynamic>> pullProfilesFromFirestore({
     required String projectId,
     required String syncKey,
   }) async {
@@ -43,7 +43,8 @@ class FirestoreSyncService {
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
         final documents = data['documents'] as List? ?? [];
-        final Map<String, ThinkingProfile> result = {};
+        final Map<String, ThinkingProfile> profiles = {};
+        String notesContent = '';
 
         for (final doc in documents) {
           final docName = (doc['name'] as String? ?? '').split('/').last;
@@ -53,13 +54,17 @@ class FirestoreSyncService {
           final content = fields['content']?['stringValue'] ?? '';
           final updatedAt = DateTime.tryParse(fields['updatedAt']?['stringValue'] ?? '') ?? DateTime.now();
 
-          if (cleanName.isNotEmpty && content.isNotEmpty && cleanName != 'notes') {
-            result[cleanName] = ThinkingProfile(name: cleanName, content: content, updatedAt: updatedAt);
+          if (cleanName.isNotEmpty && content.isNotEmpty) {
+            if (cleanName == 'notes') {
+              notesContent = content;
+            } else {
+              profiles[cleanName] = ThinkingProfile(name: cleanName, content: content, updatedAt: updatedAt);
+            }
           }
         }
-        return result;
+        return {'profiles': profiles, 'notes': notesContent};
       }
     } catch (_) {}
-    return {};
+    return {'profiles': <String, ThinkingProfile>{}, 'notes': ''};
   }
 }

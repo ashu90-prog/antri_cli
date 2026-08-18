@@ -160,7 +160,7 @@ async function onModelChange(model) {
 }
 
 // Tab Switching
-function showTab(tabName) {
+async function showTab(tabName) {
   activeTab = tabName;
   document.querySelectorAll('.tab-panel').forEach((el) => el.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach((el) => el.classList.remove('active'));
@@ -171,6 +171,14 @@ function showTab(tabName) {
   const navIndex = ['chat', 'dialectic', 'goal', 'profiles', 'skills', 'memory'].indexOf(tabName);
   const navButtons = document.querySelectorAll('.nav-item');
   if (navButtons[navIndex]) navButtons[navIndex].classList.add('active');
+
+  if (tabName === 'profiles') {
+    await loadProfiles();
+  } else if (tabName === 'skills') {
+    await loadSkills();
+  } else if (tabName === 'memory') {
+    await loadMemory();
+  }
 }
 
 // File Upload Handler (Images & Files)
@@ -655,7 +663,12 @@ async function loadProfiles() {
       // List button
       const btn = document.createElement('button');
       btn.className = `profile-item-btn ${p.name === data.activeName ? 'active' : ''}`;
-      btn.textContent = `${p.name}.md`;
+      btn.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;width:100%;">
+          <span style="font-weight:600;">${p.name}.md</span>
+          <span style="font-size:10px;opacity:0.7;">${p.notesCount || 0} notes</span>
+        </div>
+      `;
       btn.onclick = () => selectProfile(p.name);
       list.appendChild(btn);
     });
@@ -732,7 +745,8 @@ async function pushProfilesToCloud() {
     const res = await fetch('/api/profile/push', { method: 'POST' });
     const data = await res.json();
     if (data.success) {
-      showToast(`Pushed ${data.count} profile(s) to Google Cloud Firestore.`);
+      const msg = `Pushed ${data.count} profile(s)${data.notesSynced ? ' & notes.md' : ''} to Google Cloud Firestore.`;
+      showToast(msg);
     } else {
       showToast(`Push failed: ${data.error || 'Check network connection'}`, true);
     }
@@ -748,7 +762,8 @@ async function pullProfilesFromCloud() {
     const data = await res.json();
     if (data.success) {
       await loadProfiles();
-      showToast(`Pulled ${data.count} profile(s) from Google Cloud Firestore.`);
+      const msg = `Pulled ${data.count} profile(s)${data.notesSynced ? ' & notes.md' : ''} from Google Cloud Firestore.`;
+      showToast(msg);
     } else {
       showToast(`Pull failed: ${data.error || 'Check network connection'}`, true);
     }

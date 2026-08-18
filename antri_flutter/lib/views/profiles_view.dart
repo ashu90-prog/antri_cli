@@ -106,12 +106,24 @@ class _ProfilesViewState extends State<ProfilesView> with SingleTickerProviderSt
         if (ok) count++;
       }
     }
+
+    if (_memories.isNotEmpty) {
+      final notesProf = ThinkingProfile(
+        name: 'notes',
+        content: '# 📝 Global User Notes & Identity\n\n' + _memories.map((m) => '- $m').join('\n'),
+      );
+      await _firestoreService.syncProfileToFirestore(
+        projectId: projectId,
+        syncKey: widget.config.syncKey,
+        profile: notesProf,
+      );
+    }
     setState(() => _isSyncing = false);
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(count > 0 ? 'Pushed $count profiles to Google Cloud Firestore!' : 'Failed to push to Firestore. Check connection.'),
+          content: Text(count > 0 ? 'Pushed $count profile(s) & notes.md to Google Cloud Firestore!' : 'Failed to push to Firestore. Check connection.'),
           backgroundColor: count > 0 ? const Color(0xFF15803D) : const Color(0xFFDC2626),
         ),
       );
@@ -122,29 +134,43 @@ class _ProfilesViewState extends State<ProfilesView> with SingleTickerProviderSt
     final projectId = widget.config.firestoreProjectId.isNotEmpty ? widget.config.firestoreProjectId : 'antri-agentic-hackathon';
 
     setState(() => _isSyncing = true);
-    final cloudProfs = await _firestoreService.pullProfilesFromFirestore(
+    final syncResult = await _firestoreService.pullProfilesFromFirestore(
       projectId: projectId,
       syncKey: widget.config.syncKey,
     );
 
-    if (cloudProfs.isNotEmpty) {
+    final Map<String, ThinkingProfile> cloudProfs = syncResult['profiles'] as Map<String, ThinkingProfile>? ?? {};
+    final String cloudNotes = syncResult['notes'] as String? ?? '';
+
+    if (cloudProfs.isNotEmpty || cloudNotes.isNotEmpty) {
       setState(() {
-        _profiles.addAll(cloudProfs);
-        if (cloudProfs.containsKey(_activeProfile)) {
-          _editorController.text = cloudProfs[_activeProfile]!.content;
-        } else {
-          _activeProfile = cloudProfs.keys.first;
-          _editorController.text = cloudProfs[_activeProfile]!.content;
+        if (cloudProfs.isNotEmpty) {
+          _profiles.clear();
+          _profiles.addAll(cloudProfs);
+          if (!_profiles.containsKey(_activeProfile)) {
+            _activeProfile = _profiles.keys.first;
+          }
+          _editorController.text = _profiles[_activeProfile]?.content ?? '';
           widget.config.activeProfile = _activeProfile;
-          widget.storageService.saveConfig(widget.config);
+        }
+        if (cloudNotes.isNotEmpty) {
+          final lines = cloudNotes.split('\n').where((l) => l.trim().startsWith('- [')).map((l) => l.trim().substring(2)).toList();
+          if (lines.isNotEmpty) {
+            _memories = lines;
+          }
         }
       });
       await widget.storageService.saveProfiles(_profiles, widget.config.syncKey);
+      if (_memories.isNotEmpty) {
+        await widget.storageService.saveMemories(_memories, widget.config.syncKey);
+      }
+      await widget.storageService.saveConfig(widget.config);
       widget.onProfileChanged();
       if (mounted) {
+        final notesSuffix = cloudNotes.isNotEmpty ? ' & notes.md' : '';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Pulled ${cloudProfs.length} profile(s) from Google Cloud Firestore.'),
+            content: Text('Pulled ${cloudProfs.length} profile(s)$notesSuffix from Google Cloud Firestore.'),
             backgroundColor: const Color(0xFF15803D),
           ),
         );
