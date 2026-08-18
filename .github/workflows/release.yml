@@ -1,0 +1,44 @@
+name: Release APK & CLI
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: "ANTRI Code Release ${{ github.ref_name }}"
+          draft: false
+          prerelease: false
+          files: |
+            antri-release.apk
+          body: |
+            # 🚀 ANTRI Code Release ${{ github.ref_name }}
+
+            ### 📱 Android Mobile APK
+            - **Binary Asset**: `antri-release.apk`
+            - **Features**:
+              - Dialectic Multi-Stage Reasoning & Agent Studio
+              - Multi-Tenant Cryptographic Partition Isolation
+              - 1-Tap Google Cloud Firestore Bidirectional Profile Sync (Push/Pull)
+              - Live Conversation Note Synthesis & Cognitive Memory Stream
+              - Android 36 Target SDK with Native ARM64 & R8 optimization
+
+            ### 📦 Terminal CLI & Desktop
+            - Install / Update globally via NPM:
+              ```bash
+              npm install -g antri_cli@latest
+              ```
