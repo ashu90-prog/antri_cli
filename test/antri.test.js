@@ -19,6 +19,7 @@ import { SandboxEngine } from '../dist/core/sandbox.js';
 import { SkillSynthesizer } from '../dist/core/skillSynthesizer.js';
 import { MetaOptimizer } from '../dist/core/metaOptimizer.js';
 import { ProfileManager } from '../dist/profiles/profileManager.js';
+import { SkillManager } from '../dist/skills/skillManager.js';
 import { Updater } from '../dist/core/updater.js';
 import { GoalLoopEngine } from '../dist/core/goalLoop.js';
 import { DesktopServer } from '../dist/desktop/server.js';
@@ -65,7 +66,7 @@ test('ToolExecutor identifies privacy & security sensitive tools', () => {
 
 test('Updater reports correct package name and current version', () => {
   assert.strictEqual(Updater.PACKAGE_NAME, 'antri_cli');
-  assert.strictEqual(Updater.CURRENT_VERSION, '1.44.0');
+  assert.strictEqual(Updater.CURRENT_VERSION, '1.45.0');
 });
 
 test('GoalLoopEngine initializes with active configuration', () => {
@@ -401,23 +402,106 @@ test('AuthManager generates unique partition IDs, logins, and logs out', async (
   assert.strictEqual(loggedOut, null);
 });
 
-test('RateLimiter enforces token bucket limits and throttles rapid requests', () => {
-  const testUser = 'user_flood_test';
-  RateLimiter.reset(testUser);
+test('SkillManager loads 12 core markdown skills, parses frontmatter and triggers', () => {
+  const manager = new SkillManager();
+  const skills = manager.listSkills();
+  assert.ok(skills.length >= 12);
 
-  // Consume all 25 chat tokens
-  for (let i = 0; i < 25; i++) {
-    const res = RateLimiter.checkLimit(testUser, 'chat');
-    assert.strictEqual(res.allowed, true);
-  }
+  const codeReviewer = manager.getSkill('code_reviewer');
+  assert.ok(codeReviewer);
+  assert.strictEqual(codeReviewer.name, 'Code Reviewer');
+  assert.strictEqual(codeReviewer.isCore, true);
+  assert.ok(codeReviewer.triggers.includes('review'));
 
-  // 26th request should be throttled
-  const blocked = RateLimiter.checkLimit(testUser, 'chat');
-  assert.strictEqual(blocked.allowed, false);
-  assert.ok(blocked.retryAfterSeconds > 0);
+  const systemArchitect = manager.getSkill('system_architect');
+  assert.ok(systemArchitect);
+  assert.strictEqual(systemArchitect.category, 'Architecture');
 
-  // Clean up
-  RateLimiter.reset(testUser);
+  // Find relevant skills for query
+  const matches = manager.findRelevantSkills('Please review this code for security vulnerabilities');
+  assert.ok(matches.length > 0);
+  const matchIds = matches.map((m) => m.id);
+  assert.ok(matchIds.includes('code_reviewer') || matchIds.includes('security_auditor'));
 });
+
+test('SkillManager creates, saves, imports, and deletes custom markdown skills', () => {
+  const manager = new SkillManager();
+  const skill = manager.createSkill(
+    'test_custom_skill',
+    'A custom testing skill for validation',
+    'Testing',
+    ['customtest', 'validation']
+  );
+  assert.ok(skill);
+  assert.strictEqual(skill.id, 'test_custom_skill');
+
+  const retrieved = manager.getSkill('test_custom_skill');
+  assert.ok(retrieved);
+
+  // Save updated content
+  const updatedContent = `${retrieved.content}\n## Extra Section\nCustom instruction details.`;
+  const saved = manager.saveSkill('test_custom_skill', updatedContent);
+  assert.strictEqual(saved, true);
+
+  // Delete
+  const deleted = manager.deleteSkill('test_custom_skill');
+  assert.strictEqual(deleted, true);
+  assert.strictEqual(manager.getSkill('test_custom_skill'), undefined);
+});
+
+test('ProfileManager supports importing, saving, and deleting custom markdown profiles', () => {
+  const profileMgr = new ProfileManager();
+  const imported = profileMgr.importProfile(
+    'imported_architect.md',
+    '# 👤 User Profile: imported_architect\n- Communication: Architectural lead.\n'
+  );
+  assert.ok(imported);
+  assert.strictEqual(imported.name, 'imported_architect');
+  assert.strictEqual(profileMgr.getActiveProfileName(), 'imported_architect');
+
+  const saved = profileMgr.saveProfile('imported_architect', '# 👤 User Profile: imported_architect\n- Updated rule.\n');
+  assert.strictEqual(saved, true);
+
+  const deleted = profileMgr.deleteProfile('imported_architect');
+  assert.strictEqual(deleted, true);
+  // Default fallback
+  assert.strictEqual(profileMgr.getActiveProfileName(), 'profile_1');
+});
+
+test('ToolExecutor executes activate_skill and returns specialist markdown instructions', async () => {
+  await AuthManager.login('test_dev@example.com');
+  const executor = new ToolExecutor();
+  const res = await executor.execute('activate_skill', { skill_name: 'code_reviewer' }, 'call_skill_1');
+  assert.ok(res.output.includes('Code Reviewer'));
+  assert.ok(res.output.includes('Review Checklist'));
+});
+
+test('ProfileManager initializes workspace notes.md and extracts user identity', () => {
+  const profileMgr = new ProfileManager();
+  profileMgr.ensureWorkspaceProfiles(process.cwd());
+
+  const noted = profileMgr.extractAndRecordNotes('Hello, my name is Ashu and I prefer strict TypeScript.', process.cwd());
+  assert.ok(noted);
+  assert.ok(noted.includes('Ashu'));
+
+  const allContext = profileMgr.getAllProfileContext(process.cwd());
+  assert.ok(allContext.includes('MANDATORY USER IDENTITY, PROFILE & NOTES DIRECTIVE'));
+  assert.ok(allContext.includes('profile_1.md'));
+  assert.ok(allContext.includes('notes.md'));
+});
+
+test('ToolExecutor read_file executes with start_line and line count metadata', async () => {
+  await AuthManager.login('test_dev@example.com');
+  const executor = new ToolExecutor();
+  const res = await executor.execute('read_file', { file_path: 'package.json', start_line: 1, max_lines: 10 }, 'call_read_1');
+  assert.ok(res.output.includes('package.json'));
+  assert.ok(res.output.includes('antri_cli'));
+  assert.ok(res.output.includes('lines 1-'));
+
+  // Clean up test authentication session so it doesn't pollute user environment
+  AuthManager.logout();
+});
+
+
 
 

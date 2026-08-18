@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 import readline from 'readline';
 import { exec } from 'child_process';
 import util from 'util';
@@ -10,6 +11,7 @@ import { WebScraper } from './scraper.js';
 import { DocCrawler } from './crawler.js';
 import { SandboxEngine } from './sandbox.js';
 import { SkillSynthesizer } from './skillSynthesizer.js';
+import { skillManager } from '../skills/skillManager.js';
 import { configManager } from './config.js';
 
 const execPromise = util.promisify(exec);
@@ -129,7 +131,7 @@ export const AVAILABLE_TOOLS: ToolDefinition[] = [
   },
   {
     name: 'read_file',
-    description: 'Read the contents of a file from the workspace.',
+    description: 'Read the contents of a file from the workspace with line range support and full text inspection.',
     parameters: {
       type: 'object',
       properties: {
@@ -137,9 +139,13 @@ export const AVAILABLE_TOOLS: ToolDefinition[] = [
           type: 'string',
           description: 'The relative or absolute path of the file to read.',
         },
+        start_line: {
+          type: 'number',
+          description: 'Optional 1-based start line number to begin reading from (default: 1).',
+        },
         max_lines: {
           type: 'number',
-          description: 'Optional maximum number of lines to return (default: 300).',
+          description: 'Optional maximum number of lines to return (default: up to 2000 lines).',
         },
       },
       required: ['file_path'],
@@ -192,6 +198,20 @@ export const AVAILABLE_TOOLS: ToolDefinition[] = [
         },
       },
       required: ['query'],
+    },
+  },
+  {
+    name: 'activate_skill',
+    description: 'Load and activate specialized expert instructions from a Markdown (.md) skill (e.g. "code_reviewer", "system_architect", "root_cause_debugger", "security_auditor", "api_designer", "database_designer", "performance_optimizer", "test_automator", "ui_ux_architect", "git_devops_specialist", "documentation_writer", "refactoring_specialist", or any custom user skill).',
+    parameters: {
+      type: 'object',
+      properties: {
+        skill_name: {
+          type: 'string',
+          description: 'The name or ID of the skill to load and activate (e.g. "code_reviewer", "system_architect", "security_auditor").',
+        },
+      },
+      required: ['skill_name'],
     },
   },
   {
@@ -399,25 +419,56 @@ export class ToolExecutor {
         }
 
         case 'read_file': {
-          const targetPath = path.resolve(this.workingDir, args.file_path);
-          if (!fs.existsSync(targetPath)) {
+          let resolvedPath = args.file_path;
+          if (resolvedPath.startsWith('~')) {
+            resolvedPath = path.join(os.homedir(), resolvedPath.slice(1));
+          } else {
+            resolvedPath = path.resolve(this.workingDir, resolvedPath);
+          }
+
+          if (!fs.existsSync(resolvedPath)) {
+            // Check if file exists relative to cwd or home
+            const cwdAlt = path.resolve(process.cwd(), args.file_path);
+            const homeAlt = path.resolve(os.homedir(), args.file_path);
+            if (fs.existsSync(cwdAlt)) {
+              resolvedPath = cwdAlt;
+            } else if (fs.existsSync(homeAlt)) {
+              resolvedPath = homeAlt;
+            } else {
+              return {
+                tool_call_id: toolCallId,
+                name,
+                output: `Error: File not found: ${args.file_path} (resolved as: ${resolvedPath})`,
+                error: true,
+              };
+            }
+          }
+
+          try {
+            const content = fs.readFileSync(resolvedPath, 'utf-8');
+            const lines = content.split('\n');
+            const totalLines = lines.length;
+            const startLine = Math.max(1, args.start_line || 1);
+            const maxLines = args.max_lines || 2000;
+            const startIndex = startLine - 1;
+            const endIndex = Math.min(totalLines, startIndex + maxLines);
+
+            const slice = lines.slice(startIndex, endIndex);
+            const truncatedNotice = endIndex < totalLines ? `\n... [${totalLines - endIndex} more lines in file]` : '';
+
             return {
               tool_call_id: toolCallId,
               name,
-              output: `Error: File not found: ${args.file_path}`,
+              output: `[File: ${args.file_path} (${totalLines} lines total, showing lines ${startLine}-${endIndex})]\n` + slice.join('\n') + truncatedNotice,
+            };
+          } catch (readErr: any) {
+            return {
+              tool_call_id: toolCallId,
+              name,
+              output: `Error reading file ${args.file_path}: ${readErr.message}`,
               error: true,
             };
           }
-          const content = fs.readFileSync(targetPath, 'utf-8');
-          const lines = content.split('\n');
-          const maxLines = args.max_lines || 300;
-          const output = lines.slice(0, maxLines).join('\n');
-          const truncatedNotice = lines.length > maxLines ? `\n... [truncated ${lines.length - maxLines} lines]` : '';
-          return {
-            tool_call_id: toolCallId,
-            name,
-            output: output + truncatedNotice,
-          };
         }
 
         case 'write_file': {
@@ -484,6 +535,24 @@ export class ToolExecutor {
             tool_call_id: toolCallId,
             name,
             output: results.length > 0 ? results.join('\n') : `No files found matching '${args.query}'`,
+          };
+        }
+
+        case 'activate_skill': {
+          const skill = skillManager.getSkill(args.skill_name);
+          if (!skill) {
+            const all = skillManager.listSkills().map((s) => s.id).join(', ');
+            return {
+              tool_call_id: toolCallId,
+              name,
+              output: `Skill '${args.skill_name}' not found. Available skills: ${all}`,
+              error: true,
+            };
+          }
+          return {
+            tool_call_id: toolCallId,
+            name,
+            output: `[ACTIVE SKILL: ${skill.name} (${skill.category})]\nAuthor: ${skill.author} · Version: ${skill.version}\n\n${skill.instructions}`,
           };
         }
 

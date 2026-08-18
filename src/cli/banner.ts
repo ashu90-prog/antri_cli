@@ -1,3 +1,4 @@
+import fs from 'fs';
 import chalk from 'chalk';
 import path from 'path';
 import os from 'os';
@@ -111,7 +112,23 @@ export function renderBanner(config: AntriConfig): void {
   const versionStr = chalk.hex('#94a3b8')(`v${config.version}`);
   const modeBadge = config.mode === 'plan' ? chalk.bgHex('#0284c7').bold.white(' PLAN MODE ') : chalk.bgHex('#7c3aed').bold.white(' VIBE MODE ');
   const permsBadge = config.alwaysAllow ? chalk.hex('#10b981')('· perms: always-allow') : chalk.hex('#f59e0b')('· perms: ask-first');
-  console.log(`${commentHash} ${codeTitle} ${versionStr}  ${modeBadge} ${permsBadge}`);
+
+  let authBadge = '';
+  try {
+    const authFile = path.join(os.homedir(), '.antri', 'auth.json');
+    if (fs.existsSync(authFile)) {
+      const authData = JSON.parse(fs.readFileSync(authFile, 'utf-8'));
+      if (authData && authData.email) {
+        authBadge = chalk.hex('#10b981')(`· ● logged in: ${authData.email}`);
+      }
+    }
+  } catch {}
+
+  if (!authBadge) {
+    authBadge = chalk.hex('#f43f5e').bold('· ○ NOT LOGGED IN (Type /login to chat)');
+  }
+
+  console.log(`${commentHash} ${codeTitle} ${versionStr}  ${modeBadge} ${permsBadge}  ${authBadge}`);
 
   // Models line
   const modelsLabel = chalk.hex('#64748b')('models:');

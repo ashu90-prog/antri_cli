@@ -152,8 +152,18 @@ export class MobileServer {
           this.activeAgent.updateConfig(configManager.get());
 
           try {
-            const fullText = await this.activeAgent.chat(userPrompt);
-            sendEvent('token', { token: fullText });
+            const fullText = await this.activeAgent.chat(
+              userPrompt,
+              (token) => {
+                sendEvent('token', { token });
+              },
+              (toolCall) => {
+                sendEvent('tool_call', {
+                  name: toolCall.function.name,
+                  arguments: toolCall.function.arguments,
+                });
+              }
+            );
             sendEvent('complete', { fullText });
             res.end();
           } catch (err: any) {

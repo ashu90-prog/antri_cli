@@ -9,6 +9,7 @@ import { FilePickerService } from '../cli/dialogs/filePicker.js';
 import { CitationEngine } from './citations.js';
 import { memoryManager } from '../memory/manager.js';
 import { profileManager } from '../profiles/profileManager.js';
+import { skillManager } from '../skills/skillManager.js';
 import { SelfDebugger } from './debugger.js';
 import { metaOptimizer } from './metaOptimizer.js';
 import { log } from '../utils/logger.js';
@@ -35,7 +36,7 @@ export class AntriAgent {
     this.toolExecutor = new ToolExecutor(newConfig.workingDir);
   }
 
-  private buildSystemPrompt(recalledMemoryContext = ''): string {
+  private buildSystemPrompt(recalledMemoryContext = '', activeSkillContext = ''): string {
     const activeProfileName = profileManager.getActiveProfileName();
     const activeProfileContent = profileManager.getActiveProfileContent();
     const mode = this.config.mode || 'vibe';
@@ -55,6 +56,12 @@ export class AntriAgent {
 - Deliver working, high-quality, production-ready code with maximum speed and precision.`;
     }
 
+    const allSkills = skillManager.listSkills();
+    const skillListSummary = allSkills
+      .slice(0, 15)
+      .map((s) => `- ${s.name} (${s.id}): ${s.description.slice(0, 80)}`)
+      .join('\n');
+
     const basePrompt = `You are ANTRI Code, an intelligent, terminal-first AI coding companion, proactive facilitator, and autonomous meta-agent.
 
 Core Behavioral Principles:
@@ -66,41 +73,47 @@ ${modeDirective}
 Tooling & Workspace Capabilities:
 1. Workspace Tools: read_file, write_file, list_dir, search_files, run_command.
 2. Sandboxed Runtime: execute_python (run safe isolated Python code scripts).
-3. Skill Synthesis: synthesize_skill (create, test, and register new permanent Python tools to ~/.agent-cli/skills/).
+3. Markdown Skills System: activate_skill (activate specialized expert instructions from .md skills).
 4. Web & Research Tools: web_search (multi-provider search without API key), scrape_url (deep readable content extraction into Markdown), and crawl_docs (recursive documentation crawler).
 5. Persistent Lifelong Memory & Multi-Profile Thinking: Adhere strictly to the active profile markdown context and project conventions.
 
+Available Skills in Ecosystem:
+${skillListSummary}
+
 Autonomous Guidelines:
+- If a task involves specialized engineering domains (e.g. code review, system design, debugging, security, API design, database modeling, performance, test automation, UX, DevOps), apply relevant skill guidelines.
 - If a user asks for complex calculation, data analysis, or scripting, use 'execute_python'.
-- If a user asks to create a reusable tool or skill, use 'synthesize_skill'.
 - If a user asks for external information, documentation, or libraries, autonomously call 'web_search', 'scrape_url', or 'crawl_docs'.
 - If a user attaches a file ([Attached File: ...]), examine the provided content directly.
 - Cite sources clearly when using web research.
 - Write clean, production-grade, typed code.`;
 
-    const profileSection = activeProfileContent
-      ? `\n\n--- Active Thinking Profile [${activeProfileName}] ---\n${activeProfileContent}\n---------------------------------------------`
-      : '';
+    const profileContext = profileManager.getAllProfileContext(this.config.workingDir);
 
     const context = `\n\nWorkspace context:
 - Current Working Directory: ${this.config.workingDir}
 - Active Model: ${this.config.model}
 - Active Mode: ${mode.toUpperCase()}
-- Active Profile: ${activeProfileName}${profileSection}${recalledMemoryContext}`;
+- Active Profile: ${activeProfileName}${profileContext}${recalledMemoryContext}${activeSkillContext}`;
 
     return basePrompt + context;
   }
 
-  public async chat(userPrompt: string): Promise<string> {
+  public async chat(
+    userPrompt: string,
+    onStreamToken?: (token: string) => void,
+    onToolCall?: (toolCall: ToolCall) => void
+  ): Promise<string> {
     const { AuthManager } = await import('../cloud/auth.js');
     const { RateLimiter } = await import('../security/rateLimiter.js');
 
-    const currentUser = AuthManager.getCurrentUser() || {
-      email: 'local_developer@antri.local',
-      userId: 'local_developer',
-      provider: 'email',
-      loggedInAt: new Date().toISOString(),
-    };
+    if (!AuthManager.isAuthenticated()) {
+      const authRequiredMsg = `🔒 **AUTHENTICATION REQUIRED**\n\nYou must be logged in to chat with ANTRI, execute tools, and synchronize profiles across devices.\n\n👉 Please type \`/login <your-email>\` (or \`/register <email> <password>\`) to proceed.`;
+      console.log(chalk.hex('#f43f5e')(authRequiredMsg));
+      return authRequiredMsg;
+    }
+
+    const currentUser = AuthManager.getCurrentUser()!;
 
     const rateCheck = RateLimiter.checkLimit(currentUser.userId, 'chat');
     if (!rateCheck.allowed) {
@@ -111,15 +124,26 @@ Autonomous Guidelines:
 
     const startTime = Date.now();
     const activeProfileName = profileManager.getActiveProfileName();
-    const activeProfileContent = profileManager.getActiveProfileContent();
 
-    // 1. Extract Real-Time Insights & Thinking Style Preferences into Profile
-    const notedInsight = profileManager.extractAndRecordNotes(userPrompt);
+    // 1. Extract Real-Time Insights, Identity & Thinking Style Preferences into Profile & Notes
+    const notedInsight = profileManager.extractAndRecordNotes(userPrompt, this.config.workingDir);
     if (notedInsight) {
-      console.log(chalk.hex('#38bdf8')(`📝 Noted in profile [${activeProfileName}]: "${notedInsight}"`));
+      console.log(chalk.hex('#38bdf8')(`📝 Recorded in user profile & notes.md: "${notedInsight}"`));
+      await memoryManager.learn(notedInsight, 'lesson_learned', this.config.workingDir);
     }
 
-    // 2. Autonomous Self-Recall into Persistent Memory Hierarchy
+    // 2. Check for Relevant or Triggered Markdown Skills (.md)
+    let skillContext = '';
+    const relevantSkills = skillManager.findRelevantSkills(userPrompt);
+    if (relevantSkills.length > 0) {
+      const skillNames = relevantSkills.map((s) => chalk.bold.cyan(s.name)).join(', ');
+      console.log(chalk.hex('#f59e0b')(`⚡ Activated Skill(s): ${skillNames}`));
+      skillContext = `\n\n--- ⚡ ACTIVATED SPECIALIST SKILL INSTRUCTIONS ---\n` +
+        relevantSkills.map((s) => `### Skill: ${s.name} (${s.category})\n${s.instructions}`).join('\n\n') +
+        `\n---------------------------------------------------`;
+    }
+
+    // 3. Autonomous Self-Recall into Persistent Memory Hierarchy
     const geminiKey = this.config.apiKeys.gemini || process.env.GEMINI_API_KEY;
     const { contextText, recalled } = await memoryManager.selfRecall(
       userPrompt,
@@ -132,7 +156,7 @@ Autonomous Guidelines:
       console.log(chalk.hex('#818cf8')(`🧠 Recalled ${matchCount} relevant memory item(s) from persistent store`));
     }
 
-    // 3. Resolve any @file attachments in userPrompt
+    // 4. Resolve any @file attachments in userPrompt
     const { enhancedPrompt, attachedFiles } = FilePickerService.extractAndReadAttachments(
       userPrompt,
       this.config.workingDir
@@ -142,15 +166,15 @@ Autonomous Guidelines:
       console.log(chalk.hex('#64748b')(`📎 Attached file(s): ${attachedFiles.map((f) => chalk.cyan(f)).join(', ')}`));
     }
 
-    // 4. Add user message to history
+    // 5. Add user message to history
     this.history.addMessage({
       role: 'user',
       content: enhancedPrompt,
     });
 
-    const response = await this.runAgentLoop(0, contextText);
+    const response = await this.runAgentLoop(0, contextText, skillContext, onStreamToken, onToolCall);
 
-    // 5. Record interaction into persistent episodic memory & meta-optimizer
+    // 6. Record interaction into persistent episodic memory & meta-optimizer
     memoryManager.recordInteraction(userPrompt, response);
     const duration = Date.now() - startTime;
     metaOptimizer.recordQuerySuccess(duration);
@@ -163,14 +187,20 @@ Autonomous Guidelines:
     return response;
   }
 
-  private async runAgentLoop(depth = 0, memoryContext = ''): Promise<string> {
+  private async runAgentLoop(
+    depth = 0,
+    memoryContext = '',
+    skillContext = '',
+    onStreamToken?: (token: string) => void,
+    onToolCall?: (toolCall: ToolCall) => void
+  ): Promise<string> {
     if (depth > 6) {
       log.warn('Max agent tool iteration depth reached.');
       return '';
     }
 
     const provider = createProvider(this.config);
-    const systemPrompt = this.buildSystemPrompt(memoryContext);
+    const systemPrompt = this.buildSystemPrompt(memoryContext, skillContext);
 
     const messagesWithSystem: ChatMessage[] = [
       { role: 'system', content: systemPrompt },
@@ -204,6 +234,9 @@ Autonomous Guidelines:
               hasStreamedTokens = true;
             }
             TerminalRenderer.printToken(token);
+            if (onStreamToken) {
+              onStreamToken(token);
+            }
           },
           onToolCall: (toolCall: ToolCall) => {
             if (spinner) {
@@ -211,6 +244,9 @@ Autonomous Guidelines:
               spinner = null;
             }
             pendingToolCalls.push(toolCall);
+            if (onToolCall) {
+              onToolCall(toolCall);
+            }
           },
         }
       );
@@ -284,7 +320,7 @@ Autonomous Guidelines:
         }
 
         // Loop back to let assistant interpret tool results
-        return await this.runAgentLoop(depth + 1, memoryContext);
+        return await this.runAgentLoop(depth + 1, memoryContext, skillContext, onStreamToken, onToolCall);
       }
 
       return fullResponse;

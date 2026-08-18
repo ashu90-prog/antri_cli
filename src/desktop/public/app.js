@@ -8,6 +8,12 @@ let activePaletteMatches = [];
 let paletteSelectedIndex = 0;
 let activePaletteMode = null; // 'slash' | 'file' | null
 
+// Skills State
+let allSkillsList = [];
+let selectedSkillId = null;
+let currentSkillCategory = 'all';
+let skillSearchQuery = '';
+
 // Initialize on Load
 document.addEventListener('DOMContentLoaded', async () => {
   await loadStatus();
@@ -16,6 +22,23 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadSkills();
   await loadMemory();
 });
+
+// Toast Notification
+function showToast(message, isError = false) {
+  let toast = document.getElementById('antri-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'antri-toast';
+    toast.className = 'antri-toast';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = message;
+  toast.style.background = isError ? '#991b1b' : '#1c1917';
+  toast.classList.add('show');
+  setTimeout(() => {
+    toast.classList.remove('show');
+  }, 2500);
+}
 
 // Load System Status & Config
 async function loadStatus() {
@@ -369,7 +392,7 @@ function handleInputKey(event) {
   }
 }
 
-// Chat Prompt Submission with SSE Streaming
+// Chat Prompt Submission with Real-Time Word-by-Word Side-by-Side Streaming
 async function submitPrompt() {
   const input = document.getElementById('prompt-input');
   let prompt = input.value.trim();
@@ -408,7 +431,7 @@ async function submitPrompt() {
 
   const sendBtn = document.getElementById('send-btn');
   sendBtn.disabled = true;
-  sendBtn.textContent = 'Thinking...';
+  sendBtn.textContent = 'Streaming...';
 
   try {
     const response = await fetch('/api/chat', {
@@ -425,7 +448,7 @@ async function submitPrompt() {
       const { done, value } = await reader.read();
       if (done) break;
 
-      const chunk = decoder.decode(value);
+      const chunk = decoder.decode(value, { stream: true });
       const lines = chunk.split('\n');
 
       for (const line of lines) {
@@ -440,8 +463,9 @@ async function submitPrompt() {
               // Tool call badge
               const toolBadge = document.createElement('div');
               toolBadge.className = 'tool-badge-pill';
-              toolBadge.textContent = `Tool: ${data.name}`;
+              toolBadge.textContent = `• Tool: ${data.name}`;
               assistantMsgEl.insertBefore(toolBadge, contentEl);
+              scrollToBottom();
             }
           } catch (e) {}
         }
@@ -569,7 +593,9 @@ async function startGoalLoop() {
   }
 }
 
-// Profile Management
+// ==========================================
+// Thinking Profile Management
+// ==========================================
 async function loadProfiles() {
   try {
     const res = await fetch('/api/profiles');
@@ -625,6 +651,31 @@ async function createProfile() {
 
   input.value = '';
   await loadProfiles();
+  showToast(`Profile '${name}' created.`);
+}
+
+async function handleProfileImport(event) {
+  const files = event.target.files;
+  if (!files || files.length === 0) return;
+
+  for (const file of files) {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const content = e.target.result;
+      const res = await fetch('/api/profile/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: file.name, content }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        await loadProfiles();
+        showToast(`Profile '${file.name}' imported successfully.`);
+      }
+    };
+    reader.readAsText(file);
+  }
+  event.target.value = '';
 }
 
 async function saveActiveProfile() {
@@ -634,50 +685,286 @@ async function saveActiveProfile() {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ content }),
   });
-  alert('Profile saved.');
+  showToast('Profile saved successfully.');
+}
+
+async function pushProfilesToCloud() {
+  try {
+    showToast('Pushing profiles to Google Cloud Firestore...');
+    const res = await fetch('/api/profile/push', { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      showToast(`Pushed ${data.count} profile(s) to Google Cloud Firestore.`);
+    } else {
+      showToast(`Push failed: ${data.error || 'Check network connection'}`, true);
+    }
+  } catch (err) {
+    showToast(`Push failed: ${err.message}`, true);
+  }
+}
+
+async function pullProfilesFromCloud() {
+  try {
+    showToast('Pulling profiles from Google Cloud Firestore...');
+    const res = await fetch('/api/profile/pull', { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      await loadProfiles();
+      showToast(`Pulled ${data.count} profile(s) from Google Cloud Firestore.`);
+    } else {
+      showToast(`Pull failed: ${data.error || 'Check network connection'}`, true);
+    }
+  } catch (err) {
+    showToast(`Pull failed: ${err.message}`, true);
+  }
+}
+
+function exportActiveProfile() {
+  const activeTitle = document.getElementById('active-profile-title').textContent || 'profile.md';
+  const content = document.getElementById('profile-editor').value;
+  const blob = new Blob([content], { type: 'text/markdown;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.setAttribute('href', url);
+  link.setAttribute('download', activeTitle);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+async function deleteActiveProfile() {
+  const activeTitle = (document.getElementById('active-profile-title').textContent || '').replace('.md', '');
+  if (activeTitle === 'profile_1') {
+    alert('Cannot delete default profile_1.');
+    return;
+  }
+  if (!confirm(`Are you sure you want to delete profile '${activeTitle}.md'?`)) return;
+
+  const res = await fetch('/api/profile/delete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: activeTitle }),
+  });
+  const data = await res.json();
+  if (data.success) {
+    await loadProfiles();
+    showToast(`Profile '${activeTitle}' deleted.`);
+  }
 }
 
 async function onProfileChange(name) {
   await selectProfile(name);
 }
 
-// Skills & Memory Loaders
+// ==========================================
+// Markdown Skills Studio Management
+// ==========================================
 async function loadSkills() {
   try {
     const res = await fetch('/api/skills');
     const data = await res.json();
-    const grid = document.getElementById('skills-catalog-grid');
-    grid.innerHTML = '';
+    allSkillsList = data.markdownSkills || [];
+    renderSkillList();
 
-    data.allTools.forEach((t) => {
-      const card = document.createElement('div');
-      card.className = 'skill-card';
-      card.innerHTML = `
-        <h4>${t.name}</h4>
-        <p>${t.description}</p>
-        <button class="skill-btn" onclick="testSkill('${t.name}')">Dry-Run Skill</button>
-      `;
-      grid.appendChild(card);
-    });
+    if (!selectedSkillId && allSkillsList.length > 0) {
+      selectSkill(allSkillsList[0].id);
+    }
   } catch (err) {
     console.error('Failed to load skills:', err);
   }
 }
 
-async function testSkill(skillName) {
-  try {
-    const res = await fetch('/api/skill/test', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ skillName, args: {} }),
-    });
-    const data = await res.json();
-    alert(`Skill '${skillName}' Output:\n${data.output || 'Execution complete'}`);
-  } catch (err) {
-    alert(`Execution failed: ${err.message}`);
+function setSkillCategory(category) {
+  currentSkillCategory = category;
+  document.querySelectorAll('.category-pill').forEach((btn) => {
+    btn.classList.toggle('active', btn.textContent.toLowerCase() === category.toLowerCase());
+  });
+  renderSkillList();
+}
+
+function filterSkills(query) {
+  skillSearchQuery = (query || '').toLowerCase().trim();
+  renderSkillList();
+}
+
+function renderSkillList() {
+  const listContainer = document.getElementById('skills-catalog-list');
+  if (!listContainer) return;
+  listContainer.innerHTML = '';
+
+  let filtered = allSkillsList;
+  if (currentSkillCategory !== 'all') {
+    if (currentSkillCategory === 'Core') {
+      filtered = filtered.filter((s) => s.isCore);
+    } else if (currentSkillCategory === 'Custom') {
+      filtered = filtered.filter((s) => !s.isCore);
+    } else {
+      filtered = filtered.filter((s) => s.category && s.category.toLowerCase() === currentSkillCategory.toLowerCase());
+    }
+  }
+
+  if (skillSearchQuery) {
+    filtered = filtered.filter(
+      (s) =>
+        s.name.toLowerCase().includes(skillSearchQuery) ||
+        s.description.toLowerCase().includes(skillSearchQuery) ||
+        (s.triggers && s.triggers.some((t) => t.includes(skillSearchQuery)))
+    );
+  }
+
+  if (filtered.length === 0) {
+    listContainer.innerHTML = '<div class="empty-state">No skills match the search criteria.</div>';
+    return;
+  }
+
+  filtered.forEach((skill) => {
+    const card = document.createElement('div');
+    card.className = `skill-item-card ${skill.id === selectedSkillId ? 'active' : ''}`;
+    card.innerHTML = `
+      <div class="skill-item-header">
+        <span class="skill-item-name">${skill.name}</span>
+        <span class="skill-type-tag ${skill.isCore ? 'core' : 'custom'}">${skill.isCore ? 'Core' : 'Custom'}</span>
+      </div>
+      <div class="skill-item-desc">${skill.description}</div>
+      <div class="skill-item-footer">
+        <span class="skill-category-badge">${skill.category}</span>
+        <span class="skill-version-tag">v${skill.version}</span>
+      </div>
+    `;
+    card.onclick = () => selectSkill(skill.id);
+    listContainer.appendChild(card);
+  });
+}
+
+function selectSkill(skillId) {
+  selectedSkillId = skillId;
+  const skill = allSkillsList.find((s) => s.id === skillId);
+  if (!skill) return;
+
+  document.getElementById('active-skill-title').textContent = `${skill.name} (${skill.id}.md)`;
+  document.getElementById('active-skill-meta').textContent = `Category: ${skill.category} · Author: ${skill.author} · Version: ${skill.version} · Triggers: ${skill.triggers.join(', ') || 'Auto'}`;
+  document.getElementById('skill-editor').value = skill.content || skill.instructions;
+
+  // Toggle Delete button (allow delete only on custom skills)
+  const deleteBtn = document.getElementById('btn-delete-skill');
+  if (deleteBtn) {
+    deleteBtn.style.display = skill.isCore ? 'none' : 'inline-flex';
+  }
+
+  renderSkillList();
+}
+
+async function saveCurrentSkill() {
+  if (!selectedSkillId) return;
+  const content = document.getElementById('skill-editor').value;
+
+  const res = await fetch('/api/skill/save', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id: selectedSkillId, content }),
+  });
+  const data = await res.json();
+  if (data.success) {
+    await loadSkills();
+    selectSkill(selectedSkillId);
+    showToast('Skill markdown saved successfully.');
   }
 }
 
+async function createNewSkillPrompt() {
+  const name = prompt('Enter name for the new skill (e.g., "fastapi_specialist"):');
+  if (!name) return;
+  const description = prompt('Enter a short description for what this skill does:', 'Specialist guidelines and heuristics.');
+
+  const res = await fetch('/api/skill/create', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, description, category: 'Custom' }),
+  });
+  const data = await res.json();
+  if (data.success && data.skill) {
+    await loadSkills();
+    selectSkill(data.skill.id);
+    showToast(`Skill '${data.skill.name}' created!`);
+  }
+}
+
+async function handleSkillImport(event) {
+  const files = event.target.files;
+  if (!files || files.length === 0) return;
+
+  for (const file of files) {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const content = e.target.result;
+      const res = await fetch('/api/skill/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: file.name, content }),
+      });
+      const data = await res.json();
+      if (data.success && data.skill) {
+        await loadSkills();
+        selectSkill(data.skill.id);
+        showToast(`Skill '${data.skill.name}' imported successfully.`);
+      }
+    };
+    reader.readAsText(file);
+  }
+  event.target.value = '';
+}
+
+function exportCurrentSkill() {
+  if (!selectedSkillId) return;
+  const skill = allSkillsList.find((s) => s.id === selectedSkillId);
+  const content = document.getElementById('skill-editor').value;
+  const filename = `${skill ? skill.id : 'skill'}.md`;
+
+  const blob = new Blob([content], { type: 'text/markdown;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.setAttribute('href', url);
+  link.setAttribute('download', filename);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+async function deleteCurrentSkill() {
+  if (!selectedSkillId) return;
+  const skill = allSkillsList.find((s) => s.id === selectedSkillId);
+  if (skill && skill.isCore) {
+    alert('Cannot delete built-in core skills.');
+    return;
+  }
+  if (!confirm(`Are you sure you want to delete skill '${skill ? skill.name : selectedSkillId}'?`)) return;
+
+  const res = await fetch('/api/skill/delete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id: selectedSkillId }),
+  });
+  const data = await res.json();
+  if (data.success) {
+    selectedSkillId = null;
+    await loadSkills();
+    showToast('Skill deleted.');
+  }
+}
+
+function activateCurrentSkillInChat() {
+  if (!selectedSkillId) return;
+  const skill = allSkillsList.find((s) => s.id === selectedSkillId);
+  if (!skill) return;
+
+  showTab('chat');
+  const input = document.getElementById('prompt-input');
+  input.value = `[Apply Skill: ${skill.name}] `;
+  input.focus();
+  showToast(`Skill '${skill.name}' loaded into prompt.`);
+}
+
+// Memory Loader
 async function loadMemory() {
   try {
     const res = await fetch('/api/memory');

@@ -26,9 +26,7 @@ class AuthService {
 
   static String generateUserId(String email) {
     final clean = email.toLowerCase().trim();
-    final prefix = clean.split('@')[0].replaceAll(RegExp(r'[^a-z0-9_-]'), '_');
-    final hash = clean.hashCode.toRadixString(16).padLeft(8, '0');
-    return '${prefix}_$hash';
+    return clean.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
   }
 
   Future<UserAccount?> getCurrentUser() async {

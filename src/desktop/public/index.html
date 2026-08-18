@@ -15,7 +15,7 @@
   <header class="app-header">
     <div class="brand-zone">
       <span class="logo-mark">ANTRI</span>
-      <span class="version-tag">v1.44.0</span>
+      <span class="version-tag">v1.45.0</span>
     </div>
 
     <!-- Mode Toggle -->
@@ -269,11 +269,15 @@
         <div class="panel-header">
           <div>
             <h2>Thinking Profile Studio</h2>
-            <p>Manage user preferences, coding styles, and automatically extracted notes.</p>
+            <p>Manage user preferences, coding styles, and automatically extracted notes in <code>~/.antri/profiles/</code>.</p>
           </div>
           <div class="debate-controls">
+            <input type="file" id="profile-import-input" accept=".md,.txt" style="display:none;" onchange="handleProfileImport(event)" />
             <input type="text" id="new-profile-name" placeholder="New profile name (e.g. backend_architect)" />
-            <button class="action-btn" onclick="createProfile()">Create Profile</button>
+            <button class="action-btn" onclick="createProfile()">+ Create</button>
+            <button class="action-btn-secondary" onclick="document.getElementById('profile-import-input').click()">📁 Import .md</button>
+            <button class="action-btn-secondary" onclick="pushProfilesToCloud()">☁️ Push</button>
+            <button class="action-btn-secondary" onclick="pullProfilesFromCloud()">☁️ Pull</button>
           </div>
         </div>
 
@@ -283,25 +287,68 @@
           </div>
           <div class="profile-editor-container">
             <div class="editor-header">
-              <h3 id="active-profile-title">profile_1.md</h3>
-              <button class="save-btn" onclick="saveActiveProfile()">Save Profile</button>
+              <div>
+                <h3 id="active-profile-title">profile_1.md</h3>
+                <span class="editor-subtitle">Editing active thinking profile instructions</span>
+              </div>
+              <div class="editor-action-group">
+                <button class="btn-sm-action" onclick="exportActiveProfile()">⬇️ Export</button>
+                <button class="btn-sm-action btn-danger" onclick="deleteActiveProfile()">🗑️ Delete</button>
+                <button class="save-btn" onclick="saveActiveProfile()">💾 Save Profile</button>
+              </div>
             </div>
             <textarea id="profile-editor" class="profile-textarea" placeholder="Profile markdown content..."></textarea>
           </div>
         </div>
       </section>
 
-      <!-- TAB 5: Dynamic Skills -->
+      <!-- TAB 5: Markdown Skills Studio -->
       <section id="tab-skills" class="tab-panel">
         <div class="panel-header">
           <div>
-            <h2>Dynamic Skill Studio</h2>
-            <p>Tools synthesized autonomously by the agent in <code>~/.agent-cli/skills/</code>.</p>
+            <h2>Markdown (.md) Skill Studio</h2>
+            <p>Specialist capability directives loaded from <code>~/.antri/skills/</code>. Add or import new skills as Markdown files.</p>
+          </div>
+          <div class="debate-controls">
+            <input type="file" id="skill-import-input" accept=".md,.txt" style="display:none;" onchange="handleSkillImport(event)" />
+            <input type="text" id="skill-search-input" placeholder="Search skills by name, category, or trigger..." oninput="filterSkills(this.value)" />
+            <button class="action-btn" onclick="createNewSkillPrompt()">+ Create Skill</button>
+            <button class="action-btn-secondary" onclick="document.getElementById('skill-import-input').click()">📁 Import .md</button>
           </div>
         </div>
 
-        <div class="skills-grid" id="skills-catalog-grid">
-          <!-- Populated dynamically -->
+        <div class="skill-studio-layout">
+          <!-- Left: Skills List & Filters -->
+          <div class="skill-list-sidebar">
+            <div class="skill-category-filters" id="skill-category-filters">
+              <button class="category-pill active" onclick="setSkillCategory('all')">All</button>
+              <button class="category-pill" onclick="setSkillCategory('Core')">Core</button>
+              <button class="category-pill" onclick="setSkillCategory('Custom')">Custom</button>
+              <button class="category-pill" onclick="setSkillCategory('Engineering')">Engineering</button>
+              <button class="category-pill" onclick="setSkillCategory('Architecture')">Architecture</button>
+              <button class="category-pill" onclick="setSkillCategory('Security')">Security</button>
+            </div>
+            <div class="skill-items-container" id="skills-catalog-list">
+              <!-- Populated dynamically -->
+            </div>
+          </div>
+
+          <!-- Right: Live Skill Markdown Editor -->
+          <div class="skill-editor-container">
+            <div class="editor-header">
+              <div>
+                <h3 id="active-skill-title">Select a Skill</h3>
+                <span id="active-skill-meta" class="editor-subtitle">Click any skill on the left to inspect or edit instructions</span>
+              </div>
+              <div class="editor-action-group">
+                <button class="btn-sm-action" id="btn-activate-skill" onclick="activateCurrentSkillInChat()">⚡ Activate in Chat</button>
+                <button class="btn-sm-action" id="btn-export-skill" onclick="exportCurrentSkill()">⬇️ Export</button>
+                <button class="btn-sm-action btn-danger" id="btn-delete-skill" onclick="deleteCurrentSkill()">🗑️ Delete</button>
+                <button class="save-btn" id="btn-save-skill" onclick="saveCurrentSkill()">💾 Save Skill</button>
+              </div>
+            </div>
+            <textarea id="skill-editor" class="profile-textarea" placeholder="Skill markdown content (# Skill Title, instructions, heuristics...)" spellcheck="false"></textarea>
+          </div>
         </div>
       </section>
 

@@ -123,13 +123,23 @@ class _ProfilesViewState extends State<ProfilesView> with SingleTickerProviderSt
     );
 
     if (cloudProfs.isNotEmpty) {
-      _profiles.addAll(cloudProfs);
+      setState(() {
+        _profiles.addAll(cloudProfs);
+        if (cloudProfs.containsKey(_activeProfile)) {
+          _editorController.text = cloudProfs[_activeProfile]!.content;
+        } else {
+          _activeProfile = cloudProfs.keys.first;
+          _editorController.text = cloudProfs[_activeProfile]!.content;
+          widget.config.activeProfile = _activeProfile;
+          widget.storageService.saveConfig(widget.config);
+        }
+      });
       await widget.storageService.saveProfiles(_profiles, widget.config.syncKey);
-      _editorController.text = _profiles[_activeProfile]?.content ?? '';
+      widget.onProfileChanged();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Pulled ${cloudProfs.length} profiles from Google Cloud Firestore.'),
+            content: Text('Pulled ${cloudProfs.length} profile(s) from Google Cloud Firestore.'),
             backgroundColor: const Color(0xFF15803D),
           ),
         );

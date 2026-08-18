@@ -18,6 +18,7 @@ import { MobileServer } from '../mobile/server.js';
 import { memoryManager } from '../memory/manager.js';
 import { metaOptimizer } from '../core/metaOptimizer.js';
 import { SkillSynthesizer } from '../core/skillSynthesizer.js';
+import { skillManager } from '../skills/skillManager.js';
 import { profileManager } from '../profiles/profileManager.js';
 
 export class ShortcutHandler {
@@ -57,6 +58,26 @@ export class ShortcutHandler {
       return { handled: true };
     }
 
+    // /push or /profile push (Direct Cloud Firestore Push)
+    if (trimmed === '/push' || trimmed === '/profile push' || trimmed === '/profiles push') {
+      const { FirestoreSyncManager } = await import('../cloud/firestore.js');
+      log.info('Pushing profiles & notes to Google Cloud Firestore...');
+      const res = await FirestoreSyncManager.pushToFirestore();
+      if (res.success) log.success(`Successfully pushed ${res.count} profile(s) and notes to cloud.`);
+      else log.error(`Sync error: ${res.error}`);
+      return { handled: true };
+    }
+
+    // /pull or /profile pull (Direct Cloud Firestore Pull)
+    if (trimmed === '/pull' || trimmed === '/profile pull' || trimmed === '/profiles pull') {
+      const { FirestoreSyncManager } = await import('../cloud/firestore.js');
+      log.info('Pulling profiles & notes from Google Cloud Firestore...');
+      const res = await FirestoreSyncManager.pullFromFirestore();
+      if (res.success) log.success(`Successfully pulled ${res.count} profile(s) and notes from cloud.`);
+      else log.error(`Pull error: ${res.error}`);
+      return { handled: true };
+    }
+
     // /sync (Google Cloud Firestore sync)
     if (trimmed === '/sync' || trimmed.startsWith('/sync')) {
       const { FirestoreSyncManager } = await import('../cloud/firestore.js');
@@ -78,6 +99,7 @@ export class ShortcutHandler {
         console.log(`• Project ID:  ${cfg.projectId ? chalk.green(cfg.projectId) : chalk.yellow('Not set (/sync config <project-id>)')}`);
         console.log(`• Sync Key:    ${chalk.cyan(cfg.syncKey)}`);
         console.log(`• Last Synced: ${chalk.gray(cfg.lastSynced || 'Never')}`);
+        console.log(chalk.hex('#94a3b8')('Tip: Type "/push" to upload profiles, or "/pull" to download profiles.'));
       }
       return { handled: true };
     }
@@ -222,28 +244,58 @@ export class ShortcutHandler {
       return { handled: true };
     }
 
-    // /skills or /skill
-    if (trimmed === '/skills' || trimmed === '/skill') {
+    // /skills or /skill [name]
+    if (trimmed === '/skills' || trimmed.startsWith('/skill')) {
+      const parts = trimmed.split(' ');
+      const sub = parts[1];
+
+      if (sub && sub !== 'list') {
+        const skill = skillManager.getSkill(sub);
+        if (skill) {
+          console.log(chalk.bold.hex('#c084fc')(`\n⚡ Skill: ${skill.name} [${skill.category}] (${skill.isCore ? 'Core' : 'Custom'})`));
+          console.log(chalk.hex('#64748b')(`File: ${skill.filePath} · Version: ${skill.version} · Author: ${skill.author}`));
+          console.log(chalk.hex('#f59e0b')(`Triggers: ${skill.triggers.join(', ') || 'None'}`));
+          console.log(chalk.hex('#334155')('─'.repeat(72)));
+          console.log(chalk.hex('#cbd5e1')(skill.instructions));
+          console.log(chalk.hex('#334155')('─'.repeat(72)));
+          console.log(chalk.green(`✓ Skill instructions loaded. You can chat directly to apply this skill.\n`));
+          return { handled: true };
+        } else {
+          log.warn(`Skill '${sub}' not found. Showing all available skills:\n`);
+        }
+      }
+
+      const mdSkills = skillManager.listSkills();
       const allTools = getAllActiveTools();
-      const dynamic = SkillSynthesizer.loadSynthesizedSkills();
-      console.log(chalk.bold.hex('#c084fc')('\n🛠️ Active Agent Tools & Dynamic Skills'));
+
+      console.log(chalk.bold.hex('#c084fc')('\n⚡ ANTRI Markdown (.md) Skills & Tools Ecosystem'));
       console.log(chalk.hex('#334155')('─'.repeat(72)));
-      console.log(chalk.bold.hex('#a5b4fc')('Built-in Standard & Autonomous Tools:'));
+      console.log(chalk.bold.hex('#a5b4fc')(`Specialist Markdown Skills (${mdSkills.length} available in ~/.antri/skills/):`));
+
+      const core = mdSkills.filter((s) => s.isCore);
+      const custom = mdSkills.filter((s) => !s.isCore);
+
+      console.log(chalk.hex('#38bdf8')('Core Specialist Skills:'));
+      core.forEach((s) => {
+        console.log(`• ${chalk.cyan(s.name.padEnd(26))} [${s.category}] ${chalk.hex('#94a3b8')(s.description.slice(0, 60))}`);
+      });
+
+      if (custom.length > 0) {
+        console.log(chalk.hex('#f59e0b')('\nCustom User Skills (.md):'));
+        custom.forEach((s) => {
+          console.log(`✨ ${chalk.green(s.name.padEnd(26))} [${s.category}] ${chalk.hex('#e2e8f0')(s.description.slice(0, 60))}`);
+        });
+      }
+
+      console.log(chalk.bold.hex('#a5b4fc')(`\nStandard Workspace Tools (${allTools.length}):`));
       allTools.forEach((t) => {
         if (!t.description.startsWith('[Custom')) {
-          console.log(`• ${chalk.cyan(t.name.padEnd(18))} ${chalk.hex('#94a3b8')(t.description)}`);
+          console.log(`• ${chalk.hex('#64748b')(t.name.padEnd(26))} ${chalk.hex('#64748b')(t.description.slice(0, 60))}`);
         }
       });
 
-      console.log(chalk.bold.hex('#a5b4fc')(`\nDynamically Synthesized Skills (${dynamic.length}):`));
-      if (dynamic.length === 0) {
-        console.log(chalk.hex('#64748b')('  (No custom skills synthesized yet. The agent creates them autonomously using synthesize_skill)'));
-      } else {
-        dynamic.forEach((s) => {
-          console.log(`✨ ${chalk.green(s.manifest.name.padEnd(18))} ${chalk.hex('#e2e8f0')(s.manifest.description)} (${s.manifest.language})`);
-        });
-      }
       console.log(chalk.hex('#334155')('─'.repeat(72)));
+      console.log(chalk.hex('#94a3b8')('Tip: Type /skill <name> to view full markdown instructions, or add new .md files to ~/.antri/skills/'));
       console.log();
       return { handled: true };
     }

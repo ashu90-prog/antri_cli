@@ -16,6 +16,25 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Build Flutter Release APK
+        working-directory: antri_flutter
+        run: |
+          flutter pub get
+          flutter build apk --release
+          cp build/app/outputs/flutter-apk/app-release.apk ../antri-release.apk
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -25,6 +44,7 @@ jobs:
           prerelease: false
           files: |
             antri-release.apk
+            antri_flutter/build/app/outputs/flutter-apk/app-release.apk
           body: |
             # 🚀 ANTRI Code Release ${{ github.ref_name }}
 

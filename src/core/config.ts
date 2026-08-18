@@ -7,8 +7,8 @@ import { AntriConfig, ProviderType, DebateDepth, AgentMode } from '../types.js';
 // Load .env if present
 dotenv.config();
 
-const DEFAULT_CONFIG: AntriConfig = {
-  version: '1.44.0',
+export const DEFAULT_CONFIG: AntriConfig = {
+  version: '1.45.0',
   provider: 'deepseek',
   model: 'deepseek-v4-flash-(latest)',
   mode: 'vibe',
@@ -56,11 +56,14 @@ export class ConfigManager {
   private loadConfig(): AntriConfig {
     let merged = { ...DEFAULT_CONFIG };
 
+    let hasSavedProvider = false;
+
     // 1. Try to load global ~/.antri/config.json
     if (fs.existsSync(GLOBAL_CONFIG_FILE)) {
       try {
         const raw = fs.readFileSync(GLOBAL_CONFIG_FILE, 'utf-8');
         const parsed = JSON.parse(raw);
+        if (parsed.provider) hasSavedProvider = true;
         merged = { ...merged, ...parsed };
       } catch {
         // Ignore read errors
@@ -72,6 +75,7 @@ export class ConfigManager {
       try {
         const raw = fs.readFileSync(LOCAL_CONFIG_FILE, 'utf-8');
         const parsed = JSON.parse(raw);
+        if (parsed.provider) hasSavedProvider = true;
         merged = { ...merged, ...parsed };
       } catch {
         // Ignore read errors
@@ -81,8 +85,8 @@ export class ConfigManager {
     // Always enforce the actual package runtime version (never stale from saved config)
     merged.version = DEFAULT_CONFIG.version;
 
-    // Auto-detect provider if default has no key but another does
-    if (!merged.apiKeys.deepseek && !process.env.DEEPSEEK_API_KEY) {
+    // Only auto-detect if the user has NOT previously chosen and saved a provider
+    if (!hasSavedProvider && !merged.apiKeys.deepseek && !process.env.DEEPSEEK_API_KEY) {
       if (merged.apiKeys.openai || process.env.OPENAI_API_KEY) {
         merged.provider = 'openai';
         merged.model = 'gpt-4o';

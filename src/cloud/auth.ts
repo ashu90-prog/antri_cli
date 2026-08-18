@@ -70,9 +70,7 @@ export class AuthManager {
 
   public static generateUserId(email: string): string {
     const clean = email.toLowerCase().trim();
-    const hash = crypto.createHash('sha256').update(clean).digest('hex').slice(0, 16);
-    const prefix = clean.split('@')[0].replace(/[^a-z0-9_-]/g, '_');
-    return `${prefix}_${hash}`;
+    return clean.replace(/[^a-z0-9_]/g, '_');
   }
 
   /**

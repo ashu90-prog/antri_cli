@@ -45,6 +45,15 @@ export async function startInteractiveSession(initialAgent?: AntriAgent): Promis
         continue;
       }
 
+      // Check authentication requirement before processing chat
+      const { AuthManager } = await import('../cloud/auth.js');
+      if (!AuthManager.isAuthenticated()) {
+        console.log(chalk.bold.hex('#f43f5e')('\n🔒 AUTHENTICATION REQUIRED'));
+        console.log(chalk.hex('#cbd5e1')('You must be logged into an ANTRI account to chat, execute tools, and synchronize profiles across devices.'));
+        console.log(chalk.hex('#38bdf8')('👉 Please log in by typing: /login <your-email> (or /register <email> <password>)\n'));
+        continue;
+      }
+
       // Output single user prompt badge pill for chat queries
       promptBoxReader.printSubmittedPrompt(trimmed);
 

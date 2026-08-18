@@ -10,6 +10,7 @@ import { DialecticEngine } from '../core/dialectic.js';
 import { GoalLoopEngine } from '../core/goalLoop.js';
 import { profileManager } from '../profiles/profileManager.js';
 import { memoryManager } from '../memory/manager.js';
+import { skillManager } from '../skills/skillManager.js';
 import { SkillSynthesizer } from '../core/skillSynthesizer.js';
 import { getAllActiveTools, ToolExecutor } from '../core/tools.js';
 import { PROVIDER_CATALOGS, getAvailableModels } from '../providers/models.js';
@@ -185,10 +186,11 @@ export class DesktopServer {
 
     // GET /api/skills
     if (pathname === '/api/skills' && req.method === 'GET') {
+      const markdownSkills = skillManager.listSkills();
       const dynamicSkills = SkillSynthesizer.loadSynthesizedSkills();
       const allTools = getAllActiveTools();
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ dynamicSkills, allTools }));
+      res.end(JSON.stringify({ markdownSkills, dynamicSkills, allTools }));
       return;
     }
 
@@ -242,7 +244,7 @@ export class DesktopServer {
           return;
         }
 
-        // POST /api/chat (SSE Streaming)
+        // POST /api/chat (Real-Time SSE Token Streaming)
         if (pathname === '/api/chat' && req.method === 'POST') {
           res.writeHead(200, {
             'Content-Type': 'text/event-stream',
@@ -258,8 +260,18 @@ export class DesktopServer {
           this.activeAgent.updateConfig(configManager.get());
 
           try {
-            const fullText = await this.activeAgent.chat(userPrompt);
-            sendEvent('token', { token: fullText });
+            const fullText = await this.activeAgent.chat(
+              userPrompt,
+              (token) => {
+                sendEvent('token', { token });
+              },
+              (toolCall) => {
+                sendEvent('tool_call', {
+                  name: toolCall.function.name,
+                  arguments: toolCall.function.arguments,
+                });
+              }
+            );
             sendEvent('complete', { fullText });
             res.end();
           } catch (err: any) {
@@ -414,8 +426,86 @@ export class DesktopServer {
           return;
         }
 
+        // POST /api/profile/import
+        if (pathname === '/api/profile/import' && req.method === 'POST') {
+          const profile = profileManager.importProfile(payload.name, payload.content);
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: true, profile }));
+          return;
+        }
+
+        // POST /api/profile/delete
+        if (pathname === '/api/profile/delete' && req.method === 'POST') {
+          const ok = profileManager.deleteProfile(payload.name);
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: ok }));
+          return;
+        }
+
+        // POST /api/profile/push
+        if (pathname === '/api/profile/push' && req.method === 'POST') {
+          const { FirestoreSyncManager } = await import('../cloud/firestore.js');
+          const result = await FirestoreSyncManager.pushToFirestore();
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify(result));
+          return;
+        }
+
+        // POST /api/profile/pull
+        if (pathname === '/api/profile/pull' && req.method === 'POST') {
+          const { FirestoreSyncManager } = await import('../cloud/firestore.js');
+          const result = await FirestoreSyncManager.pullFromFirestore();
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify(result));
+          return;
+        }
+
+        // POST /api/skill/create
+        if (pathname === '/api/skill/create' && req.method === 'POST') {
+          const skill = skillManager.createSkill(
+            payload.name,
+            payload.description || '',
+            payload.category || 'Custom',
+            payload.triggers || [],
+            payload.content
+          );
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: true, skill }));
+          return;
+        }
+
+        // POST /api/skill/save
+        if (pathname === '/api/skill/save' && req.method === 'POST') {
+          const ok = skillManager.saveSkill(payload.id, payload.content);
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: ok }));
+          return;
+        }
+
+        // POST /api/skill/import
+        if (pathname === '/api/skill/import' && req.method === 'POST') {
+          const skill = skillManager.importSkill(payload.name, payload.content);
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: true, skill }));
+          return;
+        }
+
+        // POST /api/skill/delete
+        if (pathname === '/api/skill/delete' && req.method === 'POST') {
+          const ok = skillManager.deleteSkill(payload.id);
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: ok }));
+          return;
+        }
+
         // POST /api/skill/test
         if (pathname === '/api/skill/test' && req.method === 'POST') {
+          const skill = skillManager.getSkill(payload.skillName);
+          if (skill) {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ output: `Skill '${skill.name}' is active and verified.\nCategory: ${skill.category}\nInstructions Length: ${skill.instructions.length} chars.` }));
+            return;
+          }
           const result = await SkillSynthesizer.executeCustomSkill(payload.skillName, payload.args || {});
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ output: result }));

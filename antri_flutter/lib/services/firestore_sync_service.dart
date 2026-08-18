@@ -8,9 +8,9 @@ class FirestoreSyncService {
     required String syncKey,
     required ThinkingProfile profile,
   }) async {
-    if (projectId.isEmpty) return false;
+    final project = projectId.isNotEmpty ? projectId : 'antri-agentic-hackathon';
     final collection = syncKey.isNotEmpty ? syncKey : 'default_user';
-    final url = 'https://firestore.googleapis.com/v1/projects/$projectId/databases/(default)/documents/antri_sync/$collection/profiles/${profile.name}';
+    final url = 'https://firestore.googleapis.com/v1/projects/$project/databases/(default)/documents/antri_sync/$collection/profiles/${profile.name}';
 
     try {
       final res = await http.patch(
@@ -34,9 +34,9 @@ class FirestoreSyncService {
     required String projectId,
     required String syncKey,
   }) async {
-    if (projectId.isEmpty) return {};
+    final project = projectId.isNotEmpty ? projectId : 'antri-agentic-hackathon';
     final collection = syncKey.isNotEmpty ? syncKey : 'default_user';
-    final url = 'https://firestore.googleapis.com/v1/projects/$projectId/databases/(default)/documents/antri_sync/$collection/profiles';
+    final url = 'https://firestore.googleapis.com/v1/projects/$project/databases/(default)/documents/antri_sync/$collection/profiles';
 
     try {
       final res = await http.get(Uri.parse(url));
@@ -47,11 +47,13 @@ class FirestoreSyncService {
 
         for (final doc in documents) {
           final fields = doc['fields'] as Map<String, dynamic>? ?? {};
-          final name = fields['name']?['stringValue'] ?? 'profile';
+          final name = fields['name']?['stringValue'] ?? '';
           final content = fields['content']?['stringValue'] ?? '';
           final updatedAt = DateTime.tryParse(fields['updatedAt']?['stringValue'] ?? '') ?? DateTime.now();
 
-          result[name] = ThinkingProfile(name: name, content: content, updatedAt: updatedAt);
+          if (name.isNotEmpty && content.isNotEmpty) {
+            result[name] = ThinkingProfile(name: name, content: content, updatedAt: updatedAt);
+          }
         }
         return result;
       }
