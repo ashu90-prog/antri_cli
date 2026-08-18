@@ -55,9 +55,20 @@ export class AuthManager {
     const filePath = this.getAuthFilePath();
     if (fs.existsSync(filePath)) {
       try {
-        const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-        if (data && data.email && data.userId) {
-          return data;
+        const raw = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+        const account = raw.user || raw;
+        if (account && account.email && typeof account.email === 'string' && account.email.includes('@')) {
+          const cleanEmail = account.email.toLowerCase().trim();
+          const userId = account.userId || this.generateUserId(cleanEmail);
+          const provider = (account.provider === 'google' ? 'google' : 'email') as 'email' | 'google';
+          const loggedInAt = account.loggedInAt || new Date().toISOString();
+          return {
+            email: cleanEmail,
+            userId,
+            provider,
+            token: account.token,
+            loggedInAt,
+          };
         }
       } catch (_) {}
     }

@@ -16,6 +16,7 @@ let skillSearchQuery = '';
 
 // Initialize on Load
 document.addEventListener('DOMContentLoaded', async () => {
+  await checkAuthStatus();
   await loadStatus();
   await loadCommands();
   await loadProfiles();
@@ -982,5 +983,98 @@ async function loadMemory() {
       .join('') || '<div>No episodes recorded in current session.</div>';
   } catch (err) {
     console.error('Failed to load memory:', err);
+  }
+}
+
+// Authentication Helpers
+let currentAuthUser = null;
+
+async function checkAuthStatus() {
+  try {
+    const res = await fetch('/api/auth/status');
+    const data = await res.json();
+    const dot = document.getElementById('auth-status-dot');
+    const text = document.getElementById('auth-status-text');
+
+    if (data.isAuthenticated && data.user) {
+      currentAuthUser = data.user;
+      if (dot) dot.classList.add('logged-in');
+      if (text) text.textContent = data.user.email.split('@')[0];
+    } else {
+      currentAuthUser = null;
+      if (dot) dot.classList.remove('logged-in');
+      if (text) text.textContent = 'Login';
+    }
+  } catch (e) {
+    console.error('Failed to check auth status:', e);
+  }
+}
+
+function openAuthModal() {
+  const modal = document.getElementById('auth-modal');
+  const formView = document.getElementById('auth-form-view');
+  const loggedView = document.getElementById('auth-logged-view');
+  const emailText = document.getElementById('logged-user-email');
+  const idText = document.getElementById('logged-user-id');
+
+  if (currentAuthUser) {
+    if (formView) formView.style.display = 'none';
+    if (loggedView) loggedView.style.display = 'block';
+    if (emailText) emailText.textContent = currentAuthUser.email;
+    if (idText) idText.textContent = `Cloud Partition: ${currentAuthUser.userId}`;
+  } else {
+    if (formView) formView.style.display = 'block';
+    if (loggedView) loggedView.style.display = 'none';
+  }
+
+  if (modal) modal.style.display = 'flex';
+}
+
+function closeAuthModal() {
+  const modal = document.getElementById('auth-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+async function submitDesktopLogin() {
+  const emailInput = document.getElementById('modal-email-input');
+  const passInput = document.getElementById('modal-pass-input');
+  const email = (emailInput ? emailInput.value : '').trim();
+  const password = passInput ? passInput.value : '';
+
+  if (!email || !email.includes('@')) {
+    alert('Please enter a valid email address.');
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    const data = await res.json();
+    if (data.success && data.user) {
+      currentAuthUser = data.user;
+      closeAuthModal();
+      await checkAuthStatus();
+      await loadProfiles();
+      showToast(`Logged in as ${data.user.email}`);
+    } else {
+      alert(data.error || 'Login failed.');
+    }
+  } catch (err) {
+    alert('Login error: ' + err.message);
+  }
+}
+
+async function submitDesktopLogout() {
+  try {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    currentAuthUser = null;
+    closeAuthModal();
+    await checkAuthStatus();
+    showToast('Logged out of ANTRI.');
+  } catch (err) {
+    console.error('Logout error:', err);
   }
 }

@@ -381,6 +381,15 @@ export class DesktopServer {
           return;
         }
 
+        // GET/POST /api/auth/status
+        if (pathname === '/api/auth/status') {
+          const { AuthManager } = await import('../cloud/auth.js');
+          const user = AuthManager.getCurrentUser();
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ isAuthenticated: !!user, user }));
+          return;
+        }
+
         // POST /api/auth/login
         if (pathname === '/api/auth/login' && req.method === 'POST') {
           const { AuthManager } = await import('../cloud/auth.js');
