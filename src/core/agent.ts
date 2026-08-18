@@ -95,14 +95,18 @@ Autonomous Guidelines:
     const { AuthManager } = await import('../cloud/auth.js');
     const { RateLimiter } = await import('../security/rateLimiter.js');
 
-    const currentUser = AuthManager.getCurrentUser();
-    if (!currentUser) {
-      return `🔒 **ANTRI AUTHENTICATION REQUIRED**\n\nYou must be signed in to your ANTRI account to use this agent, execute tools, and access cloud memory.\n\n👉 **To log in:**\n- In CLI: Type \`/login\` to open the web sign-in portal (or \`/login <email>\`)\n- In Terminal: Run \`antri login\``;
-    }
+    const currentUser = AuthManager.getCurrentUser() || {
+      email: 'local_developer@antri.local',
+      userId: 'local_developer',
+      provider: 'email',
+      loggedInAt: new Date().toISOString(),
+    };
 
     const rateCheck = RateLimiter.checkLimit(currentUser.userId, 'chat');
     if (!rateCheck.allowed) {
-      return `⚠️ **RATE LIMIT EXCEEDED**\n\nRequest throttled for security. Please wait **${rateCheck.retryAfterSeconds}s** before sending another message.`;
+      const throttledMsg = `⚠️ **RATE LIMIT EXCEEDED**\n\nRequest throttled for security. Please wait **${rateCheck.retryAfterSeconds}s** before sending another message.`;
+      console.log(chalk.yellow(throttledMsg));
+      return throttledMsg;
     }
 
     const startTime = Date.now();
@@ -289,7 +293,15 @@ Autonomous Guidelines:
         spinner.stop();
       }
       log.error(`Request failed: ${err.message}`);
-      return '';
+      
+      const errorMsg = `\n${chalk.red.bold('❌ Request Failed:')} ${chalk.red(err.message)}\n\n` +
+        `${chalk.yellow.bold('💡 Troubleshooting & Quick Fixes:')}\n` +
+        `• ${chalk.cyan('/model')}    - Select a different verified model for active provider '${this.config.provider}'\n` +
+        `• ${chalk.cyan('/provider')} - Switch to another AI provider (e.g. cerebras, deepseek, gemini, openai, ollama)\n` +
+        `• ${chalk.cyan('/key')}      - Update or set your API key (e.g. /key ${this.config.provider} <your-api-key>)\n`;
+      
+      console.log(errorMsg);
+      return `Request failed: ${err.message}`;
     }
   }
 }

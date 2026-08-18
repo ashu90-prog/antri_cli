@@ -49,7 +49,10 @@ export async function startInteractiveSession(initialAgent?: AntriAgent): Promis
       promptBoxReader.printSubmittedPrompt(trimmed);
 
       // Normal chat query to the agent
-      await agent.chat(trimmed);
+      const reply = await agent.chat(trimmed);
+      if (reply && !reply.startsWith('Request failed:') && !reply.startsWith('* Worked for')) {
+        // If message was not already streamed to stdout by onToken
+      }
       // Next iteration of loop will render the active prompt box at the new bottom!
     } catch (err: any) {
       console.error(chalk.red(`\nError: ${err.message}\n`));

@@ -144,6 +144,18 @@ export class OpenAICompatibleProvider implements LLMProvider {
             if (delta?.content) {
               fullContent += delta.content;
               callbacks.onToken(delta.content);
+            } else if (delta?.reasoning_content) {
+              fullContent += delta.reasoning_content;
+              callbacks.onToken(delta.reasoning_content);
+            } else if (delta?.reasoning) {
+              fullContent += delta.reasoning;
+              callbacks.onToken(delta.reasoning);
+            } else if (delta?.text) {
+              fullContent += delta.text;
+              callbacks.onToken(delta.text);
+            } else if (data.choices?.[0]?.text) {
+              fullContent += data.choices[0].text;
+              callbacks.onToken(data.choices[0].text);
             }
 
             if (delta?.tool_calls) {
@@ -181,6 +193,26 @@ export class OpenAICompatibleProvider implements LLMProvider {
           },
         });
       }
+    }
+
+    // If stream ended empty and no tool calls occurred, fallback to non-streaming POST
+    if (!fullContent && Object.keys(toolCallsMap).length === 0) {
+      try {
+        const nonStreamPayload = { ...payload, stream: false };
+        const nonStreamRes = await fetch(`${this.baseUrl}/chat/completions`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(nonStreamPayload),
+        });
+        if (nonStreamRes.ok) {
+          const nonStreamData: any = await nonStreamRes.json();
+          const fallbackText = nonStreamData.choices?.[0]?.message?.content || nonStreamData.choices?.[0]?.text || '';
+          if (fallbackText) {
+            fullContent = fallbackText;
+            callbacks.onToken(fallbackText);
+          }
+        }
+      } catch (_) {}
     }
 
     if (callbacks.onComplete) {
