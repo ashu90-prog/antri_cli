@@ -140,7 +140,13 @@ export class AuthManager {
       this.saveAccounts(accounts);
     }
 
-    const userId = existing ? existing.userId : this.generateUserId(cleanEmail);
+    const userId = this.generateUserId(cleanEmail);
+    if (existing) {
+      existing.userId = userId;
+      accounts[cleanEmail] = existing;
+      this.saveAccounts(accounts);
+    }
+
     const user: UserAccount = {
       email: cleanEmail,
       userId,
@@ -196,7 +202,12 @@ export class AuthManager {
       existing = accounts[cleanEmail];
     }
 
-    const userId = existing.userId;
+    const userId = this.generateUserId(cleanEmail);
+    if (existing) {
+      existing.userId = userId;
+      accounts[cleanEmail] = existing;
+      this.saveAccounts(accounts);
+    }
     const user: UserAccount = {
       email: cleanEmail,
       userId,
