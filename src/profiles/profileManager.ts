@@ -220,8 +220,14 @@ export class ProfileManager {
 
     let result = `\n\n================================================================================
 [MANDATORY USER IDENTITY, PROFILE & NOTES DIRECTIVE]
-You MUST ALWAYS adhere to the user's identity, preferences, and accumulated notes below.
-Do NOT ask the user to repeat their name, preferences, or established conventions.
+You MUST ALWAYS remember, adhere to, and recall the user's identity, preferences, and accumulated notes below.
+🚨 CORE RECALL INSTRUCTIONS:
+1. You have DIRECT cognitive access to all user notes, life context, family background, bereavement, hobbies, music preferences, and rules provided below.
+2. When the user asks what they told you, what their name is, what their life story/preferences are, or asks you to "read the profile/notes":
+   - IMMEDIATELY recall and cite the exact recorded notes from this section.
+   - NEVER say you don't know or don't have access.
+   - NEVER call 'web_search' or search files for personal user facts—they are stored right here in your active profile!
+3. Do NOT ask the user to repeat their name, preferences, or established conventions.
 ================================================================================\n`;
 
     if (profileContent) {

@@ -289,7 +289,49 @@ class _ProfilesViewState extends State<ProfilesView> with SingleTickerProviderSt
                     ],
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
+                // Visual Profile Selector Chips
+                SizedBox(
+                  height: 36,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    children: _profiles.keys.map((name) {
+                      final isSelected = name == _activeProfile;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 6),
+                        child: ChoiceChip(
+                          label: Text(
+                            '$name.md',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                              color: isSelected ? Colors.white : textPrimary,
+                            ),
+                          ),
+                          selected: isSelected,
+                          selectedColor: textPrimary,
+                          backgroundColor: cardBg,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(6),
+                            side: BorderSide(color: isSelected ? textPrimary : borderMain),
+                          ),
+                          onSelected: (selected) {
+                            if (selected) {
+                              setState(() {
+                                _activeProfile = name;
+                                _editorController.text = _profiles[name]?.content ?? '';
+                              });
+                              widget.config.activeProfile = name;
+                              widget.storageService.saveConfig(widget.config);
+                              widget.onProfileChanged();
+                            }
+                          },
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+                const SizedBox(height: 8),
                 Expanded(
                   child: Container(
                     padding: const EdgeInsets.all(14),

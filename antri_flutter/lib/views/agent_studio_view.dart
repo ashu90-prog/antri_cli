@@ -99,9 +99,29 @@ class _AgentStudioViewState extends State<AgentStudioView> {
     }
 
     try {
-      final systemPrompt = widget.config.mode == 'plan'
-          ? 'You are ANTRI Code in Plan Mode. Discuss software architecture, blueprints, edge cases, and ask clarifying questions before outputting code.'
-          : 'You are ANTRI Code in Vibe Mode. Write clean, production-ready, modular code directly in flow.';
+      final activeProfContent = profiles[widget.config.activeProfile]?.content ?? '';
+      final memories = await widget.storageService.loadMemories(widget.config.syncKey);
+      final memoriesText = memories.isNotEmpty ? '\n\n### Captured Lifelong Cognitive Memories:\n${memories.take(15).map((m) => '- $m').join('\n')}' : '';
+
+      final systemPrompt = '''
+You are ANTRI Code, an intelligent AI companion and cognitive coding agent.
+Active Operating Mode: ${widget.config.mode.toUpperCase()}
+
+================================================================================
+[MANDATORY USER IDENTITY, PROFILE & NOTES DIRECTIVE]
+You MUST ALWAYS remember, adhere to, and recall the user's active profile, life context, and notes below.
+🚨 CORE RECALL INSTRUCTIONS:
+1. You have DIRECT cognitive access to all user notes, life context, family background, bereavement, hobbies, music preferences, and rules provided below.
+2. When the user asks what they told you, what their name is, what their life story/preferences are, or asks you to "read the profile/notes":
+   - IMMEDIATELY recall and accurately answer using the notes below.
+   - Never claim you don't know or don't have access to this information.
+3. Do NOT ask the user to repeat their name, preferences, or established conventions.
+================================================================================
+### Active Profile: ${widget.config.activeProfile}.md
+$activeProfContent
+$memoriesText
+================================================================================
+''';
 
       final responseText = await widget.aiService.executePrompt(
         config: widget.config,

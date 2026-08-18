@@ -133,14 +133,18 @@ export class FirestoreSyncManager {
       let firstProfileName = '';
 
       for (const doc of docs) {
+        const docName = doc.name ? doc.name.split('/').pop() : '';
         const fields = doc.fields || {};
-        const name = fields.name?.stringValue;
+        const rawName = fields.name?.stringValue || docName || '';
+        const cleanName = rawName.replace(/\.md$/, '').trim();
         const content = fields.content?.stringValue;
-        if (name && content) {
-          fs.writeFileSync(path.join(dir, `${name}.md`), content, 'utf-8');
+
+        if (cleanName && content) {
+          const fileName = cleanName === 'notes' ? 'notes.md' : `${cleanName}.md`;
+          fs.writeFileSync(path.join(dir, fileName), content, 'utf-8');
           count++;
-          if (name !== 'notes' && !firstProfileName) {
-            firstProfileName = name;
+          if (cleanName !== 'notes' && !firstProfileName) {
+            firstProfileName = cleanName;
           }
         }
       }

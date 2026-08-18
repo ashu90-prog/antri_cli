@@ -46,13 +46,15 @@ class FirestoreSyncService {
         final Map<String, ThinkingProfile> result = {};
 
         for (final doc in documents) {
+          final docName = (doc['name'] as String? ?? '').split('/').last;
           final fields = doc['fields'] as Map<String, dynamic>? ?? {};
-          final name = fields['name']?['stringValue'] ?? '';
+          final rawName = fields['name']?['stringValue'] ?? docName;
+          final cleanName = rawName.replaceAll(RegExp(r'\.md$'), '').trim();
           final content = fields['content']?['stringValue'] ?? '';
           final updatedAt = DateTime.tryParse(fields['updatedAt']?['stringValue'] ?? '') ?? DateTime.now();
 
-          if (name.isNotEmpty && content.isNotEmpty) {
-            result[name] = ThinkingProfile(name: name, content: content, updatedAt: updatedAt);
+          if (cleanName.isNotEmpty && content.isNotEmpty && cleanName != 'notes') {
+            result[cleanName] = ThinkingProfile(name: cleanName, content: content, updatedAt: updatedAt);
           }
         }
         return result;
