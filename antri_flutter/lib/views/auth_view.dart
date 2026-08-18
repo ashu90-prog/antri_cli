@@ -46,6 +46,9 @@ class _AuthGateViewState extends State<AuthGateView> {
     try {
       final user = await _authService.login(email);
       widget.config.syncKey = user.userId;
+      if (widget.config.firestoreProjectId.isEmpty) {
+        widget.config.firestoreProjectId = 'antri-agentic-hackathon';
+      }
       await widget.storageService.saveConfig(widget.config);
       widget.onAuthenticated();
     } catch (err) {

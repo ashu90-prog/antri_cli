@@ -52,35 +52,51 @@ class _ProfilesViewState extends State<ProfilesView> {
       await widget.storageService.saveProfiles(_profiles);
 
       // Also sync to Google Cloud Firestore if project ID configured
-      if (widget.config.firestoreProjectId.isNotEmpty) {
-        setState(() => _isSyncing = true);
-        await _firestoreService.syncProfileToFirestore(
-          projectId: widget.config.firestoreProjectId,
-          syncKey: widget.config.syncKey,
-          profile: _profiles[_activeProfile]!,
-        );
-        setState(() => _isSyncing = false);
-      }
+      final projectId = widget.config.firestoreProjectId.isNotEmpty ? widget.config.firestoreProjectId : 'antri-agentic-hackathon';
+      setState(() => _isSyncing = true);
+      final ok = await _firestoreService.syncProfileToFirestore(
+        projectId: projectId,
+        syncKey: widget.config.syncKey,
+        profile: _profiles[_activeProfile]!,
+      );
+      setState(() => _isSyncing = false);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile saved successfully.')),
+          SnackBar(content: Text(ok ? 'Profile saved & pushed to Google Cloud Firestore.' : 'Profile saved locally.')),
         );
       }
     }
   }
 
-  Future<void> _syncFromCloud() async {
-    if (widget.config.firestoreProjectId.isEmpty) {
+  Future<void> _pushToCloud() async {
+    if (!_profiles.containsKey(_activeProfile)) return;
+    final projectId = widget.config.firestoreProjectId.isNotEmpty ? widget.config.firestoreProjectId : 'antri-agentic-hackathon';
+
+    setState(() => _isSyncing = true);
+    final ok = await _firestoreService.syncProfileToFirestore(
+      projectId: projectId,
+      syncKey: widget.config.syncKey,
+      profile: _profiles[_activeProfile]!,
+    );
+    setState(() => _isSyncing = false);
+
+    if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Set Google Cloud Project ID in Settings to sync with Firestore.')),
+        SnackBar(
+          content: Text(ok ? 'Pushed "$_activeProfile" to Google Cloud Firestore!' : 'Failed to push to Firestore. Check connection.'),
+          backgroundColor: ok ? const Color(0xFF15803D) : const Color(0xFFDC2626),
+        ),
       );
-      return;
     }
+  }
+
+  Future<void> _syncFromCloud() async {
+    final projectId = widget.config.firestoreProjectId.isNotEmpty ? widget.config.firestoreProjectId : 'antri-agentic-hackathon';
 
     setState(() => _isSyncing = true);
     final cloudProfs = await _firestoreService.pullProfilesFromFirestore(
-      projectId: widget.config.firestoreProjectId,
+      projectId: projectId,
       syncKey: widget.config.syncKey,
     );
 
@@ -90,7 +106,10 @@ class _ProfilesViewState extends State<ProfilesView> {
       _editorController.text = _profiles[_activeProfile]?.content ?? '';
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Synced ${cloudProfs.length} profiles from Google Cloud Firestore.')),
+          SnackBar(
+            content: Text('Pulled ${cloudProfs.length} profiles from Google Cloud Firestore.'),
+            backgroundColor: const Color(0xFF15803D),
+          ),
         );
       }
     } else {
@@ -159,8 +178,13 @@ class _ProfilesViewState extends State<ProfilesView> {
         title: const Text('Thinking Profiles', style: TextStyle(fontWeight: FontWeight.w800, color: textPrimary, fontSize: 16)),
         actions: [
           IconButton(
-            icon: Icon(_isSyncing ? Icons.cloud_sync : Icons.cloud_download_outlined, color: textPrimary),
-            tooltip: 'Sync from Google Cloud Firestore',
+            icon: Icon(_isSyncing ? Icons.cloud_sync : Icons.cloud_upload_outlined, color: textPrimary),
+            tooltip: 'Push Profile to Google Cloud Firestore',
+            onPressed: _isSyncing ? null : _pushToCloud,
+          ),
+          IconButton(
+            icon: const Icon(Icons.cloud_download_outlined, color: textPrimary),
+            tooltip: 'Pull Profiles from Google Cloud Firestore',
             onPressed: _isSyncing ? null : _syncFromCloud,
           ),
           IconButton(

@@ -17,7 +17,7 @@ class AIConfig {
     this.mode = 'vibe',
     this.activeProfile = 'mobile_profile_1',
     this.alwaysAllow = false,
-    this.firestoreProjectId = '',
+    this.firestoreProjectId = 'antri-agentic-hackathon',
     this.syncKey = '',
   });
 
@@ -41,7 +41,9 @@ class AIConfig {
         mode: json['mode'] ?? 'vibe',
         activeProfile: json['activeProfile'] ?? 'mobile_profile_1',
         alwaysAllow: json['alwaysAllow'] ?? false,
-        firestoreProjectId: json['firestoreProjectId'] ?? '',
+        firestoreProjectId: (json['firestoreProjectId'] != null && (json['firestoreProjectId'] as String).isNotEmpty)
+            ? json['firestoreProjectId']
+            : 'antri-agentic-hackathon',
         syncKey: json['syncKey'] ?? '',
       );
 }
