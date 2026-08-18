@@ -4,6 +4,7 @@ import '../models/ai_config.dart';
 import '../models/chat_message.dart';
 import '../services/ai_service.dart';
 import '../services/storage_service.dart';
+import '../services/note_synthesizer.dart';
 
 class AgentStudioView extends StatefulWidget {
   final AIConfig config;
@@ -37,9 +38,10 @@ class _AgentStudioViewState extends State<AgentStudioView> {
   }
 
   Future<void> _loadHistory() async {
-    final history = await widget.storageService.loadChatHistory();
+    final history = await widget.storageService.loadChatHistory(widget.config.syncKey);
     if (mounted) {
       setState(() {
+        _messages.clear();
         _messages.addAll(history);
       });
     }
@@ -68,12 +70,33 @@ class _AgentStudioViewState extends State<AgentStudioView> {
 
     setState(() {
       _messages.add(userMsg);
-      _isLoading = true;
       _promptController.clear();
       _attachedFiles.clear();
+      _isLoading = true;
     });
 
     _scrollToBottom();
+
+    // 1. Autonomous Conversation Note-Taking: Extract preferences/conventions
+    final profiles = await widget.storageService.loadProfiles(widget.config.syncKey);
+    final recordedNote = await NoteSynthesizer.extractAndRecordNote(
+      userPrompt: text,
+      activeProfileName: widget.config.activeProfile,
+      profiles: profiles,
+      storageService: widget.storageService,
+      syncKey: widget.config.syncKey,
+      projectId: widget.config.firestoreProjectId,
+    );
+
+    if (recordedNote != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Note captured to ${widget.config.activeProfile}: "$recordedNote"'),
+          duration: const Duration(seconds: 2),
+          backgroundColor: const Color(0xFF15803D),
+        ),
+      );
+    }
 
     try {
       final systemPrompt = widget.config.mode == 'plan'
@@ -94,7 +117,7 @@ class _AgentStudioViewState extends State<AgentStudioView> {
         _isLoading = false;
       });
 
-      await widget.storageService.saveChatHistory(_messages);
+      await widget.storageService.saveChatHistory(_messages, widget.config.syncKey);
       _scrollToBottom();
     } catch (e) {
       setState(() {

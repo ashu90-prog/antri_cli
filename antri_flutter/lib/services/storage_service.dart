@@ -6,8 +6,10 @@ import '../models/chat_message.dart';
 
 class StorageService {
   static const String _keyConfig = 'antri_flutter_config';
-  static const String _keyProfiles = 'antri_flutter_profiles';
-  static const String _keyHistory = 'antri_flutter_chat_history';
+
+  static String _getUserProfilesKey(String? syncKey) => 'antri_profiles_${syncKey != null && syncKey.isNotEmpty ? syncKey : "guest"}';
+  static String _getUserHistoryKey(String? syncKey) => 'antri_history_${syncKey != null && syncKey.isNotEmpty ? syncKey : "guest"}';
+  static String _getUserMemoriesKey(String? syncKey) => 'antri_memories_${syncKey != null && syncKey.isNotEmpty ? syncKey : "guest"}';
 
   Future<AIConfig> loadConfig() async {
     final prefs = await SharedPreferences.getInstance();
@@ -25,32 +27,38 @@ class StorageService {
     await prefs.setString(_keyConfig, jsonEncode(config.toJson()));
   }
 
-  Future<Map<String, ThinkingProfile>> loadProfiles() async {
+  Future<Map<String, ThinkingProfile>> loadProfiles([String? syncKey]) async {
     final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_keyProfiles);
+    final key = _getUserProfilesKey(syncKey);
+    final raw = prefs.getString(key);
     if (raw != null) {
       try {
         final Map<String, dynamic> decoded = jsonDecode(raw);
-        return decoded.map((k, v) => MapEntry(k, ThinkingProfile.fromJson(v)));
+        if (decoded.isNotEmpty) {
+          return decoded.map((k, v) => MapEntry(k, ThinkingProfile.fromJson(v)));
+        }
       } catch (_) {}
     }
+    final defaultName = syncKey != null && syncKey.isNotEmpty ? '${syncKey.split('_').first}_profile' : 'profile_1';
     return {
-      'mobile_profile_1': ThinkingProfile(
-        name: 'mobile_profile_1',
-        content: '# Mobile Thinking Profile\n\n- Preferred Language: TypeScript\n- Architecture: Clean & Modular\n- Formatting: 2 spaces, strict types',
+      defaultName: ThinkingProfile(
+        name: defaultName,
+        content: '# $defaultName Thinking Profile\n\n## Style of Thinking & Preferences\n- Communication: Structured, proactive guidance\n- Architecture: Modular & Clean\n\n## Notes & Insights Captured From Conversations\n- Initialized private profile for account.',
       ),
     };
   }
 
-  Future<void> saveProfiles(Map<String, ThinkingProfile> profiles) async {
+  Future<void> saveProfiles(Map<String, ThinkingProfile> profiles, [String? syncKey]) async {
     final prefs = await SharedPreferences.getInstance();
+    final key = _getUserProfilesKey(syncKey);
     final map = profiles.map((k, v) => MapEntry(k, v.toJson()));
-    await prefs.setString(_keyProfiles, jsonEncode(map));
+    await prefs.setString(key, jsonEncode(map));
   }
 
-  Future<List<ChatMessage>> loadChatHistory() async {
+  Future<List<ChatMessage>> loadChatHistory([String? syncKey]) async {
     final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_keyHistory);
+    final key = _getUserHistoryKey(syncKey);
+    final raw = prefs.getString(key);
     if (raw != null) {
       try {
         final List list = jsonDecode(raw);
@@ -60,9 +68,22 @@ class StorageService {
     return [];
   }
 
-  Future<void> saveChatHistory(List<ChatMessage> history) async {
+  Future<void> saveChatHistory(List<ChatMessage> history, [String? syncKey]) async {
     final prefs = await SharedPreferences.getInstance();
+    final key = _getUserHistoryKey(syncKey);
     final list = history.map((m) => m.toJson()).toList();
-    await prefs.setString(_keyHistory, jsonEncode(list));
+    await prefs.setString(key, jsonEncode(list));
+  }
+
+  Future<List<String>> loadMemories([String? syncKey]) async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = _getUserMemoriesKey(syncKey);
+    return prefs.getStringList(key) ?? [];
+  }
+
+  Future<void> saveMemories(List<String> memories, [String? syncKey]) async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = _getUserMemoriesKey(syncKey);
+    await prefs.setStringList(key, memories);
   }
 }
