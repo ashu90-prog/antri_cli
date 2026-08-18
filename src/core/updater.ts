@@ -7,7 +7,7 @@ import { log } from '../utils/logger.js';
 const execPromise = util.promisify(exec);
 
 export class Updater {
-  public static readonly CURRENT_VERSION = '1.43.0';
+  public static readonly CURRENT_VERSION = '1.44.0';
   public static readonly PACKAGE_NAME = 'antri_cli';
 
   /**
