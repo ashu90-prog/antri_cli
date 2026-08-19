@@ -67,7 +67,7 @@ test('ToolExecutor identifies privacy & security sensitive tools', () => {
 
 test('Updater reports correct package name and current version', () => {
   assert.strictEqual(Updater.PACKAGE_NAME, 'antri_cli');
-  assert.strictEqual(Updater.CURRENT_VERSION, '1.52.0');
+  assert.strictEqual(Updater.CURRENT_VERSION, '1.53.0');
 });
 
 test('GoalLoopEngine initializes with active configuration', () => {
@@ -579,4 +579,50 @@ test('SessionManager manages multi-chat sessions and persists context', () => {
   assert.strictEqual(deleted, true);
   assert.strictEqual(sm.getSession(newChat.id), null);
 });
+
+test('ToolExecutor executes coding tools (write_file, edit_file, file_info, grep_search, find_files, create_directory, delete_file, git_diff)', async () => {
+  await AuthManager.login('coder_test@example.com');
+  const executor = new ToolExecutor();
+  executor.setPermissionHandler(async () => true);
+
+  // 1. create_directory
+  const mkdirRes = await executor.execute('create_directory', { dir_path: 'temp_test_dir' }, 'c1');
+  assert.ok(mkdirRes.output.includes('Successfully created directory'));
+
+  // 2. write_file
+  const writeRes = await executor.execute('write_file', { file_path: 'temp_test_dir/code.ts', content: 'export const x = 10;\nexport const y = 20;\n' }, 'c2');
+  assert.ok(writeRes.output.includes('Successfully wrote'));
+
+  // 3. edit_file
+  const editRes = await executor.execute('edit_file', { file_path: 'temp_test_dir/code.ts', target_content: 'export const y = 20;', replacement_content: 'export const y = 99;' }, 'c3');
+  assert.ok(editRes.output.includes('Successfully edited'));
+
+  // 4. read_file
+  const readRes = await executor.execute('read_file', { file_path: 'temp_test_dir/code.ts' }, 'c4');
+  assert.ok(readRes.output.includes('export const y = 99;'));
+
+  // 5. file_info
+  const infoRes = await executor.execute('file_info', { file_path: 'temp_test_dir/code.ts' }, 'c5');
+  assert.ok(infoRes.output.includes('Lines: 3'));
+  assert.ok(infoRes.output.includes('Type: File'));
+
+  // 6. grep_search
+  const grepRes = await executor.execute('grep_search', { query: 'export const y', dir_path: 'temp_test_dir' }, 'c6');
+  assert.ok(grepRes.output.includes('export const y = 99;'));
+
+  // 7. find_files
+  const findRes = await executor.execute('find_files', { pattern: '*.ts', dir_path: 'temp_test_dir' }, 'c7');
+  assert.ok(findRes.output.includes('code.ts'));
+
+  // 8. git_diff
+  const diffRes = await executor.execute('git_diff', {}, 'c8');
+  assert.ok(typeof diffRes.output === 'string');
+
+  // 9. delete_file (cleanup)
+  const delRes = await executor.execute('delete_file', { file_path: 'temp_test_dir' }, 'c9');
+  assert.ok(delRes.output.includes('Successfully deleted'));
+
+  AuthManager.logout();
+});
+
 

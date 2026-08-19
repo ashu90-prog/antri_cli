@@ -23,6 +23,8 @@ export const SENSITIVE_TOOLS = new Set([
   'run_command',
   'execute_python',
   'synthesize_skill',
+  'edit_file',
+  'delete_file',
 ]);
 
 export const AVAILABLE_TOOLS: ToolDefinition[] = [
@@ -167,6 +169,143 @@ export const AVAILABLE_TOOLS: ToolDefinition[] = [
         },
       },
       required: ['file_path', 'content'],
+    },
+  },
+  {
+    name: 'edit_file',
+    description: 'Perform targeted, precise surgical edits on an existing file by replacing an exact string or code block with new code, preserving indentation, comments, and structure.',
+    parameters: {
+      type: 'object',
+      properties: {
+        file_path: {
+          type: 'string',
+          description: 'The relative or absolute path of the file to edit.',
+        },
+        target_content: {
+          type: 'string',
+          description: 'The exact lines or block of code to be replaced. Must match existing file content exactly.',
+        },
+        replacement_content: {
+          type: 'string',
+          description: 'The new code or lines to replace target_content with.',
+        },
+        allow_multiple: {
+          type: 'boolean',
+          description: 'Optional. If true, replaces all occurrences of target_content; otherwise errors if multiple are found (default: false).',
+        },
+      },
+      required: ['file_path', 'target_content', 'replacement_content'],
+    },
+  },
+  {
+    name: 'create_directory',
+    description: 'Recursively create a new directory or folder structure in the workspace.',
+    parameters: {
+      type: 'object',
+      properties: {
+        dir_path: {
+          type: 'string',
+          description: 'The path of the directory to create.',
+        },
+      },
+      required: ['dir_path'],
+    },
+  },
+  {
+    name: 'delete_file',
+    description: 'Delete a file or directory from the workspace.',
+    parameters: {
+      type: 'object',
+      properties: {
+        file_path: {
+          type: 'string',
+          description: 'The relative or absolute path of the file or directory to delete.',
+        },
+      },
+      required: ['file_path'],
+    },
+  },
+  {
+    name: 'find_files',
+    description: 'Search for project files matching a glob pattern (e.g. "*.ts", "src/**/*.tsx", "**/*.py") or extension, filtering out node_modules, .git, and build artifacts.',
+    parameters: {
+      type: 'object',
+      properties: {
+        pattern: {
+          type: 'string',
+          description: 'The glob pattern or filename search query (e.g. "*.ts", "package.json", "**/*.css").',
+        },
+        dir_path: {
+          type: 'string',
+          description: 'Optional root directory to search within (default: workspace root).',
+        },
+        max_results: {
+          type: 'number',
+          description: 'Optional maximum number of matching file paths to return (default: 50).',
+        },
+      },
+      required: ['pattern'],
+    },
+  },
+  {
+    name: 'grep_search',
+    description: 'Search for exact text or regular expression patterns across workspace files with line numbers and matched line snippets.',
+    parameters: {
+      type: 'object',
+      properties: {
+        query: {
+          type: 'string',
+          description: 'The search term or regular expression pattern to look for.',
+        },
+        dir_path: {
+          type: 'string',
+          description: 'Optional directory to search within (default: workspace root).',
+        },
+        is_regex: {
+          type: 'boolean',
+          description: 'Optional. If true, treats query as a regular expression (default: false).',
+        },
+        case_sensitive: {
+          type: 'boolean',
+          description: 'Optional. If true, performs case-sensitive search (default: false).',
+        },
+        max_results: {
+          type: 'number',
+          description: 'Optional maximum number of matching lines to return (default: 50).',
+        },
+      },
+      required: ['query'],
+    },
+  },
+  {
+    name: 'file_info',
+    description: 'Inspect metadata of a file in the workspace (size, line count, modified time, extension, permissions).',
+    parameters: {
+      type: 'object',
+      properties: {
+        file_path: {
+          type: 'string',
+          description: 'The path of the file to inspect.',
+        },
+      },
+      required: ['file_path'],
+    },
+  },
+  {
+    name: 'git_diff',
+    description: 'Inspect git status and uncommitted/staged code diffs in the workspace repository.',
+    parameters: {
+      type: 'object',
+      properties: {
+        file_path: {
+          type: 'string',
+          description: 'Optional specific file path to inspect diff for.',
+        },
+        staged: {
+          type: 'boolean',
+          description: 'Optional. If true, shows staged changes (--staged); otherwise shows working tree diff (default: false).',
+        },
+      },
     },
   },
   {
@@ -507,6 +646,302 @@ export class ToolExecutor {
             name,
             output: `Successfully wrote ${args.content.length} characters to ${args.file_path}`,
           };
+        }
+
+        case 'edit_file': {
+          let resolvedPath = args.file_path;
+          if (resolvedPath.startsWith('~')) {
+            resolvedPath = path.join(os.homedir(), resolvedPath.slice(1));
+          } else {
+            resolvedPath = path.resolve(this.workingDir, resolvedPath);
+          }
+
+          if (!fs.existsSync(resolvedPath)) {
+            return {
+              tool_call_id: toolCallId,
+              name,
+              output: `Error: File not found for editing: ${args.file_path}`,
+              error: true,
+            };
+          }
+
+          const targetContent = args.target_content;
+          const replacementContent = args.replacement_content;
+          const allowMultiple = !!args.allow_multiple;
+
+          const fileContent = fs.readFileSync(resolvedPath, 'utf-8');
+          if (!fileContent.includes(targetContent)) {
+            return {
+              tool_call_id: toolCallId,
+              name,
+              output: `Error: target_content not found in ${args.file_path}. Please inspect the file with read_file first to ensure exact character and whitespace match.`,
+              error: true,
+            };
+          }
+
+          const count = fileContent.split(targetContent).length - 1;
+          if (count > 1 && !allowMultiple) {
+            return {
+              tool_call_id: toolCallId,
+              name,
+              output: `Error: target_content appears ${count} times in ${args.file_path}. Provide more surrounding context to match a unique block or set allow_multiple: true.`,
+              error: true,
+            };
+          }
+
+          const newContent = allowMultiple
+            ? fileContent.replaceAll(targetContent, replacementContent)
+            : fileContent.replace(targetContent, replacementContent);
+
+          fs.writeFileSync(resolvedPath, newContent, 'utf-8');
+          return {
+            tool_call_id: toolCallId,
+            name,
+            output: `Successfully edited ${args.file_path} (replaced ${count} occurrence${count > 1 ? 's' : ''}).`,
+          };
+        }
+
+        case 'create_directory': {
+          const targetPath = path.resolve(this.workingDir, args.dir_path);
+          fs.mkdirSync(targetPath, { recursive: true });
+          return {
+            tool_call_id: toolCallId,
+            name,
+            output: `Successfully created directory: ${args.dir_path}`,
+          };
+        }
+
+        case 'delete_file': {
+          const targetPath = path.resolve(this.workingDir, args.file_path);
+          if (!fs.existsSync(targetPath)) {
+            return {
+              tool_call_id: toolCallId,
+              name,
+              output: `Error: File or directory not found to delete: ${args.file_path}`,
+              error: true,
+            };
+          }
+          const stat = fs.statSync(targetPath);
+          if (stat.isDirectory()) {
+            fs.rmSync(targetPath, { recursive: true, force: true });
+            return {
+              tool_call_id: toolCallId,
+              name,
+              output: `Successfully deleted directory: ${args.file_path}`,
+            };
+          } else {
+            fs.unlinkSync(targetPath);
+            return {
+              tool_call_id: toolCallId,
+              name,
+              output: `Successfully deleted file: ${args.file_path}`,
+            };
+          }
+        }
+
+        case 'find_files': {
+          const rootDir = path.resolve(this.workingDir, args.dir_path || '.');
+          if (!fs.existsSync(rootDir)) {
+            return {
+              tool_call_id: toolCallId,
+              name,
+              output: `Error: Directory not found: ${args.dir_path}`,
+              error: true,
+            };
+          }
+
+          const pattern = args.pattern.toLowerCase();
+          const maxResults = args.max_results || 50;
+          const matches: string[] = [];
+
+          function scanDir(dir: string) {
+            if (matches.length >= maxResults) return;
+            let entries: fs.Dirent[] = [];
+            try {
+              entries = fs.readdirSync(dir, { withFileTypes: true });
+            } catch {
+              return;
+            }
+            for (const entry of entries) {
+              if (matches.length >= maxResults) return;
+              if (
+                entry.name.startsWith('.') ||
+                entry.name === 'node_modules' ||
+                entry.name === 'dist' ||
+                entry.name === 'build'
+              ) {
+                continue;
+              }
+              const full = path.join(dir, entry.name);
+              const rel = path.relative(rootDir, full).replace(/\\/g, '/');
+
+              if (entry.isDirectory()) {
+                scanDir(full);
+              } else {
+                if (
+                  rel.toLowerCase().includes(pattern) ||
+                  entry.name.toLowerCase().includes(pattern) ||
+                  (pattern.startsWith('*.') && entry.name.toLowerCase().endsWith(pattern.slice(1)))
+                ) {
+                  matches.push(rel);
+                }
+              }
+            }
+          }
+
+          scanDir(rootDir);
+          return {
+            tool_call_id: toolCallId,
+            name,
+            output:
+              matches.length > 0
+                ? `Found ${matches.length} matching file(s):\n${matches.join('\n')}`
+                : `No files found matching '${args.pattern}'`,
+          };
+        }
+
+        case 'grep_search': {
+          const rootDir = path.resolve(this.workingDir, args.dir_path || '.');
+          if (!fs.existsSync(rootDir)) {
+            return {
+              tool_call_id: toolCallId,
+              name,
+              output: `Error: Directory not found: ${args.dir_path}`,
+              error: true,
+            };
+          }
+
+          const isRegex = !!args.is_regex;
+          const caseSensitive = !!args.case_sensitive;
+          const maxResults = args.max_results || 50;
+          const matches: string[] = [];
+
+          let regex: RegExp;
+          try {
+            regex = isRegex
+              ? new RegExp(args.query, caseSensitive ? 'g' : 'gi')
+              : new RegExp(args.query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), caseSensitive ? 'g' : 'gi');
+          } catch (reErr: any) {
+            return {
+              tool_call_id: toolCallId,
+              name,
+              output: `Invalid regular expression: ${reErr.message}`,
+              error: true,
+            };
+          }
+
+          function searchFiles(dir: string) {
+            if (matches.length >= maxResults) return;
+            let entries: fs.Dirent[] = [];
+            try {
+              entries = fs.readdirSync(dir, { withFileTypes: true });
+            } catch {
+              return;
+            }
+            for (const entry of entries) {
+              if (matches.length >= maxResults) return;
+              if (
+                entry.name.startsWith('.') ||
+                entry.name === 'node_modules' ||
+                entry.name === 'dist' ||
+                entry.name === 'build'
+              ) {
+                continue;
+              }
+              const full = path.join(dir, entry.name);
+              if (entry.isDirectory()) {
+                searchFiles(full);
+              } else {
+                try {
+                  const content = fs.readFileSync(full, 'utf-8');
+                  const lines = content.split('\n');
+                  const rel = path.relative(process.cwd(), full).replace(/\\/g, '/');
+                  for (let i = 0; i < lines.length; i++) {
+                    if (matches.length >= maxResults) return;
+                    if (regex.test(lines[i])) {
+                      matches.push(`${rel}:${i + 1}: ${lines[i].trim()}`);
+                    }
+                    regex.lastIndex = 0;
+                  }
+                } catch {}
+              }
+            }
+          }
+
+          searchFiles(rootDir);
+          return {
+            tool_call_id: toolCallId,
+            name,
+            output:
+              matches.length > 0
+                ? `Found ${matches.length} match(es):\n${matches.join('\n')}`
+                : `No matches found for '${args.query}'`,
+          };
+        }
+
+        case 'file_info': {
+          let resolvedPath = args.file_path;
+          if (resolvedPath.startsWith('~')) {
+            resolvedPath = path.join(os.homedir(), resolvedPath.slice(1));
+          } else {
+            resolvedPath = path.resolve(this.workingDir, resolvedPath);
+          }
+
+          if (!fs.existsSync(resolvedPath)) {
+            return {
+              tool_call_id: toolCallId,
+              name,
+              output: `Error: File not found: ${args.file_path}`,
+              error: true,
+            };
+          }
+          const stat = fs.statSync(resolvedPath);
+          const isDir = stat.isDirectory();
+          let lineCount = 0;
+          if (!isDir) {
+            try {
+              const content = fs.readFileSync(resolvedPath, 'utf-8');
+              lineCount = content.split('\n').length;
+            } catch {}
+          }
+          const info = [
+            `Path: ${args.file_path}`,
+            `Type: ${isDir ? 'Directory' : 'File'}`,
+            `Size: ${(stat.size / 1024).toFixed(2)} KB (${stat.size} bytes)`,
+            `Lines: ${isDir ? 'N/A' : lineCount}`,
+            `Created: ${stat.birthtime.toLocaleString()}`,
+            `Modified: ${stat.mtime.toLocaleString()}`,
+          ];
+          return {
+            tool_call_id: toolCallId,
+            name,
+            output: info.join('\n'),
+          };
+        }
+
+        case 'git_diff': {
+          const stagedFlag = args.staged ? '--staged' : '';
+          const fileTarget = args.file_path ? ` -- "${args.file_path}"` : '';
+          const cmd = `git diff ${stagedFlag}${fileTarget}`;
+          try {
+            const { stdout, stderr } = await execPromise(cmd, {
+              cwd: this.workingDir,
+              timeout: 15000,
+            });
+            const output = (stdout || '') + (stderr ? `\n[STDERR]: ${stderr}` : '');
+            return {
+              tool_call_id: toolCallId,
+              name,
+              output: output.trim() || '(no git diff output - working tree clean)',
+            };
+          } catch (gitErr: any) {
+            return {
+              tool_call_id: toolCallId,
+              name,
+              output: `Error running git diff: ${gitErr.message}`,
+              error: true,
+            };
+          }
         }
 
         case 'list_dir': {

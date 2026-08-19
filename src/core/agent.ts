@@ -80,7 +80,7 @@ Core Behavioral Principles:
 ${modeDirective}
 
 Tooling & Workspace Capabilities:
-1. Workspace Tools: read_file, write_file, list_dir, search_files, run_command.
+1. Workspace & Coding Tools: read_file (inspect files with line ranges), write_file (create/overwrite files), edit_file (precise search & replace block editing), create_directory (folder creation), delete_file (remove files/folders), find_files (glob/name discovery), grep_search (regex/text code search with line numbers), file_info (inspect size, lines, dates), git_diff (inspect git changes/diffs), list_dir, search_files, run_command (terminal execution).
 2. Sandboxed Runtime: execute_python (run safe isolated Python code scripts).
 3. Markdown Skills System: activate_skill (activate specialized expert instructions from .md skills).
 4. Web & Research Tools: web_search (multi-provider search without API key), scrape_url (deep readable content extraction into Markdown), and crawl_docs (recursive documentation crawler).
