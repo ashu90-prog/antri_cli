@@ -15,7 +15,7 @@
   <header class="app-header">
     <div class="brand-zone">
       <span class="logo-mark">ANTRI</span>
-      <span class="version-tag">v1.50.0</span>
+      <span class="version-tag">v1.51.0</span>
     </div>
 
     <!-- Mode Toggle -->
@@ -109,8 +109,22 @@
       <!-- TAB 1: Chat & Agent Studio -->
       <section id="tab-chat" class="tab-panel active">
         <div class="chat-container">
+          <!-- Chat Session Switcher Header -->
+          <div class="chat-session-header">
+            <div class="chat-session-selector-group">
+              <button class="new-chat-btn" onclick="createNewChatSession()">+ New Chat</button>
+              <select id="select-chat-session" class="chat-session-select" onchange="onChatSessionSelect(this.value)">
+                <!-- Populated dynamically -->
+              </select>
+            </div>
+            <div class="chat-session-actions">
+              <button class="chat-session-action-btn" title="Clear conversation context" onclick="clearCurrentChatContext()">🧹 Clear</button>
+              <button class="chat-session-action-btn btn-danger" title="Delete this chat" onclick="deleteCurrentChatSession()">🗑️</button>
+            </div>
+          </div>
+
           <div id="chat-messages" class="chat-messages">
-            <div class="welcome-card">
+            <div class="welcome-card" id="chat-welcome-card">
               <h2>ANTRI Control Plane</h2>
               <p>Minimalist environment for autonomous coding, architectural planning, and self-refinement. State, memory, profiles, and skills are synchronized across CLI and Desktop.</p>
               <div class="quick-action-pills">

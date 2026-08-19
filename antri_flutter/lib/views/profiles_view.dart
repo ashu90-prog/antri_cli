@@ -206,7 +206,25 @@ class _ProfilesViewState extends State<ProfilesView> with SingleTickerProviderSt
                 setState(() {
                   _profiles[name] = ThinkingProfile(
                     name: name,
-                    content: '# $name Profile\n\n- Custom coding preferences and rules\n\n## Notes & Insights Captured From Conversations\n- Created profile $name',
+                    content: '''# 👤 Profile: $name
+
+## 📋 Profile Info
+- Profile Name: $name
+- Description: [Add profile description here]
+- Role / Specialty: [e.g. Full-Stack Developer, Backend Architect]
+
+## 🧠 User Thinking Style & Preferences
+- Communication Style: [e.g. Concise, direct, step-by-step guidance]
+- Problem Solving Approach: [e.g. First-principles, test-driven, proactive]
+- Code Style & Architecture: [e.g. Modular, clean, typed, minimal dependencies]
+
+## 🎯 User Hobbies & Interests
+- Hobbies: [Add hobbies, music, gaming, or personal interests here]
+- Technical Interests: [Add technical interests here]
+
+## 📝 Personal Notes & Project Directives
+- [Personal notes, rules, and facts captured during conversations will be recorded here]
+''',
                   );
                   _activeProfile = name;
                   _editorController.text = _profiles[name]!.content;
@@ -265,7 +283,25 @@ class _ProfilesViewState extends State<ProfilesView> with SingleTickerProviderSt
         if (!_profiles.containsKey(_activeProfile)) {
           _profiles[_activeProfile] = ThinkingProfile(
             name: _activeProfile,
-            content: '# $_activeProfile Profile\n\n- Coding preferences and rules',
+            content: '''# 👤 Profile: $_activeProfile
+
+## 📋 Profile Info
+- Profile Name: $_activeProfile
+- Description: [Add profile description here]
+- Role / Specialty: [e.g. Full-Stack Developer, Backend Architect]
+
+## 🧠 User Thinking Style & Preferences
+- Communication Style: [e.g. Concise, direct, step-by-step guidance]
+- Problem Solving Approach: [e.g. First-principles, test-driven, proactive]
+- Code Style & Architecture: [e.g. Modular, clean, typed, minimal dependencies]
+
+## 🎯 User Hobbies & Interests
+- Hobbies: [Add hobbies, music, gaming, or personal interests here]
+- Technical Interests: [Add technical interests here]
+
+## 📝 Personal Notes & Project Directives
+- [Personal notes, rules, and facts captured during conversations will be recorded here]
+''',
           );
         }
         _editorController.text = _profiles[_activeProfile]?.content ?? '';

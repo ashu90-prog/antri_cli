@@ -9,6 +9,24 @@ export interface ChatMessage {
   timestamp?: number;
 }
 
+export interface ChatSession {
+  id: string;
+  title: string;
+  createdAt: number;
+  updatedAt: number;
+  messages: ChatMessage[];
+}
+
+export interface ChatSessionSummary {
+  id: string;
+  title: string;
+  createdAt: number;
+  updatedAt: number;
+  messageCount: number;
+  preview?: string;
+  isActive?: boolean;
+}
+
 export interface ToolCall {
   id: string;
   type: 'function';

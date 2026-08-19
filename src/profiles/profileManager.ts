@@ -31,21 +31,24 @@ export class ProfileManager {
   private initDefaultProfile(): void {
     const profile1Path = path.join(this.profilesDir, 'profile_1.md');
     if (!fs.existsSync(profile1Path)) {
-      const template = `# 👤 User Profile: profile_1
-- Created: ${new Date().toISOString()}
-- Description: Default user profile for proactive guidance, step-by-step roadmaps, and adaptive notes.
+      const template = `# 👤 Profile: profile_1
 
-## 🧠 Style of Thinking & Preferences
-- Communication: Direct, structured, asks clarifying questions when decisions have trade-offs.
-- Execution: Leads the way step-by-step with clear explanations.
-- Adaptability: Continuously incorporates user feedback and refines solutions.
+## 📋 Profile Info
+- Profile Name: profile_1
+- Description: Default user profile
+- Role / Specialty: [e.g. Software Engineer, Full-Stack Developer]
 
-## 📝 Notes & Captured Insights
-- [${new Date().toLocaleDateString()}]: Initialized profile_1. Leading the way and taking notes on user thinking style.
+## 🧠 User Thinking Style & Preferences
+- Communication Style: [e.g. Concise, direct, step-by-step guidance]
+- Problem Solving Approach: [e.g. First-principles, test-driven, proactive]
+- Code Style & Architecture: [e.g. Modular, clean, typed, minimal dependencies]
 
-## 🛠️ Code Conventions & Architectural Preferences
-- Architecture: Modular, clean, idiomatic code with explicit type safety.
-- Documentation: Self-documenting code with concise explanations.
+## 🎯 User Hobbies & Interests
+- Hobbies: [Add hobbies, music, gaming, or personal interests here]
+- Technical Interests: [Add technical interests here]
+
+## 📝 Personal Notes & Project Directives
+- [Personal notes, rules, and facts captured during conversations will be recorded here]
 `;
       fs.writeFileSync(profile1Path, template, 'utf-8');
     }
@@ -54,16 +57,21 @@ export class ProfileManager {
   private initGlobalNotes(): void {
     if (!fs.existsSync(GLOBAL_NOTES_FILE)) {
       const template = `# 📝 Global User Notes & Identity
-- Initialized: ${new Date().toISOString()}
 
-## 👤 User Identity & Known Facts
-- User Name: 
+## 👤 User Identity & Facts
+- Name: 
+- Role: 
+- Background: 
 
-## 🧠 Personal Preferences & Communication Style
-- Proactively lead the way and provide architectural clarity.
+## 🧠 User Thinking Style & Preferences
+- Preferred Communication: 
+- Architectural Preferences: 
+
+## 🎯 User Hobbies & Interests
+- Hobbies & Interests: 
 
 ## 📌 Cross-Project Directives
-- Standard clean code principles across all workspaces.
+- 
 `;
       fs.writeFileSync(GLOBAL_NOTES_FILE, template, 'utf-8');
     }
@@ -84,13 +92,15 @@ export class ProfileManager {
       const dirName = path.basename(targetDir);
       const template = `# 📝 Workspace Notes & Directives: ${dirName}
 - Workspace Path: ${targetDir}
-- Initialized: ${new Date().toISOString()}
 
 ## 👤 User Identity & Project Role
-- User Name: ${this.userName || '(Not specified yet)'}
+- User Name: ${this.userName || ''}
 
 ## 🧠 Workspace Conventions & Observed Preferences
-- (Agent automatically appends observed directives and insights here)
+- 
+
+## 📌 Project Directives
+- 
 `;
       fs.writeFileSync(wsNotesPath, template, 'utf-8');
     }
@@ -263,6 +273,7 @@ export class ProfileManager {
 [USER IDENTITY, PROFILE & NOTES (RAG ACTIVE CONTEXT)]
 The following context contains the user's active thinking profile, preferences, identity facts, and accumulated notes.
 Use this active knowledge naturally to inform responses, adhere to coding preferences, and recall user facts without forced persona changes.
+🚨 Conversational Recall Rule: When the user asks what you know about them, their background, or preferences, answer naturally and conversationally like an intelligent human partner. Synthesize the relevant facts concisely. NEVER dump raw markdown files, JSON, or template boilerplate.
 ================================================================================\n`;
 
     if (profileContent) {
@@ -285,19 +296,24 @@ Use this active knowledge naturally to inform responses, adhere to coding prefer
     const cleanName = name.toLowerCase().replace(/[^a-z0-9_-]/g, '_').trim() || `profile_${Date.now()}`;
     const filePath = path.join(this.profilesDir, `${cleanName}.md`);
 
-    const template = `# 👤 User Profile: ${cleanName}
-- Created: ${new Date().toISOString()}
-- Description: ${description || `Custom thinking style and preference profile for ${cleanName}.`}
+    const template = `# 👤 Profile: ${cleanName}
 
-## 🧠 Style of Thinking & Preferences
-- Communication: Proactively leads the way, asks clarifying questions, and adapts step-by-step.
-- Pace: Fast and iterative.
+## 📋 Profile Info
+- Profile Name: ${cleanName}
+- Description: ${description || '[Add profile description here]'}
+- Role / Specialty: [e.g. Full-Stack Developer, Backend Architect, Systems Engineer]
 
-## 📝 Notes & Captured Insights
-- [${new Date().toLocaleDateString()}]: Created profile '${cleanName}'. Ready to capture feedback and thinking style.
+## 🧠 User Thinking Style & Preferences
+- Communication Style: [e.g. Concise, direct, step-by-step guidance]
+- Problem Solving Approach: [e.g. First-principles, test-driven, proactive]
+- Code Style & Architecture: [e.g. Modular, clean, typed, minimal dependencies]
 
-## 🛠️ Code Conventions & Architectural Preferences
-- Standard conventions apply. Will adapt as user chats in this profile.
+## 🎯 User Hobbies & Interests
+- Hobbies: [Add hobbies, music, gaming, or personal interests here]
+- Technical Interests: [Add technical interests here]
+
+## 📝 Personal Notes & Project Directives
+- [Personal notes, rules, and facts captured during conversations will be recorded here]
 `;
 
     fs.writeFileSync(filePath, template, 'utf-8');
@@ -308,7 +324,7 @@ Use this active knowledge naturally to inform responses, adhere to coding prefer
       name: cleanName,
       filePath,
       isActive: true,
-      notesCount: 1,
+      notesCount: 0,
       lastModified: Date.now(),
       preview: template,
     };

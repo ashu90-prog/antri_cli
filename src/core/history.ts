@@ -21,6 +21,10 @@ export class ConversationHistory {
     return [...this.messages];
   }
 
+  public setMessages(messages: ChatMessage[]): void {
+    this.messages = [...messages];
+  }
+
   public getLastUserMessage(): ChatMessage | undefined {
     for (let i = this.messages.length - 1; i >= 0; i--) {
       if (this.messages[i].role === 'user') {

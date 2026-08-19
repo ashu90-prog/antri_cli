@@ -19,6 +19,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   await checkAuthStatus();
   await loadStatus();
   await loadCommands();
+  await loadChatSessions();
   await loadProfiles();
   await loadSkills();
   await loadMemory();
@@ -401,6 +402,146 @@ function handleInputKey(event) {
   }
 }
 
+// ==========================================
+// Multi-Chat Session Management
+// ==========================================
+let currentActiveChatId = '';
+let allChatSessions = [];
+
+async function loadChatSessions(renderMessages = true) {
+  try {
+    const res = await fetch('/api/chats');
+    const data = await res.json();
+    allChatSessions = data.sessions || [];
+    currentActiveChatId = data.activeId || (allChatSessions[0]?.id || '');
+
+    const select = document.getElementById('select-chat-session');
+    if (select) {
+      select.innerHTML = '';
+      allChatSessions.forEach((s) => {
+        const opt = document.createElement('option');
+        opt.value = s.id;
+        opt.textContent = `${s.title} (${s.messageCount || 0})`;
+        if (s.id === currentActiveChatId) opt.selected = true;
+        select.appendChild(opt);
+      });
+    }
+
+    if (renderMessages && data.activeSession) {
+      renderActiveSessionMessages(data.activeSession.messages || []);
+    }
+  } catch (err) {
+    console.error('Failed to load chat sessions:', err);
+  }
+}
+
+function renderActiveSessionMessages(messages) {
+  const container = document.getElementById('chat-messages');
+  if (!container) return;
+  container.innerHTML = '';
+
+  if (!messages || messages.length === 0) {
+    container.innerHTML = `
+      <div class="welcome-card" id="chat-welcome-card">
+        <h2>ANTRI Control Plane</h2>
+        <p>Minimalist environment for autonomous coding, architectural planning, and self-refinement. State, memory, profiles, and skills are synchronized across CLI and Desktop.</p>
+        <div class="quick-action-pills">
+          <button onclick="setPrompt('Plan the architecture for a real-time collaborative code editor')">Plan Editor Architecture</button>
+          <button onclick="setPrompt('/debate What are the trade-offs between WebSockets vs Server-Sent Events?')">Start Dialectic Debate</button>
+          <button onclick="setPrompt('/goal Implement a zero-dependency LRU cache with TTL in TypeScript')">Run Goal Loop</button>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  messages.forEach((msg) => {
+    if (msg.role === 'user' || msg.role === 'assistant') {
+      appendMessage(msg.role, msg.content);
+    }
+  });
+}
+
+async function createNewChatSession() {
+  try {
+    const res = await fetch('/api/chats/new', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: 'New Chat' }),
+    });
+    const data = await res.json();
+    if (data.success && data.session) {
+      currentActiveChatId = data.session.id;
+      await loadChatSessions(true);
+      showToast('Started new chat session.');
+    }
+  } catch (err) {
+    console.error('Failed to create new chat session:', err);
+  }
+}
+
+async function onChatSessionSelect(id) {
+  try {
+    const res = await fetch('/api/chats/select', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    });
+    const data = await res.json();
+    if (data.success && data.session) {
+      currentActiveChatId = data.session.id;
+      renderActiveSessionMessages(data.session.messages || []);
+      await loadChatSessions(false);
+    }
+  } catch (err) {
+    console.error('Failed to select chat session:', err);
+  }
+}
+
+async function clearCurrentChatContext() {
+  if (!confirm('Clear all conversation messages in this chat session?')) return;
+  const container = document.getElementById('chat-messages');
+  if (container) {
+    container.innerHTML = `
+      <div class="welcome-card" id="chat-welcome-card">
+        <h2>ANTRI Control Plane</h2>
+        <p>Minimalist environment for autonomous coding, architectural planning, and self-refinement. State, memory, profiles, and skills are synchronized across CLI and Desktop.</p>
+        <div class="quick-action-pills">
+          <button onclick="setPrompt('Plan the architecture for a real-time collaborative code editor')">Plan Editor Architecture</button>
+          <button onclick="setPrompt('/debate What are the trade-offs between WebSockets vs Server-Sent Events?')">Start Dialectic Debate</button>
+          <button onclick="setPrompt('/goal Implement a zero-dependency LRU cache with TTL in TypeScript')">Run Goal Loop</button>
+        </div>
+      </div>
+    `;
+  }
+  await fetch('/api/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt: '/clear' }),
+  }).catch(() => {});
+  await loadChatSessions(false);
+  showToast('Chat context cleared.');
+}
+
+async function deleteCurrentChatSession() {
+  if (!currentActiveChatId) return;
+  if (!confirm('Are you sure you want to delete this chat session?')) return;
+  try {
+    const res = await fetch('/api/chats/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: currentActiveChatId }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      await loadChatSessions(true);
+      showToast('Chat session deleted.');
+    }
+  } catch (err) {
+    console.error('Failed to delete chat session:', err);
+  }
+}
+
 // Chat Prompt Submission with Real-Time Word-by-Word Side-by-Side Streaming
 async function submitPrompt() {
   const input = document.getElementById('prompt-input');
@@ -418,6 +559,12 @@ async function submitPrompt() {
 
   input.value = '';
   hidePalette();
+
+  // Remove welcome card if present
+  const welcomeCard = document.getElementById('chat-welcome-card');
+  if (welcomeCard) {
+    welcomeCard.remove();
+  }
 
   // Intercept /debate or /goal inside chat
   if (prompt.startsWith('/debate')) {
@@ -502,6 +649,7 @@ async function submitPrompt() {
   } finally {
     sendBtn.disabled = false;
     sendBtn.innerHTML = '<span>Send</span>';
+    await loadChatSessions(false);
   }
 }
 

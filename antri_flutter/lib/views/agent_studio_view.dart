@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models/ai_config.dart';
 import '../models/chat_message.dart';
+import '../models/chat_session.dart';
 import '../services/ai_service.dart';
 import '../services/storage_service.dart';
 import '../services/note_synthesizer.dart';
@@ -27,6 +28,8 @@ class AgentStudioView extends StatefulWidget {
 class _AgentStudioViewState extends State<AgentStudioView> {
   final TextEditingController _promptController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final List<ChatSession> _sessions = [];
+  String _activeSessionId = '';
   final List<ChatMessage> _messages = [];
   final List<XFile> _attachedFiles = [];
   bool _isLoading = false;
@@ -34,17 +37,184 @@ class _AgentStudioViewState extends State<AgentStudioView> {
   @override
   void initState() {
     super.initState();
-    _loadHistory();
+    _loadSessions();
   }
 
-  Future<void> _loadHistory() async {
-    final history = await widget.storageService.loadChatHistory(widget.config.syncKey);
+  ChatSession get _currentSession {
+    if (_sessions.isEmpty) {
+      final fallback = ChatSession(id: 'chat_${DateTime.now().millisecondsSinceEpoch}', title: 'Main Chat');
+      _sessions.add(fallback);
+      _activeSessionId = fallback.id;
+      return fallback;
+    }
+    return _sessions.firstWhere(
+      (s) => s.id == _activeSessionId,
+      orElse: () => _sessions.first,
+    );
+  }
+
+  Future<void> _loadSessions() async {
+    final loaded = await widget.storageService.loadChatSessions(widget.config.syncKey);
+    final activeId = await widget.storageService.getActiveSessionId(widget.config.syncKey);
     if (mounted) {
       setState(() {
+        _sessions.clear();
+        _sessions.addAll(loaded);
+        if (activeId != null && _sessions.any((s) => s.id == activeId)) {
+          _activeSessionId = activeId;
+        } else if (_sessions.isNotEmpty) {
+          _activeSessionId = _sessions.first.id;
+        }
         _messages.clear();
-        _messages.addAll(history);
+        _messages.addAll(_currentSession.messages);
       });
     }
+  }
+
+  Future<void> _createNewSession() async {
+    final newSession = ChatSession(
+      id: 'chat_${DateTime.now().millisecondsSinceEpoch}',
+      title: 'New Chat',
+      messages: [],
+    );
+    setState(() {
+      _sessions.insert(0, newSession);
+      _activeSessionId = newSession.id;
+      _messages.clear();
+    });
+    await widget.storageService.saveChatSessions(_sessions, widget.config.syncKey);
+    await widget.storageService.setActiveSessionId(newSession.id, widget.config.syncKey);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Started new chat session.'), duration: Duration(seconds: 1)),
+      );
+    }
+  }
+
+  Future<void> _switchSession(String id) async {
+    setState(() {
+      _activeSessionId = id;
+      _messages.clear();
+      _messages.addAll(_currentSession.messages);
+    });
+    await widget.storageService.setActiveSessionId(id, widget.config.syncKey);
+  }
+
+  Future<void> _deleteSession(String id) async {
+    setState(() {
+      _sessions.removeWhere((s) => s.id == id);
+      if (_sessions.isEmpty) {
+        final fresh = ChatSession(id: 'chat_${DateTime.now().millisecondsSinceEpoch}', title: 'Main Chat');
+        _sessions.add(fresh);
+        _activeSessionId = fresh.id;
+      } else if (_activeSessionId == id) {
+        _activeSessionId = _sessions.first.id;
+      }
+      _messages.clear();
+      _messages.addAll(_currentSession.messages);
+    });
+    await widget.storageService.saveChatSessions(_sessions, widget.config.syncKey);
+    await widget.storageService.setActiveSessionId(_activeSessionId, widget.config.syncKey);
+  }
+
+  Future<void> _clearCurrentSessionMessages() async {
+    setState(() {
+      _currentSession.messages.clear();
+      _messages.clear();
+    });
+    await widget.storageService.saveChatSessions(_sessions, widget.config.syncKey);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Conversation context cleared.'), duration: Duration(seconds: 1)),
+      );
+    }
+  }
+
+  void _showSessionsBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFFFFFFFF),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) => SafeArea(
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+            constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.6),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      '💬 Chat Sessions',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF1C1917)),
+                    ),
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF1C1917),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        elevation: 0,
+                      ),
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        _createNewSession();
+                      },
+                      icon: const Icon(Icons.add, size: 16),
+                      label: const Text('New Chat', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                    ),
+                  ],
+                ),
+                const Divider(height: 20),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: _sessions.length,
+                    itemBuilder: (context, idx) {
+                      final s = _sessions[idx];
+                      final isActive = s.id == _activeSessionId;
+                      return ListTile(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        leading: Icon(
+                          isActive ? Icons.chat_bubble : Icons.chat_bubble_outline,
+                          color: isActive ? const Color(0xFF1C1917) : const Color(0xFF8C827A),
+                        ),
+                        title: Text(
+                          s.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontWeight: isActive ? FontWeight.w800 : FontWeight.w500,
+                            color: const Color(0xFF1C1917),
+                          ),
+                        ),
+                        subtitle: Text(
+                          '${s.messages.length} messages',
+                          style: const TextStyle(fontSize: 11, color: Color(0xFF8C827A)),
+                        ),
+                        trailing: _sessions.length > 1
+                            ? IconButton(
+                                icon: const Icon(Icons.delete_outline, size: 20, color: Color(0xFFDC2626)),
+                                onPressed: () {
+                                  _deleteSession(s.id);
+                                  setModalState(() {});
+                                },
+                              )
+                            : null,
+                        onTap: () {
+                          Navigator.pop(ctx);
+                          _switchSession(s.id);
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _pickAttachment(ImageSource source) async {
@@ -70,6 +240,10 @@ class _AgentStudioViewState extends State<AgentStudioView> {
 
     setState(() {
       _messages.add(userMsg);
+      _currentSession.messages.add(userMsg);
+      if (_currentSession.title == 'New Chat' && text.isNotEmpty) {
+        _currentSession.title = text.length > 28 ? '${text.substring(0, 25)}...' : text;
+      }
       _promptController.clear();
       _attachedFiles.clear();
       _isLoading = true;
@@ -111,6 +285,7 @@ Active Operating Mode: ${widget.config.mode.toUpperCase()}
 [USER IDENTITY, PROFILE & NOTES (RAG ACTIVE CONTEXT)]
 The following context contains user preferences, active thinking profile rules, identity facts, and accumulated notes.
 Use this active knowledge naturally to inform responses, follow coding preferences, and recall user facts without forced persona changes.
+🚨 Conversational Recall Rule: When the user asks what you know about them, their thinking style, hobbies, or background, answer conversationally and concisely like a helpful human partner. Synthesize the known facts smoothly without dumping raw markdown files, section headers, or unformatted template boilerplate.
 ================================================================================
 ### Active Thinking Profile: ${widget.config.activeProfile}.md
 $activeProfContent
@@ -118,10 +293,12 @@ $memoriesText
 ================================================================================
 ''';
 
+      // Pass the entire ongoing multi-turn conversation context to preserve chat state
       final responseText = await widget.aiService.executePrompt(
         config: widget.config,
         systemPrompt: systemPrompt,
         userPrompt: userMsg.content,
+        conversationHistory: _currentSession.messages,
         attachmentPaths: userMsg.attachmentPaths,
       );
 
@@ -129,16 +306,20 @@ $memoriesText
 
       setState(() {
         _messages.add(assistantMsg);
+        _currentSession.messages.add(assistantMsg);
         _isLoading = false;
       });
 
-      await widget.storageService.saveChatHistory(_messages, widget.config.syncKey);
+      await widget.storageService.saveChatSessions(_sessions, widget.config.syncKey);
       _scrollToBottom();
     } catch (e) {
       setState(() {
-        _messages.add(ChatMessage(role: 'assistant', content: 'Error: ${e.toString()}\n\nPlease verify your API key in Settings.'));
+        final errorMsg = ChatMessage(role: 'assistant', content: 'Error: ${e.toString()}\n\nPlease verify your API key in Settings.');
+        _messages.add(errorMsg);
+        _currentSession.messages.add(errorMsg);
         _isLoading = false;
       });
+      await widget.storageService.saveChatSessions(_sessions, widget.config.syncKey);
       _scrollToBottom();
     }
   }
@@ -168,31 +349,79 @@ $memoriesText
       appBar: AppBar(
         backgroundColor: subtleBg,
         elevation: 0,
-        title: Row(
-          children: [
-            const Text(
-              'ANTRI',
-              style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: 1.2, color: textPrimary, fontSize: 16),
+        title: InkWell(
+          onTap: _showSessionsBottomSheet,
+          borderRadius: BorderRadius.circular(8),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'ANTRI',
+                  style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: 1.2, color: textPrimary, fontSize: 16),
+                ),
+                const SizedBox(width: 6),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 110),
+                  child: Text(
+                    _currentSession.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF78716C)),
+                  ),
+                ),
+                const Icon(Icons.arrow_drop_down, size: 18, color: Color(0xFF78716C)),
+              ],
             ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: cardBg,
-                borderRadius: BorderRadius.circular(4),
-                border: Border.all(color: borderMain),
-              ),
-              child: Text(
-                widget.config.provider.toUpperCase(),
-                style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF57534E)),
-              ),
-            ),
-          ],
+          ),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.add_comment_outlined, size: 20, color: textPrimary),
+            tooltip: 'New Chat',
+            onPressed: _createNewSession,
+          ),
+          IconButton(
+            icon: const Icon(Icons.forum_outlined, size: 20, color: textPrimary),
+            tooltip: 'Chat Sessions',
+            onPressed: _showSessionsBottomSheet,
+          ),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert, size: 20, color: textPrimary),
+            onSelected: (val) {
+              if (val == 'clear') {
+                _clearCurrentSessionMessages();
+              } else if (val == 'new') {
+                _createNewSession();
+              }
+            },
+            itemBuilder: (ctx) => [
+              const PopupMenuItem(
+                value: 'new',
+                child: Row(
+                  children: [
+                    Icon(Icons.add, size: 18, color: textPrimary),
+                    SizedBox(width: 8),
+                    Text('New Chat'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'clear',
+                child: Row(
+                  children: [
+                    Icon(Icons.cleaning_services_outlined, size: 18, color: textPrimary),
+                    SizedBox(width: 8),
+                    Text('Clear Conversation'),
+                  ],
+                ),
+              ),
+            ],
+          ),
           // Mode Toggle (Vibe vs Plan)
           Container(
-            margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+            margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
             decoration: BoxDecoration(
               color: cardBg,
               borderRadius: BorderRadius.circular(20),
@@ -208,7 +437,7 @@ $memoriesText
                     widget.onConfigChanged();
                   },
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: widget.config.mode == 'vibe' ? textPrimary : Colors.transparent,
                       borderRadius: BorderRadius.circular(16),
@@ -230,7 +459,7 @@ $memoriesText
                     widget.onConfigChanged();
                   },
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: widget.config.mode == 'plan' ? textPrimary : Colors.transparent,
                       borderRadius: BorderRadius.circular(16),

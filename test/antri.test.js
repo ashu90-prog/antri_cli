@@ -27,6 +27,7 @@ import { MobileServer } from '../dist/mobile/server.js';
 import { FirestoreSyncManager } from '../dist/cloud/firestore.js';
 import { AuthManager } from '../dist/cloud/auth.js';
 import { RateLimiter } from '../dist/security/rateLimiter.js';
+import { SessionManager } from '../dist/core/sessionManager.js';
 
 test('ConfigManager initializes with defaults including debateDepth and mode', () => {
   const manager = new ConfigManager();
@@ -66,7 +67,7 @@ test('ToolExecutor identifies privacy & security sensitive tools', () => {
 
 test('Updater reports correct package name and current version', () => {
   assert.strictEqual(Updater.PACKAGE_NAME, 'antri_cli');
-  assert.strictEqual(Updater.CURRENT_VERSION, '1.50.0');
+  assert.strictEqual(Updater.CURRENT_VERSION, '1.51.0');
 });
 
 test('GoalLoopEngine initializes with active configuration', () => {
@@ -138,7 +139,7 @@ test('ProfileManager manages markdown profiles and extracts notes', () => {
   assert.strictEqual(pm.getActiveProfileName(), 'test_architect');
 
   const content = pm.getActiveProfileContent();
-  assert.ok(content.includes('User Profile: test_architect'));
+  assert.ok(content.includes('Profile: test_architect'));
 
   const extracted = pm.extractAndRecordNotes('I prefer pure functional React components over class components');
   assert.ok(extracted);
@@ -552,3 +553,30 @@ test('FirestoreSyncManager deleteFromFirestore handles cloud deletion gracefully
   assert.ok(typeof res.success === 'boolean');
   AuthManager.logout();
 });
+
+test('SessionManager manages multi-chat sessions and persists context', () => {
+  const sm = new SessionManager();
+  const initialSessions = sm.listSessions();
+  assert.ok(initialSessions.length > 0);
+
+  const newChat = sm.createSession('Test Architecture Discussion');
+  assert.strictEqual(sm.getActiveSessionId(), newChat.id);
+  assert.strictEqual(newChat.title, 'Test Architecture Discussion');
+
+  sm.addMessageToActiveSession({ role: 'user', content: 'How should we architect the caching layer?' });
+  sm.addMessageToActiveSession({ role: 'assistant', content: 'We should use a layered Redis and in-memory LRU cache.' });
+
+  const active = sm.getActiveSession();
+  assert.strictEqual(active.messages.length, 2);
+  assert.strictEqual(active.messages[0].role, 'user');
+  assert.strictEqual(active.messages[1].role, 'assistant');
+
+  // Test session renaming and deletion
+  sm.renameSession(newChat.id, 'Renamed Architecture Session');
+  assert.strictEqual(sm.getSession(newChat.id)?.title, 'Renamed Architecture Session');
+
+  const deleted = sm.deleteSession(newChat.id);
+  assert.strictEqual(deleted, true);
+  assert.strictEqual(sm.getSession(newChat.id), null);
+});
+

@@ -58,6 +58,47 @@ export class ShortcutHandler {
       return { handled: true };
     }
 
+    // /new or /newchat or /clear (Start new chat session)
+    if (trimmed === '/new' || trimmed === '/newchat' || trimmed === '/clear') {
+      const { sessionManager } = await import('../core/sessionManager.js');
+      const session = sessionManager.createSession('New Chat');
+      this.agent.getHistory().clear();
+      log.success(`Started new chat session (${session.id}). Context refreshed.`);
+      return { handled: true };
+    }
+
+    // /chats or /sessions (List all chat sessions)
+    if (trimmed === '/chats' || trimmed === '/sessions') {
+      const { sessionManager } = await import('../core/sessionManager.js');
+      const sessions = sessionManager.listSessions();
+      const activeId = sessionManager.getActiveSessionId();
+      console.log(chalk.bold.hex('#c084fc')('\n💬 Chat Sessions:'));
+      console.log(chalk.hex('#334155')('─'.repeat(60)));
+      for (const s of sessions) {
+        const marker = s.id === activeId ? chalk.green('● [Active]') : chalk.hex('#64748b')('○');
+        const count = chalk.hex('#94a3b8')(`(${s.messageCount} msgs)`);
+        console.log(`  ${marker} ${chalk.bold(s.title)} ${count}`);
+        console.log(`    ID: ${chalk.hex('#64748b')(s.id)} · Updated: ${new Date(s.updatedAt).toLocaleTimeString()}`);
+      }
+      console.log(chalk.hex('#334155')('─'.repeat(60)));
+      console.log(chalk.hex('#94a3b8')('Type /chat <id> to switch or /new for a new session.\n'));
+      return { handled: true };
+    }
+
+    // /chat <id> (Switch to a chat session)
+    if (trimmed.startsWith('/chat ') && !trimmed.startsWith('/chat delete')) {
+      const targetId = trimmed.slice(6).trim();
+      const { sessionManager } = await import('../core/sessionManager.js');
+      const session = sessionManager.setActiveSessionId(targetId);
+      if (session) {
+        this.agent.getHistory().setMessages(session.messages || []);
+        log.success(`Switched to chat session: ${chalk.bold(session.title)} (${session.messages.length} messages in context)`);
+      } else {
+        log.error(`Chat session not found: ${targetId}`);
+      }
+      return { handled: true };
+    }
+
     // /push or /profile push (Direct Cloud Firestore Push)
     if (trimmed === '/push' || trimmed === '/profile push' || trimmed === '/profiles push') {
       const { FirestoreSyncManager } = await import('../cloud/firestore.js');

@@ -1,12 +1,14 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/ai_config.dart';
+import '../models/chat_message.dart';
 
 class AIService {
   Future<String> executePrompt({
     required AIConfig config,
     required String systemPrompt,
     required String userPrompt,
+    List<ChatMessage> conversationHistory = const [],
     List<String> attachmentPaths = const [],
   }) async {
     final prov = config.provider;
@@ -35,6 +37,22 @@ class AIService {
 
     if (baseUrls.containsKey(prov) || prov == 'custom') {
       final endpoint = '${baseUrls[prov] ?? customUrl}/chat/completions';
+      final List<Map<String, dynamic>> messages = [
+        {'role': 'system', 'content': finalSystem},
+      ];
+      for (final msg in conversationHistory) {
+        if (msg.content.trim().isNotEmpty) {
+          messages.add({
+            'role': msg.role == 'assistant' ? 'assistant' : 'user',
+            'content': msg.content,
+          });
+        }
+      }
+      messages.add({
+        'role': 'user',
+        'content': promptToSend,
+      });
+
       final response = await http.post(
         Uri.parse(endpoint),
         headers: {
@@ -43,10 +61,7 @@ class AIService {
         },
         body: jsonEncode({
           'model': model,
-          'messages': [
-            {'role': 'system', 'content': finalSystem},
-            {'role': 'user', 'content': promptToSend},
-          ],
+          'messages': messages,
           'temperature': 0.7,
         }),
       );
@@ -62,18 +77,42 @@ class AIService {
     // 2. Google Gemini
     if (prov == 'gemini') {
       final endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$apiKey';
+      final List<Map<String, dynamic>> contents = [];
+
+      for (int i = 0; i < conversationHistory.length; i++) {
+        final msg = conversationHistory[i];
+        if (msg.content.trim().isNotEmpty) {
+          final role = msg.role == 'assistant' ? 'model' : 'user';
+          final text = i == 0 ? '$finalSystem\n\n${msg.content}' : msg.content;
+          contents.add({
+            'role': role,
+            'parts': [
+              {'text': text}
+            ],
+          });
+        }
+      }
+
+      if (contents.isEmpty) {
+        contents.add({
+          'role': 'user',
+          'parts': [
+            {'text': '$finalSystem\n\n$promptToSend'}
+          ],
+        });
+      } else {
+        contents.add({
+          'role': 'user',
+          'parts': [
+            {'text': promptToSend}
+          ],
+        });
+      }
+
       final response = await http.post(
         Uri.parse(endpoint),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'contents': [
-            {
-              'parts': [
-                {'text': '$finalSystem\n\n$promptToSend'}
-              ]
-            }
-          ]
-        }),
+        body: jsonEncode({'contents': contents}),
       );
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
@@ -87,6 +126,20 @@ class AIService {
     // 3. Anthropic Claude
     if (prov == 'anthropic') {
       const endpoint = 'https://api.anthropic.com/v1/messages';
+      final List<Map<String, dynamic>> messages = [];
+      for (final msg in conversationHistory) {
+        if (msg.content.trim().isNotEmpty) {
+          messages.add({
+            'role': msg.role == 'assistant' ? 'assistant' : 'user',
+            'content': msg.content,
+          });
+        }
+      }
+      messages.add({
+        'role': 'user',
+        'content': promptToSend,
+      });
+
       final response = await http.post(
         Uri.parse(endpoint),
         headers: {
@@ -98,9 +151,7 @@ class AIService {
           'model': model,
           'max_tokens': 4096,
           'system': finalSystem,
-          'messages': [
-            {'role': 'user', 'content': promptToSend}
-          ],
+          'messages': messages,
         }),
       );
 
@@ -119,6 +170,22 @@ class AIService {
     // 4. Cohere
     if (prov == 'cohere') {
       const endpoint = 'https://api.cohere.com/v2/chat';
+      final List<Map<String, dynamic>> messages = [
+        {'role': 'system', 'content': finalSystem},
+      ];
+      for (final msg in conversationHistory) {
+        if (msg.content.trim().isNotEmpty) {
+          messages.add({
+            'role': msg.role == 'assistant' ? 'assistant' : 'user',
+            'content': msg.content,
+          });
+        }
+      }
+      messages.add({
+        'role': 'user',
+        'content': promptToSend,
+      });
+
       final response = await http.post(
         Uri.parse(endpoint),
         headers: {
@@ -127,10 +194,7 @@ class AIService {
         },
         body: jsonEncode({
           'model': model,
-          'messages': [
-            {'role': 'system', 'content': finalSystem},
-            {'role': 'user', 'content': promptToSend},
-          ],
+          'messages': messages,
         }),
       );
 

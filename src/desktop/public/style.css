@@ -286,6 +286,85 @@ body.antri-app {
   position: relative;
 }
 
+.chat-session-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 1rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-main);
+  border-radius: var(--radius-sm);
+  margin-bottom: 1rem;
+}
+
+.chat-session-selector-group {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+}
+
+.new-chat-btn {
+  background: var(--accent-primary);
+  color: var(--text-inverted);
+  border: none;
+  padding: 0.45rem 0.9rem;
+  border-radius: var(--radius-xs);
+  font-family: var(--font-sans);
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.new-chat-btn:hover {
+  opacity: 0.9;
+}
+
+.chat-session-select {
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-main);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 0.4rem 0.75rem;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  max-width: 320px;
+  width: 100%;
+  outline: none;
+}
+
+.chat-session-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.chat-session-action-btn {
+  background: transparent;
+  border: 1px solid var(--border-main);
+  padding: 0.35rem 0.65rem;
+  border-radius: var(--radius-xs);
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.chat-session-action-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.chat-session-action-btn.btn-danger:hover {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  color: #dc2626;
+}
+
 .chat-messages {
   flex: 1;
   overflow-y: auto;

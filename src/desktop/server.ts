@@ -257,6 +257,17 @@ export class DesktopServer {
       return;
     }
 
+    // GET /api/chats (List multi-chat sessions)
+    if (pathname === '/api/chats' && req.method === 'GET') {
+      const { sessionManager } = await import('../core/sessionManager.js');
+      const sessions = sessionManager.listSessions();
+      const activeId = sessionManager.getActiveSessionId();
+      const activeSession = sessionManager.getActiveSession();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ sessions, activeId, activeSession }));
+      return;
+    }
+
     // Read Body for POST requests
     let body = '';
     req.on('data', (chunk) => {
@@ -570,6 +581,46 @@ export class DesktopServer {
           );
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ success: true, skill }));
+          return;
+        }
+
+        // POST /api/chats/new (Create new chat session)
+        if (pathname === '/api/chats/new' && req.method === 'POST') {
+          const { sessionManager } = await import('../core/sessionManager.js');
+          const session = sessionManager.createSession(payload.title || 'New Chat');
+          this.activeAgent.syncHistoryFromActiveSession();
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: true, session }));
+          return;
+        }
+
+        // POST /api/chats/select (Switch active chat session)
+        if (pathname === '/api/chats/select' && req.method === 'POST') {
+          const { sessionManager } = await import('../core/sessionManager.js');
+          const session = sessionManager.setActiveSessionId(payload.id);
+          this.activeAgent.syncHistoryFromActiveSession();
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: !!session, session }));
+          return;
+        }
+
+        // POST /api/chats/delete (Delete chat session)
+        if (pathname === '/api/chats/delete' && req.method === 'POST') {
+          const { sessionManager } = await import('../core/sessionManager.js');
+          const ok = sessionManager.deleteSession(payload.id);
+          this.activeAgent.syncHistoryFromActiveSession();
+          const activeSession = sessionManager.getActiveSession();
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: ok, activeSession }));
+          return;
+        }
+
+        // POST /api/chats/rename (Rename chat session)
+        if (pathname === '/api/chats/rename' && req.method === 'POST') {
+          const { sessionManager } = await import('../core/sessionManager.js');
+          const ok = sessionManager.renameSession(payload.id, payload.title);
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: ok }));
           return;
         }
 

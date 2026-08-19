@@ -12,6 +12,7 @@ import { profileManager } from '../profiles/profileManager.js';
 import { skillManager } from '../skills/skillManager.js';
 import { SelfDebugger } from './debugger.js';
 import { metaOptimizer } from './metaOptimizer.js';
+import { sessionManager } from './sessionManager.js';
 import { log } from '../utils/logger.js';
 
 export class AntriAgent {
@@ -23,8 +24,16 @@ export class AntriAgent {
   constructor(config: AntriConfig, history?: ConversationHistory) {
     this.config = config;
     this.history = history || new ConversationHistory();
+    if (!history) {
+      this.syncHistoryFromActiveSession();
+    }
     this.toolExecutor = new ToolExecutor(config.workingDir);
     this.citationEngine = new CitationEngine();
+  }
+
+  public syncHistoryFromActiveSession(): void {
+    const active = sessionManager.getActiveSession();
+    this.history.setMessages(active.messages || []);
   }
 
   public getHistory(): ConversationHistory {
@@ -87,6 +96,7 @@ Autonomous Guidelines:
 - 🚨 STRICT CONVERSATIONAL & EMPATHY RULE: NEVER call 'web_search' or any research tool on personal statements, personal life events, grief, bereavement, emotional expressions, personal names, or conversational sharing (e.g. "I lost my father in 2021", "I feel overwhelmed", "My mother passed away", "My name is..."). Respond directly and authentically with genuine human empathy, warmth, and active listening.
 - 'web_search' is STRICTLY for software frameworks, coding syntax, API documentation, error traces, and explicit web queries.
 - If a user attaches a file ([Attached File: ...]), examine the provided content directly.
+- When the user asks what you know about them, their thinking style, hobbies, or background, answer conversationally and concisely like a helpful human partner. Synthesize the known facts smoothly without dumping raw markdown files, section headers, or unformatted template boilerplate.
 - Cite sources clearly when using web research.
 - Write clean, production-grade, typed code.`;
 
@@ -168,11 +178,13 @@ Autonomous Guidelines:
       console.log(chalk.hex('#64748b')(`📎 Attached file(s): ${attachedFiles.map((f) => chalk.cyan(f)).join(', ')}`));
     }
 
-    // 5. Add user message to history
-    this.history.addMessage({
+    // 5. Add user message to active session & history
+    const userMsg: ChatMessage = {
       role: 'user',
       content: enhancedPrompt,
-    });
+    };
+    this.history.addMessage(userMsg);
+    sessionManager.addMessageToActiveSession(userMsg);
 
     const response = await this.runAgentLoop(0, contextText, skillContext, onStreamToken, onToolCall);
 
@@ -263,12 +275,14 @@ Autonomous Guidelines:
         console.log();
       }
 
-      // Record assistant message
-      this.history.addMessage({
+      // Record assistant message to active session & history
+      const assistantMsg: ChatMessage = {
         role: 'assistant',
         content: fullResponse,
         tool_calls: pendingToolCalls.length > 0 ? pendingToolCalls : undefined,
-      });
+      };
+      this.history.addMessage(assistantMsg);
+      sessionManager.addMessageToActiveSession(assistantMsg);
 
       // If LLM produced tool calls, execute them and continue loop
       if (pendingToolCalls.length > 0) {

@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/ai_config.dart';
 import '../models/thinking_profile.dart';
 import '../models/chat_message.dart';
+import '../models/chat_session.dart';
 
 class StorageService {
   static const String _keyConfig = 'antri_flutter_config';
@@ -43,7 +44,25 @@ class StorageService {
     return {
       defaultName: ThinkingProfile(
         name: defaultName,
-        content: '# $defaultName Thinking Profile\n\n## Style of Thinking & Preferences\n- Communication: Structured, proactive guidance\n- Architecture: Modular & Clean\n\n## Notes & Insights Captured From Conversations\n- Initialized private profile for account.',
+        content: '''# 👤 Profile: profile_1
+
+## 📋 Profile Info
+- Profile Name: profile_1
+- Description: Default user profile
+- Role / Specialty: [e.g. Software Engineer, Full-Stack Developer]
+
+## 🧠 User Thinking Style & Preferences
+- Communication Style: [e.g. Concise, direct, step-by-step guidance]
+- Problem Solving Approach: [e.g. First-principles, test-driven, proactive]
+- Code Style & Architecture: [e.g. Modular, clean, typed, minimal dependencies]
+
+## 🎯 User Hobbies & Interests
+- Hobbies: [Add hobbies, music, gaming, or personal interests here]
+- Technical Interests: [Add technical interests here]
+
+## 📝 Personal Notes & Project Directives
+- [Personal notes, rules, and facts captured during conversations will be recorded here]
+''',
       ),
     };
   }
@@ -73,6 +92,51 @@ class StorageService {
     final key = _getUserHistoryKey(syncKey);
     final list = history.map((m) => m.toJson()).toList();
     await prefs.setString(key, jsonEncode(list));
+  }
+
+  static String _getUserSessionsKey(String? syncKey) => 'antri_sessions_${syncKey != null && syncKey.isNotEmpty ? syncKey : "guest"}';
+  static String _getUserActiveSessionKey(String? syncKey) => 'antri_active_session_${syncKey != null && syncKey.isNotEmpty ? syncKey : "guest"}';
+
+  Future<List<ChatSession>> loadChatSessions([String? syncKey]) async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = _getUserSessionsKey(syncKey);
+    final raw = prefs.getString(key);
+    if (raw != null) {
+      try {
+        final List list = jsonDecode(raw);
+        final sessions = list.map((item) => ChatSession.fromJson(item)).toList();
+        if (sessions.isNotEmpty) return sessions;
+      } catch (_) {}
+    }
+
+    // Migrate from legacy single chat history if present
+    final legacyHistory = await loadChatHistory(syncKey);
+    final defaultSession = ChatSession(
+      id: 'chat_${DateTime.now().millisecondsSinceEpoch}',
+      title: 'Main Chat',
+      messages: legacyHistory,
+    );
+    await saveChatSessions([defaultSession], syncKey);
+    return [defaultSession];
+  }
+
+  Future<void> saveChatSessions(List<ChatSession> sessions, [String? syncKey]) async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = _getUserSessionsKey(syncKey);
+    final list = sessions.map((s) => s.toJson()).toList();
+    await prefs.setString(key, jsonEncode(list));
+  }
+
+  Future<String?> getActiveSessionId([String? syncKey]) async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = _getUserActiveSessionKey(syncKey);
+    return prefs.getString(key);
+  }
+
+  Future<void> setActiveSessionId(String id, [String? syncKey]) async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = _getUserActiveSessionKey(syncKey);
+    await prefs.setString(key, id);
   }
 
   Future<List<String>> loadMemories([String? syncKey]) async {
