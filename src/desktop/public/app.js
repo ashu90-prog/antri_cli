@@ -640,12 +640,22 @@ async function startGoalLoop() {
 }
 
 // ==========================================
-// Thinking Profile Management
+// Thinking Profile & Notes Management
 // ==========================================
+let currentViewedProfile = 'profile_1';
+let currentActiveProfile = 'profile_1';
+let currentNotesScope = 'global';
+let cachedGlobalNotes = '';
+let cachedWorkspaceNotes = '';
+
 async function loadProfiles() {
   try {
     const res = await fetch('/api/profiles');
     const data = await res.json();
+
+    currentActiveProfile = data.activeName || 'profile_1';
+    cachedGlobalNotes = data.globalNotes || '';
+    cachedWorkspaceNotes = data.workspaceNotes || '';
 
     const select = document.getElementById('select-profile');
     const list = document.getElementById('profile-items-list');
@@ -656,28 +666,82 @@ async function loadProfiles() {
       // Dropdown option
       const opt = document.createElement('option');
       opt.value = p.name;
-      opt.textContent = p.name;
-      if (p.name === data.activeName) opt.selected = true;
+      opt.textContent = `${p.name}.md`;
+      if (p.name === currentActiveProfile) opt.selected = true;
       select.appendChild(opt);
 
       // List button
+      const isCurrentViewed = p.name === currentViewedProfile || (!currentViewedProfile && p.name === currentActiveProfile);
       const btn = document.createElement('button');
-      btn.className = `profile-item-btn ${p.name === data.activeName ? 'active' : ''}`;
+      btn.className = `profile-item-btn ${isCurrentViewed ? 'active' : ''}`;
       btn.innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:center;width:100%;">
           <span style="font-weight:600;">${p.name}.md</span>
-          <span style="font-size:10px;opacity:0.7;">${p.notesCount || 0} notes</span>
+          <span style="font-size:10px;opacity:0.8;display:flex;align-items:center;gap:4px;">
+            ${p.name === currentActiveProfile ? '<span style="color:#10b981;font-weight:700;">● Active</span>' : ''}
+            <span>${p.notesCount || 0} notes</span>
+          </span>
         </div>
       `;
-      btn.onclick = () => selectProfile(p.name);
+      btn.onclick = () => viewProfile(p.name);
       list.appendChild(btn);
     });
 
-    document.getElementById('active-profile-title').textContent = `${data.activeName}.md`;
-    document.getElementById('profile-editor').value = data.activeContent || '';
+    if (!currentViewedProfile || !data.profiles.some((p) => p.name === currentViewedProfile)) {
+      currentViewedProfile = currentActiveProfile;
+    }
+
+    await viewProfile(currentViewedProfile, false);
+
+    // Also populate notes editor
+    const notesEditor = document.getElementById('notes-editor');
+    if (notesEditor) {
+      notesEditor.value = currentNotesScope === 'workspace' ? cachedWorkspaceNotes : cachedGlobalNotes;
+    }
   } catch (err) {
     console.error('Failed to load profiles:', err);
   }
+}
+
+async function viewProfile(name, updateListHighlight = true) {
+  try {
+    currentViewedProfile = name;
+    const res = await fetch(`/api/profile?name=${encodeURIComponent(name)}`);
+    const data = await res.json();
+
+    document.getElementById('active-profile-title').textContent = `${data.name}.md`;
+    const subtitle = document.getElementById('active-profile-subtitle');
+    const activateBtn = document.getElementById('btn-set-active-profile');
+
+    if (data.name === currentActiveProfile) {
+      if (subtitle) subtitle.textContent = 'Active thinking profile in LLM context';
+      if (activateBtn) activateBtn.style.display = 'none';
+    } else {
+      if (subtitle) subtitle.textContent = 'Viewing profile instructions (Click "Set as Active" to apply)';
+      if (activateBtn) activateBtn.style.display = 'inline-block';
+    }
+
+    document.getElementById('profile-editor').value = data.content || '';
+
+    if (updateListHighlight) {
+      document.querySelectorAll('#profile-items-list .profile-item-btn').forEach((btn, idx) => {
+        const text = btn.textContent || '';
+        if (text.includes(`${name}.md`)) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+    }
+  } catch (err) {
+    console.error('Failed to view profile:', err);
+  }
+}
+
+async function activateViewedProfile() {
+  if (!currentViewedProfile) return;
+  await selectProfile(currentViewedProfile);
+  showToast(`Active profile switched to '${currentViewedProfile}.md'`);
 }
 
 async function selectProfile(name) {
@@ -686,7 +750,70 @@ async function selectProfile(name) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name }),
   });
+  currentActiveProfile = name;
+  currentViewedProfile = name;
   await loadProfiles();
+}
+
+function switchProfileSubtab(subtab) {
+  const btnProfiles = document.getElementById('btn-subtab-profiles');
+  const btnNotes = document.getElementById('btn-subtab-notes');
+  const viewProfiles = document.getElementById('subtab-view-profiles');
+  const viewNotes = document.getElementById('subtab-view-notes');
+
+  if (subtab === 'profiles') {
+    btnProfiles.classList.add('active');
+    btnNotes.classList.remove('active');
+    viewProfiles.classList.remove('hidden');
+    viewNotes.classList.add('hidden');
+  } else {
+    btnNotes.classList.add('active');
+    btnProfiles.classList.remove('active');
+    viewNotes.classList.remove('hidden');
+    viewProfiles.classList.add('hidden');
+  }
+}
+
+function selectNotesScope(scope) {
+  currentNotesScope = scope;
+  const btnGlobal = document.getElementById('btn-note-global');
+  const btnWorkspace = document.getElementById('btn-note-workspace');
+  const title = document.getElementById('notes-scope-title');
+  const editor = document.getElementById('notes-editor');
+
+  if (scope === 'workspace') {
+    btnWorkspace.classList.add('active');
+    btnGlobal.classList.remove('active');
+    if (title) title.textContent = 'Workspace Local Notes (.antri/profiles/notes.md)';
+    if (editor) editor.value = cachedWorkspaceNotes;
+  } else {
+    btnGlobal.classList.add('active');
+    btnWorkspace.classList.remove('active');
+    if (title) title.textContent = 'Global User Notes (~/.antri/profiles/notes.md)';
+    if (editor) editor.value = cachedGlobalNotes;
+  }
+}
+
+async function saveNotesContent() {
+  const content = document.getElementById('notes-editor').value;
+  try {
+    const res = await fetch('/api/profile/notes/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: currentNotesScope, content }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      if (currentNotesScope === 'workspace') {
+        cachedWorkspaceNotes = content;
+      } else {
+        cachedGlobalNotes = content;
+      }
+      showToast(`Notes (${currentNotesScope}) saved & synced.`);
+    }
+  } catch (err) {
+    showToast(`Failed to save notes: ${err.message}`, true);
+  }
 }
 
 async function createProfile() {
@@ -701,6 +828,7 @@ async function createProfile() {
   });
 
   input.value = '';
+  currentViewedProfile = name.toLowerCase().replace(/[^a-z0-9_-]/g, '_');
   await loadProfiles();
   showToast(`Profile '${name}' created.`);
 }
@@ -720,6 +848,7 @@ async function handleProfileImport(event) {
       });
       const data = await res.json();
       if (data.success) {
+        currentViewedProfile = file.name.replace(/\.md$/, '');
         await loadProfiles();
         showToast(`Profile '${file.name}' imported successfully.`);
       }
@@ -734,9 +863,9 @@ async function saveActiveProfile() {
   await fetch('/api/profile/save', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ content }),
+    body: JSON.stringify({ name: currentViewedProfile, content }),
   });
-  showToast('Profile saved successfully.');
+  showToast(`Profile '${currentViewedProfile}.md' saved successfully.`);
 }
 
 async function pushProfilesToCloud() {
@@ -773,7 +902,7 @@ async function pullProfilesFromCloud() {
 }
 
 function exportActiveProfile() {
-  const activeTitle = document.getElementById('active-profile-title').textContent || 'profile.md';
+  const activeTitle = document.getElementById('active-profile-title').textContent || `${currentViewedProfile}.md`;
   const content = document.getElementById('profile-editor').value;
   const blob = new Blob([content], { type: 'text/markdown;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
@@ -786,22 +915,23 @@ function exportActiveProfile() {
 }
 
 async function deleteActiveProfile() {
-  const activeTitle = (document.getElementById('active-profile-title').textContent || '').replace('.md', '');
-  if (activeTitle === 'profile_1') {
+  const target = currentViewedProfile || 'profile_1';
+  if (target === 'profile_1') {
     alert('Cannot delete default profile_1.');
     return;
   }
-  if (!confirm(`Are you sure you want to delete profile '${activeTitle}.md'?`)) return;
+  if (!confirm(`Are you sure you want to delete profile '${target}.md'?`)) return;
 
   const res = await fetch('/api/profile/delete', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name: activeTitle }),
+    body: JSON.stringify({ name: target }),
   });
   const data = await res.json();
   if (data.success) {
+    currentViewedProfile = 'profile_1';
     await loadProfiles();
-    showToast(`Profile '${activeTitle}' deleted.`);
+    showToast(`Profile '${target}' deleted.`);
   }
 }
 

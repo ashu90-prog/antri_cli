@@ -23,18 +23,42 @@ export class FirestoreSyncManager {
   }
 
   public static getSyncConfig(): { projectId: string; syncKey: string; apiKey?: string; lastSynced?: string } {
+    let storedSyncKey = 'default_user';
+    let storedProjectId = 'antri-agentic-hackathon';
+    let storedApiKey = process.env.GEMINI_API_KEY || '';
+    let lastSynced: string | undefined;
+
     const filePath = this.getSyncConfigFile();
     if (fs.existsSync(filePath)) {
       try {
         const cfg = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-        if (!cfg.projectId) cfg.projectId = 'antri-agentic-hackathon';
-        return cfg;
+        if (cfg.projectId) storedProjectId = cfg.projectId;
+        if (cfg.syncKey) storedSyncKey = cfg.syncKey;
+        if (cfg.apiKey) storedApiKey = cfg.apiKey;
+        if (cfg.lastSynced) lastSynced = cfg.lastSynced;
       } catch (_) {}
     }
+
+    // If storedSyncKey is default_user, dynamically bind to current authenticated user partition
+    if (storedSyncKey === 'default_user') {
+      try {
+        const authPath = path.join(os.homedir(), '.antri', 'auth.json');
+        if (fs.existsSync(authPath)) {
+          const authData = JSON.parse(fs.readFileSync(authPath, 'utf-8'));
+          const user = authData.user || authData;
+          if (user && user.email && typeof user.email === 'string') {
+            const clean = user.email.toLowerCase().trim();
+            storedSyncKey = user.userId || clean.replace(/[^a-z0-9_]/g, '_');
+          }
+        }
+      } catch (_) {}
+    }
+
     return {
-      projectId: process.env.GOOGLE_CLOUD_PROJECT || process.env.GCP_PROJECT || 'antri-agentic-hackathon',
-      syncKey: 'default_user',
-      apiKey: process.env.GEMINI_API_KEY || '',
+      projectId: process.env.GOOGLE_CLOUD_PROJECT || process.env.GCP_PROJECT || storedProjectId,
+      syncKey: storedSyncKey,
+      apiKey: storedApiKey,
+      lastSynced,
     };
   }
 

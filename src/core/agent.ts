@@ -75,7 +75,7 @@ Tooling & Workspace Capabilities:
 2. Sandboxed Runtime: execute_python (run safe isolated Python code scripts).
 3. Markdown Skills System: activate_skill (activate specialized expert instructions from .md skills).
 4. Web & Research Tools: web_search (multi-provider search without API key), scrape_url (deep readable content extraction into Markdown), and crawl_docs (recursive documentation crawler).
-5. Persistent Lifelong Memory & Multi-Profile Thinking: Adhere strictly to the active profile markdown context and project conventions.
+5. Persistent Lifelong Memory & Active RAG Context: Utilize user profile preferences, project conventions, and accumulated notes in active context naturally.
 
 Available Skills in Ecosystem:
 ${skillListSummary}

@@ -15,7 +15,7 @@
   <header class="app-header">
     <div class="brand-zone">
       <span class="logo-mark">ANTRI</span>
-      <span class="version-tag">v1.49.0</span>
+      <span class="version-tag">v1.50.0</span>
     </div>
 
     <!-- Mode Toggle -->
@@ -274,7 +274,7 @@
         <div class="panel-header">
           <div>
             <h2>Thinking Profile Studio</h2>
-            <p>Manage user preferences, coding styles, and automatically extracted notes in <code>~/.antri/profiles/</code>.</p>
+            <p>Manage user preferences, coding styles, and active RAG notes across PC and Mobile in <code>~/.antri/profiles/</code>.</p>
           </div>
           <div class="debate-controls">
             <input type="file" id="profile-import-input" accept=".md,.txt" style="display:none;" onchange="handleProfileImport(event)" />
@@ -286,7 +286,14 @@
           </div>
         </div>
 
-        <div class="profile-studio-layout">
+        <!-- Sub-Tabs: Profiles vs Notes -->
+        <div class="profile-subnav">
+          <button id="btn-subtab-profiles" class="subnav-pill active" onclick="switchProfileSubtab('profiles')">Thinking Profiles (.md)</button>
+          <button id="btn-subtab-notes" class="subnav-pill" onclick="switchProfileSubtab('notes')">Captured Notes & Identity (notes.md)</button>
+        </div>
+
+        <!-- Subtab 1: Profiles Layout -->
+        <div id="subtab-view-profiles" class="profile-studio-layout">
           <div class="profile-list-sidebar" id="profile-items-list">
             <!-- Populated via API -->
           </div>
@@ -294,15 +301,46 @@
             <div class="editor-header">
               <div>
                 <h3 id="active-profile-title">profile_1.md</h3>
-                <span class="editor-subtitle">Editing active thinking profile instructions</span>
+                <span id="active-profile-subtitle" class="editor-subtitle">Editing thinking profile instructions</span>
               </div>
               <div class="editor-action-group">
+                <button class="btn-sm-action" id="btn-set-active-profile" onclick="activateViewedProfile()">⚡ Set as Active</button>
                 <button class="btn-sm-action" onclick="exportActiveProfile()">⬇️ Export</button>
                 <button class="btn-sm-action btn-danger" onclick="deleteActiveProfile()">🗑️ Delete</button>
                 <button class="save-btn" onclick="saveActiveProfile()">💾 Save Profile</button>
               </div>
             </div>
-            <textarea id="profile-editor" class="profile-textarea" placeholder="Profile markdown content..."></textarea>
+            <textarea id="profile-editor" class="profile-textarea" placeholder="Profile markdown content..." spellcheck="false"></textarea>
+          </div>
+        </div>
+
+        <!-- Subtab 2: Notes Layout -->
+        <div id="subtab-view-notes" class="profile-studio-layout hidden">
+          <div class="profile-list-sidebar">
+            <button id="btn-note-global" class="profile-item-btn active" onclick="selectNotesScope('global')">
+              <div style="display:flex;justify-content:space-between;align-items:center;width:100%;">
+                <span style="font-weight:600;">Global notes.md</span>
+                <span style="font-size:10px;opacity:0.7;">~/.antri</span>
+              </div>
+            </button>
+            <button id="btn-note-workspace" class="profile-item-btn" onclick="selectNotesScope('workspace')">
+              <div style="display:flex;justify-content:space-between;align-items:center;width:100%;">
+                <span style="font-weight:600;">Workspace notes.md</span>
+                <span style="font-size:10px;opacity:0.7;">.antri/profiles</span>
+              </div>
+            </button>
+          </div>
+          <div class="profile-editor-container">
+            <div class="editor-header">
+              <div>
+                <h3 id="notes-scope-title">Global User Notes (notes.md)</h3>
+                <span class="editor-subtitle">Active RAG context automatically injected into every conversation</span>
+              </div>
+              <div class="editor-action-group">
+                <button class="save-btn" onclick="saveNotesContent()">💾 Save Notes</button>
+              </div>
+            </div>
+            <textarea id="notes-editor" class="profile-textarea" placeholder="User identity, personal facts, and preferences..." spellcheck="false"></textarea>
           </div>
         </div>
       </section>

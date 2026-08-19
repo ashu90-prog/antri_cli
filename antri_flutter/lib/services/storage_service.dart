@@ -39,7 +39,7 @@ class StorageService {
         }
       } catch (_) {}
     }
-    final defaultName = syncKey != null && syncKey.isNotEmpty ? '${syncKey.split('_').first}_profile' : 'profile_1';
+    const defaultName = 'profile_1';
     return {
       defaultName: ThinkingProfile(
         name: defaultName,

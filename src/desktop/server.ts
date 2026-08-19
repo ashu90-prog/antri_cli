@@ -209,8 +209,33 @@ export class DesktopServer {
     if (pathname === '/api/profiles' && req.method === 'GET') {
       const profiles = profileManager.listProfiles();
       const activeContent = profileManager.getActiveProfileContent();
+      const globalNotes = profileManager.getGlobalNotesContent();
+      const workspaceNotes = profileManager.getWorkspaceNotesContent(config.workingDir);
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ profiles, activeContent, activeName: profileManager.getActiveProfileName() }));
+      res.end(
+        JSON.stringify({
+          profiles,
+          activeContent,
+          activeName: profileManager.getActiveProfileName(),
+          globalNotes,
+          workspaceNotes,
+        })
+      );
+      return;
+    }
+
+    // GET /api/profile (Inspect any individual profile)
+    if (pathname === '/api/profile' && req.method === 'GET') {
+      const name = url.searchParams.get('name') || profileManager.getActiveProfileName();
+      const content = profileManager.getProfile(name);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(
+        JSON.stringify({
+          name,
+          content,
+          isActive: name === profileManager.getActiveProfileName(),
+        })
+      );
       return;
     }
 
@@ -420,10 +445,23 @@ export class DesktopServer {
 
         // POST /api/profile/save
         if (pathname === '/api/profile/save' && req.method === 'POST') {
-          const active = profileManager.getActiveProfileName();
-          const filePath = path.join(os.homedir(), '.antri', 'profiles', `${active}.md`);
-          fs.writeFileSync(filePath, payload.content, 'utf-8');
+          const targetName = payload.name || profileManager.getActiveProfileName();
+          profileManager.saveProfile(targetName, payload.content || '');
           // Auto-sync to Firestore in background if configured
+          const { FirestoreSyncManager } = await import('../cloud/firestore.js');
+          FirestoreSyncManager.pushToFirestore().catch(() => {});
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: true }));
+          return;
+        }
+
+        // POST /api/profile/notes/save
+        if (pathname === '/api/profile/notes/save' && req.method === 'POST') {
+          if (payload.type === 'workspace') {
+            profileManager.saveWorkspaceNotes(payload.content || '', config.workingDir);
+          } else {
+            profileManager.saveGlobalNotes(payload.content || '');
+          }
           const { FirestoreSyncManager } = await import('../cloud/firestore.js');
           FirestoreSyncManager.pushToFirestore().catch(() => {});
           res.writeHead(200, { 'Content-Type': 'application/json' });

@@ -209,8 +209,49 @@ export class ProfileManager {
     return '';
   }
 
+  public getProfile(name: string): string {
+    const cleanName = name.replace(/\.md$/, '').trim();
+    const targetPath = path.join(this.profilesDir, `${cleanName}.md`);
+    if (fs.existsSync(targetPath)) {
+      try {
+        return fs.readFileSync(targetPath, 'utf-8');
+      } catch {}
+    }
+    return '';
+  }
+
+  public saveGlobalNotes(content: string): boolean {
+    try {
+      this.ensureDirectory();
+      fs.writeFileSync(GLOBAL_NOTES_FILE, content, 'utf-8');
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  public saveWorkspaceNotes(content: string, workingDir?: string): boolean {
+    const targetDir = workingDir || process.cwd();
+    const wsNotesPath = path.join(targetDir, '.antri', 'profiles', 'notes.md');
+    try {
+      const dir = path.dirname(wsNotesPath);
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(wsNotesPath, content, 'utf-8');
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  public getNotesData(workingDir?: string): { globalNotes: string; workspaceNotes: string } {
+    return {
+      globalNotes: this.getGlobalNotesContent(),
+      workspaceNotes: this.getWorkspaceNotesContent(workingDir),
+    };
+  }
+
   /**
-   * Compiles comprehensive profile, user identity, and notes context for prompt injection
+   * Compiles comprehensive profile, user identity, and notes context for prompt injection (RAG style)
    */
   public getAllProfileContext(workingDir?: string): string {
     const activeName = this.getActiveProfileName();
@@ -219,19 +260,13 @@ export class ProfileManager {
     const wsNotes = this.getWorkspaceNotesContent(workingDir);
 
     let result = `\n\n================================================================================
-[MANDATORY USER IDENTITY, PROFILE & NOTES DIRECTIVE]
-You MUST ALWAYS remember, adhere to, and recall the user's identity, preferences, and accumulated notes below.
-🚨 CORE RECALL INSTRUCTIONS:
-1. You have DIRECT cognitive access to all user notes, life context, family background, bereavement, hobbies, music preferences, and rules provided below.
-2. When the user asks what they told you, what their name is, what their life story/preferences are, or asks you to "read the profile/notes":
-   - IMMEDIATELY recall and cite the exact recorded notes from this section.
-   - NEVER say you don't know or don't have access.
-   - NEVER call 'web_search' or search files for personal user facts—they are stored right here in your active profile!
-3. Do NOT ask the user to repeat their name, preferences, or established conventions.
+[USER IDENTITY, PROFILE & NOTES (RAG ACTIVE CONTEXT)]
+The following context contains the user's active thinking profile, preferences, identity facts, and accumulated notes.
+Use this active knowledge naturally to inform responses, adhere to coding preferences, and recall user facts without forced persona changes.
 ================================================================================\n`;
 
     if (profileContent) {
-      result += `### Active Profile: ${activeName}.md\n${profileContent}\n\n`;
+      result += `### Active Thinking Profile: ${activeName}.md\n${profileContent}\n\n`;
     }
 
     if (globalNotes) {

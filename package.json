@@ -1,7 +1,7 @@
 {
   "name": "antri_cli",
-  "version": "1.49.0",
-  "description": "Terminal-First AI Agent & Cognitive Memory Engine with Dialectic Multi-Stage Reasoning",
+  "version": "1.50.0",
+  "description": "ANTRI Code - The Autonomous Agentic CLI & Desktop Assistant",
   "type": "module",
   "bin": {
     "antri": "./bin/antri.js",

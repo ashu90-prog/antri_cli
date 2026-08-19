@@ -26,7 +26,7 @@ class AuthService {
 
   static String generateUserId(String email) {
     final clean = email.toLowerCase().trim();
-    return clean.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
+    return clean.replaceAll(RegExp(r'[^a-z0-9_]'), '_');
   }
 
   Future<UserAccount?> getCurrentUser() async {

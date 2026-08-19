@@ -110,7 +110,7 @@ class _ProfilesViewState extends State<ProfilesView> with SingleTickerProviderSt
     if (_memories.isNotEmpty) {
       final notesProf = ThinkingProfile(
         name: 'notes',
-        content: '# 📝 Global User Notes & Identity\n\n' + _memories.map((m) => '- $m').join('\n'),
+        content: '# 📝 Global User Notes & Identity\n\n${_memories.map((m) => '- $m').join('\n')}',
       );
       await _firestoreService.syncProfileToFirestore(
         projectId: projectId,

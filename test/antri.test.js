@@ -66,7 +66,7 @@ test('ToolExecutor identifies privacy & security sensitive tools', () => {
 
 test('Updater reports correct package name and current version', () => {
   assert.strictEqual(Updater.PACKAGE_NAME, 'antri_cli');
-  assert.strictEqual(Updater.CURRENT_VERSION, '1.49.0');
+  assert.strictEqual(Updater.CURRENT_VERSION, '1.50.0');
 });
 
 test('GoalLoopEngine initializes with active configuration', () => {
@@ -367,6 +367,7 @@ test('ToolExecutor enforces authentication gate and executes when logged in', as
   const res = await executor.execute('list_dir', { dir_path: '.' }, 'test-1');
   assert.strictEqual(res.error, undefined);
   assert.ok(res.output.includes('package.json'));
+  AuthManager.logout();
 });
 
 test('FirestoreSyncManager configures project and sync parameters', () => {
@@ -485,7 +486,8 @@ test('ProfileManager initializes workspace notes.md and extracts user identity',
   assert.ok(noted.includes('Ashu'));
 
   const allContext = profileMgr.getAllProfileContext(process.cwd());
-  assert.ok(allContext.includes('MANDATORY USER IDENTITY, PROFILE & NOTES DIRECTIVE'));
+  assert.ok(allContext.includes('USER IDENTITY, PROFILE & NOTES'));
+  assert.ok(allContext.includes('RAG ACTIVE CONTEXT'));
   assert.ok(allContext.includes('profile_1.md'));
   assert.ok(allContext.includes('notes.md'));
 });
@@ -522,6 +524,24 @@ test('ToolExecutor empathy guard prevents web_search on bereavement and personal
   AuthManager.logout();
 });
 
+test('ProfileManager retrieves individual profiles and saves global/workspace notes', () => {
+  const profileMgr = new ProfileManager();
+  const prof1Content = profileMgr.getProfile('profile_1');
+  assert.ok(prof1Content.length > 0);
+  assert.ok(prof1Content.includes('profile_1'));
 
+  const savedGlobal = profileMgr.saveGlobalNotes('# Global Notes Test\n- Note item 1');
+  assert.strictEqual(savedGlobal, true);
+  assert.ok(profileMgr.getGlobalNotesContent().includes('Global Notes Test'));
 
+  const savedWs = profileMgr.saveWorkspaceNotes('# Workspace Notes Test\n- Local item 1', process.cwd());
+  assert.strictEqual(savedWs, true);
+  assert.ok(profileMgr.getWorkspaceNotesContent(process.cwd()).includes('Workspace Notes Test'));
+});
 
+test('FirestoreSyncManager dynamically binds syncKey to authenticated user partition', async () => {
+  await AuthManager.login('sync_tester@domain.com');
+  const syncCfg = FirestoreSyncManager.getSyncConfig();
+  assert.strictEqual(syncCfg.syncKey, 'sync_tester_domain_com');
+  AuthManager.logout();
+});

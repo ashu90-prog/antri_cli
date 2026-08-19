@@ -851,6 +851,36 @@ body.antri-app {
 }
 
 /* Profiles */
+.profile-subnav {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.subnav-pill {
+  background: var(--bg-card);
+  border: 1px solid var(--border-main);
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-xs);
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.subnav-pill:hover {
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+
+.subnav-pill.active {
+  background: var(--accent-primary);
+  color: var(--text-inverted);
+  border-color: var(--accent-primary);
+}
+
 .profile-studio-layout {
   display: flex;
   gap: 1.5rem;
