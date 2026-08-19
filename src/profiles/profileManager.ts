@@ -341,13 +341,18 @@ Use this active knowledge naturally to inform responses, adhere to coding prefer
 
       if (content.includes(entry)) return;
 
-      if (content.includes('## 📝 Notes & Captured Insights')) {
+      if (content.includes('## 📝 Personal Notes & Project Directives')) {
+        content = content.replace(
+          '## 📝 Personal Notes & Project Directives',
+          `## 📝 Personal Notes & Project Directives\n${entry}`
+        );
+      } else if (content.includes('## 📝 Notes & Captured Insights')) {
         content = content.replace(
           '## 📝 Notes & Captured Insights',
           `## 📝 Notes & Captured Insights\n${entry}`
         );
       } else {
-        content += `\n## 📝 Notes & Captured Insights\n${entry}\n`;
+        content += `\n## 📝 Personal Notes & Project Directives\n${entry}\n`;
       }
 
       fs.writeFileSync(filePath, content, 'utf-8');
