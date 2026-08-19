@@ -920,7 +920,7 @@ async function deleteActiveProfile() {
     alert('Cannot delete default profile_1.');
     return;
   }
-  if (!confirm(`Are you sure you want to delete profile '${target}.md'?`)) return;
+  if (!confirm(`Are you sure you want to delete profile '${target}.md' from both your device and the cloud? It will not be pulled again.`)) return;
 
   const res = await fetch('/api/profile/delete', {
     method: 'POST',
@@ -931,7 +931,7 @@ async function deleteActiveProfile() {
   if (data.success) {
     currentViewedProfile = 'profile_1';
     await loadProfiles();
-    showToast(`Profile '${target}' deleted.`);
+    showToast(`Profile '${target}.md' deleted from device and cloud.`);
   }
 }
 

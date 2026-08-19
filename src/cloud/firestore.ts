@@ -190,6 +190,25 @@ export class FirestoreSyncManager {
     }
   }
 
+  /**
+   * Delete a profile document from Google Cloud Firestore
+   */
+  public static async deleteFromFirestore(profileName: string): Promise<{ success: boolean; error?: string }> {
+    const { projectId, syncKey, apiKey } = this.getSyncConfig();
+    const targetProject = projectId || 'antri-agentic-hackathon';
+    const cleanName = profileName.replace(/\.md$/, '').trim();
+    const keyParam = apiKey ? `?key=${apiKey}` : '';
+
+    const url = `https://firestore.googleapis.com/v1/projects/${targetProject}/databases/(default)/documents/antri_sync/${syncKey}/profiles/${cleanName}${keyParam}`;
+
+    try {
+      await this.httpRequest(url, 'DELETE');
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  }
+
   private static httpRequest(urlStr: string, method: string, body?: string): Promise<string> {
     return new Promise((resolve, reject) => {
       const url = new URL(urlStr);

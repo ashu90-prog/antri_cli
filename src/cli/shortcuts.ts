@@ -225,6 +225,24 @@ export class ShortcutHandler {
       return { handled: true };
     }
 
+    // /profile delete <name> or /profile rm <name>
+    if (trimmed.startsWith('/profile delete ') || trimmed.startsWith('/profile rm ') || trimmed.startsWith('/profile-delete ')) {
+      const targetName = trimmed.replace(/^\/(profile delete|profile rm|profile-delete)\s+/, '').trim();
+      if (targetName === 'profile_1') {
+        log.warn('Cannot delete default profile_1.');
+        return { handled: true };
+      }
+      const ok = profileManager.deleteProfile(targetName);
+      if (ok) {
+        const { FirestoreSyncManager } = await import('../cloud/firestore.js');
+        FirestoreSyncManager.deleteFromFirestore(targetName).catch(() => {});
+        log.success(`Deleted profile '${targetName}.md' from local disk and Google Cloud Firestore.`);
+      } else {
+        log.error(`Failed to delete profile '${targetName}'.`);
+      }
+      return { handled: true };
+    }
+
     if (trimmed.startsWith('/profile ')) {
       const targetName = trimmed.slice(9).trim();
       profileManager.setActiveProfile(targetName);

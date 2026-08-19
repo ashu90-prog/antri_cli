@@ -67,4 +67,22 @@ class FirestoreSyncService {
     } catch (_) {}
     return {'profiles': <String, ThinkingProfile>{}, 'notes': ''};
   }
+
+  Future<bool> deleteProfileFromFirestore({
+    required String projectId,
+    required String syncKey,
+    required String profileName,
+  }) async {
+    final project = projectId.isNotEmpty ? projectId : 'antri-agentic-hackathon';
+    final collection = syncKey.isNotEmpty ? syncKey : 'default_user';
+    final cleanName = profileName.replaceAll(RegExp(r'\.md$'), '').trim();
+    final url = 'https://firestore.googleapis.com/v1/projects/$project/databases/(default)/documents/antri_sync/$collection/profiles/$cleanName';
+
+    try {
+      final res = await http.delete(Uri.parse(url));
+      return res.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
 }

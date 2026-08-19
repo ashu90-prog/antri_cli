@@ -534,6 +534,8 @@ export class DesktopServer {
         // POST /api/profile/delete
         if (pathname === '/api/profile/delete' && req.method === 'POST') {
           const ok = profileManager.deleteProfile(payload.name);
+          const { FirestoreSyncManager } = await import('../cloud/firestore.js');
+          FirestoreSyncManager.deleteFromFirestore(payload.name).catch(() => {});
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ success: ok }));
           return;

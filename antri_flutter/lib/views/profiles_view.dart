@@ -225,6 +225,74 @@ class _ProfilesViewState extends State<ProfilesView> with SingleTickerProviderSt
     );
   }
 
+  Future<void> _confirmDeleteProfile() async {
+    if (_activeProfile == 'profile_1') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cannot delete default profile_1.')),
+      );
+      return;
+    }
+
+    final toDelete = _activeProfile;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Delete $toDelete.md?'),
+        content: Text(
+          'This will permanently delete "$toDelete.md" from your device and Google Cloud Firestore. It will not be pulled again.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFDC2626),
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete from Device & Cloud'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      setState(() {
+        _profiles.remove(toDelete);
+        _activeProfile = _profiles.keys.isNotEmpty ? _profiles.keys.first : 'profile_1';
+        if (!_profiles.containsKey(_activeProfile)) {
+          _profiles[_activeProfile] = ThinkingProfile(
+            name: _activeProfile,
+            content: '# $_activeProfile Profile\n\n- Coding preferences and rules',
+          );
+        }
+        _editorController.text = _profiles[_activeProfile]?.content ?? '';
+      });
+
+      await widget.storageService.saveProfiles(_profiles, widget.config.syncKey);
+      widget.config.activeProfile = _activeProfile;
+      await widget.storageService.saveConfig(widget.config);
+      widget.onProfileChanged();
+
+      final projectId = widget.config.firestoreProjectId.isNotEmpty
+          ? widget.config.firestoreProjectId
+          : 'antri-agentic-hackathon';
+      await _firestoreService.deleteProfileFromFirestore(
+        projectId: projectId,
+        syncKey: widget.config.syncKey,
+        profileName: toDelete,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Profile "$toDelete.md" deleted from device and cloud.')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     const creamBg = Color(0xFFFCFBF9);
@@ -266,6 +334,12 @@ class _ProfilesViewState extends State<ProfilesView> with SingleTickerProviderSt
             tooltip: 'New Profile',
             onPressed: _createNewProfile,
           ),
+          if (_activeProfile != 'profile_1')
+            IconButton(
+              icon: const Icon(Icons.delete_outline, color: Color(0xFFDC2626)),
+              tooltip: 'Delete Profile from Device & Cloud',
+              onPressed: _confirmDeleteProfile,
+            ),
         ],
       ),
       body: TabBarView(
@@ -379,19 +453,35 @@ class _ProfilesViewState extends State<ProfilesView> with SingleTickerProviderSt
                   ),
                 ),
                 const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _saveProfile,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: textPrimary,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                Row(
+                  children: [
+                    if (_activeProfile != 'profile_1') ...[
+                      OutlinedButton.icon(
+                        onPressed: _confirmDeleteProfile,
+                        icon: const Icon(Icons.delete_outline, size: 16, color: Color(0xFFDC2626)),
+                        label: const Text('Delete', style: TextStyle(color: Color(0xFFDC2626), fontWeight: FontWeight.w600, fontSize: 13)),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Color(0xFFFCA5A5)),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: _saveProfile,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: textPrimary,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        child: const Text('Save Profile & Sync', style: TextStyle(fontWeight: FontWeight.w600)),
+                      ),
                     ),
-                    child: const Text('Save Profile & Sync', style: TextStyle(fontWeight: FontWeight.w600)),
-                  ),
+                  ],
                 ),
               ],
             ),

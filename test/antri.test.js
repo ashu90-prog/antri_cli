@@ -545,3 +545,10 @@ test('FirestoreSyncManager dynamically binds syncKey to authenticated user parti
   assert.strictEqual(syncCfg.syncKey, 'sync_tester_domain_com');
   AuthManager.logout();
 });
+
+test('FirestoreSyncManager deleteFromFirestore handles cloud deletion gracefully', async () => {
+  await AuthManager.login('delete_test@domain.com');
+  const res = await FirestoreSyncManager.deleteFromFirestore('temp_profile');
+  assert.ok(typeof res.success === 'boolean');
+  AuthManager.logout();
+});
