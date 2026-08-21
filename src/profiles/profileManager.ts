@@ -393,6 +393,8 @@ Use this active knowledge naturally to inform responses, adhere to coding prefer
     const cleanPrompt = userPrompt.trim();
     if (!cleanPrompt || cleanPrompt.length < 5) return null;
 
+    const recordedNotes: string[] = [];
+
     // 1. Check for Name / Identity patterns
     const namePatterns = [
       /(?:my name is|call me|i am|i'm)\s+([a-zA-Z0-9_\s]{2,40})/i,
@@ -409,12 +411,33 @@ Use this active knowledge naturally to inform responses, adhere to coding prefer
           const noteEntry = `User Name is ${namePart}`;
           this.appendNoteToActiveProfile(noteEntry);
           this.appendToNotesFiles(noteEntry, workingDir);
-          return noteEntry;
+          recordedNotes.push(noteEntry);
+          break;
         }
       }
     }
 
-    // 2. Check for Personal Life Events, Family, Bereavement & Milestones
+    // 2. Check for Relational Motivations & Family Inspiration (e.g. "my father liked workout so that's why I like it too")
+    const relationalPatterns = [
+      /(?:(?:my )?(?:father|farher|mother|mom|dad|parent|brother|sister|family) (?:liked|loved|enjoyed|was into|did|taught me) ([^.!?\n]+) (?:so|and so|that's why|which is why) (?:i (?:like|love|enjoy|do|am into) (?:it|them|that)?(?:\s*too)?))/i,
+      /(?:i (?:like|love|workout|exercise|code|study|enjoy) (?:because|since) (?:my )?(?:father|mother|dad|mom|parent)[^.!?\n]*)/i,
+    ];
+
+    for (const pattern of relationalPatterns) {
+      const match = cleanPrompt.match(pattern);
+      if (match && match[0]) {
+        const extracted = match[0].trim();
+        if (extracted.length > 5 && extracted.length < 250) {
+          const noteEntry = `Personal Motivation & Origin: ${extracted}`;
+          this.appendNoteToActiveProfile(noteEntry);
+          this.appendToNotesFiles(noteEntry, workingDir);
+          recordedNotes.push(noteEntry);
+          break;
+        }
+      }
+    }
+
+    // 3. Check for Personal Life Events, Family, Bereavement & Milestones
     const lifeEventPatterns = [
       /(?:i lost (?:my )?(?:father|farher|mother|mom|dad|brother|sister|parent|family|friend)[^.!?\n]*)/i,
       /(?:my (?:father|farher|mother|mom|dad|brother|sister|parent) (?:passed away|died|left us)[^.!?\n]*)/i,
@@ -430,12 +453,13 @@ Use this active knowledge naturally to inform responses, adhere to coding prefer
           const noteEntry = `Personal Context: ${extracted}`;
           this.appendNoteToActiveProfile(noteEntry);
           this.appendToNotesFiles(noteEntry, workingDir);
-          return noteEntry;
+          recordedNotes.push(noteEntry);
+          break;
         }
       }
     }
 
-    // 3. Check for Hobbies, Interests & Music Preferences (with typo tolerance)
+    // 4. Check for Hobbies, Interests & Music Preferences
     const hobbyPatterns = [
       /(?:i like|i love|i enjoy|i listen|my hobby|my hobbies|in my free time)\s+(?:to |listening to |listning ot )?([^.!?\n]+)/i,
       /(?:i am into|i like listening|i listen to)\s+([^.!?\n]+)/i,
@@ -449,12 +473,13 @@ Use this active knowledge naturally to inform responses, adhere to coding prefer
           const noteEntry = `Personal Interest/Hobby: ${extracted}`;
           this.appendNoteToActiveProfile(noteEntry);
           this.appendToNotesFiles(noteEntry, workingDir);
-          return noteEntry;
+          recordedNotes.push(noteEntry);
+          break;
         }
       }
     }
 
-    // 4. Check for Coding Preferences, Directives & Architectural Rules
+    // 5. Check for Coding Preferences, Directives & Architectural Rules
     const prefPatterns = [
       /(?:i prefer|i always use|my style is|always use|never use|don't use|do not use)\s+([^.!?\n]+)/i,
       /(?:from now on|remember that|keep in mind that|note that)\s+([^.!?\n]+)/i,
@@ -468,11 +493,12 @@ Use this active knowledge naturally to inform responses, adhere to coding prefer
         const extracted = match[0].trim();
         this.appendNoteToActiveProfile(extracted);
         this.appendToNotesFiles(extracted, workingDir);
-        return extracted;
+        recordedNotes.push(extracted);
+        break;
       }
     }
 
-    // 5. Check for Philosophical Views, Mental Models, Ethical Beliefs & Worldview
+    // 6. Check for Philosophical Views, Mental Models, Ethical Beliefs & Worldview
     const philosophyPatterns = [
       /(?:i believe in|my philosophy is|philosophically|in life|i think that life|the way i see it|fundamentally|existentially|epistemically|my core belief|i live by|my worldview)\s+([^.!?\n]+)/i,
       /(?:i value|what matters most to me is|when it comes to life|my perspective is|human nature is|the purpose of)\s+([^.!?\n]+)/i,
@@ -487,12 +513,13 @@ Use this active knowledge naturally to inform responses, adhere to coding prefer
           const noteEntry = `Philosophy & Worldview: ${extracted}`;
           this.appendNoteToActiveProfile(noteEntry);
           this.appendToNotesFiles(noteEntry, workingDir);
-          return noteEntry;
+          recordedNotes.push(noteEntry);
+          break;
         }
       }
     }
 
-    // 6. Check for Minute Nuances, Habits, Quirks & Mindset
+    // 7. Check for Minute Nuances, Habits, Quirks & Mindset
     const nuancePatterns = [
       /(?:i tend to|my habit is|i get frustrated when|i feel best when|i usually think|my mindset is|i care deeply about)\s+([^.!?\n]+)/i,
     ];
@@ -505,12 +532,13 @@ Use this active knowledge naturally to inform responses, adhere to coding prefer
           const noteEntry = `Mindset & Nuance: ${extracted}`;
           this.appendNoteToActiveProfile(noteEntry);
           this.appendToNotesFiles(noteEntry, workingDir);
-          return noteEntry;
+          recordedNotes.push(noteEntry);
+          break;
         }
       }
     }
 
-    return null;
+    return recordedNotes.length > 0 ? recordedNotes.join(' | ') : null;
   }
 
   public importProfile(name: string, content: string): ProfileInfo {
