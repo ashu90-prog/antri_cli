@@ -422,6 +422,37 @@ export class DesktopServer {
           return;
         }
 
+        // POST /api/silent-debate
+        if (pathname === '/api/silent-debate' && req.method === 'POST') {
+          const query = payload.query || '';
+          const depth = payload.depth || config.debateDepth || 'deep';
+          const engine = new DialecticEngine(configManager.get());
+          try {
+            const result = await engine.silentDebate(query, depth);
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: true, result }));
+          } catch (err: any) {
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: false, error: err.message }));
+          }
+          return;
+        }
+
+        // POST /api/silent-goal
+        if (pathname === '/api/silent-goal' && req.method === 'POST') {
+          const objective = payload.objective || '';
+          const engine = new GoalLoopEngine(configManager.get());
+          try {
+            const result = await engine.runSilentGoal(objective);
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: true, result }));
+          } catch (err: any) {
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: false, error: err.message }));
+          }
+          return;
+        }
+
         // POST /api/config
         if (pathname === '/api/config' && req.method === 'POST') {
           if (payload.mode) configManager.setMode(payload.mode);

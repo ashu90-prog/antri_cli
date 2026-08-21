@@ -260,6 +260,27 @@ export class ShortcutHandler {
       return { handled: true };
     }
 
+    // /silent-goal or /sgoal (Silent background goal loop)
+    if (trimmed === '/silent-goal' || trimmed.startsWith('/silent-goal ') || trimmed === '/sgoal' || trimmed.startsWith('/sgoal ')) {
+      let objective = trimmed.replace(/^\/(silent-goal|sgoal)/, '').trim();
+      if (!objective) {
+        const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+        const promptAsync = (q: string) => new Promise<string>((res) => rl.question(q, res));
+        console.log(chalk.bold.hex('#818cf8')('\n🎯 Silent Background Goal Loop'));
+        objective = await promptAsync(chalk.cyan('Enter goal/task to optimize silently: '));
+        rl.close();
+      }
+
+      if (objective.trim()) {
+        const engine = new GoalLoopEngine(config);
+        const res = await engine.runSilentGoal(objective.trim());
+        console.log('\n' + res + '\n');
+      } else {
+        log.warn('Silent goal loop cancelled: No objective provided.');
+      }
+      return { handled: true };
+    }
+
     // /profile or /profiles dialog
     if (trimmed === '/profile' || trimmed === '/profiles') {
       await runProfilePickerWorkflow();
@@ -402,6 +423,27 @@ export class ShortcutHandler {
         await engine.debate(query.trim(), config.debateDepth || 'deep');
       } else {
         log.warn('Debate cancelled: No query provided.');
+      }
+      return { handled: true };
+    }
+
+    // /silent-debate or /sdebate (Silent background dialectic debate)
+    if (trimmed === '/silent-debate' || trimmed.startsWith('/silent-debate ') || trimmed === '/sdebate' || trimmed.startsWith('/sdebate ')) {
+      let query = trimmed.replace(/^\/(silent-debate|sdebate)/, '').trim();
+      if (!query) {
+        const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+        const promptAsync = (q: string) => new Promise<string>((res) => rl.question(q, res));
+        console.log(chalk.bold.hex('#c084fc')('\n⚔️ Silent Background Dialectic Debate'));
+        query = await promptAsync(chalk.cyan('Enter topic/question to debate silently: '));
+        rl.close();
+      }
+
+      if (query.trim()) {
+        const engine = new DialecticEngine(config);
+        const res = await engine.silentDebate(query.trim(), config.debateDepth || 'deep');
+        console.log('\n' + res + '\n');
+      } else {
+        log.warn('Silent debate cancelled: No query provided.');
       }
       return { handled: true };
     }
@@ -609,13 +651,12 @@ export class ShortcutHandler {
       ['/vibe', 'Switch to Vibe Mode (direct conversation & active fast code implementation)'],
       ['/desktop', 'Launch the lightweight ANTRI Desktop Control Plane'],
       ['/alwaysallow', 'Toggle Always-Allow permission for sensitive tools (web search, shell, python)'],
-      ['/goal [task]', 'Run autonomous multi-step goal loop: plan, critique, refine & deliver'],
-      ['/loop [task]', 'Iterate on a task until optimal battle-tested result is achieved'],
-      ['/profile [name]', 'Open profile picker or switch active thinking profile (profile_1, profile_2...)'],
-      ['/notes', 'View active profile notes & captured thinking style insights'],
-      ['/update', 'Self-update ANTRI Code CLI without lockfile churn'],
       ['/debate [query]', 'Launch Dialectic Engine multi-persona self-debate & consensus'],
+      ['/silent-debate [q]', 'Run Dialectic debate silently in background and return final consensus'],
       ['/depth <level>', 'Set debate depth: quick, deep, or rigorous'],
+      ['/goal [task]', 'Run autonomous multi-step goal loop: plan, critique, refine & deliver'],
+      ['/silent-goal [t]', 'Run Goal Loop optimization silently in background and return final plan'],
+      ['/loop [task]', 'Iterate on a task until optimal battle-tested result is achieved'],
       ['/meta', 'View Meta-Optimization metrics, success rates & self-healing stats'],
       ['/skills', 'List built-in & dynamically synthesized custom skills'],
       ['/memory', 'View Persistent Memory & lifelong knowledge status'],

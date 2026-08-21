@@ -472,6 +472,44 @@ Use this active knowledge naturally to inform responses, adhere to coding prefer
       }
     }
 
+    // 5. Check for Philosophical Views, Mental Models, Ethical Beliefs & Worldview
+    const philosophyPatterns = [
+      /(?:i believe in|my philosophy is|philosophically|in life|i think that life|the way i see it|fundamentally|existentially|epistemically|my core belief|i live by|my worldview)\s+([^.!?\n]+)/i,
+      /(?:i value|what matters most to me is|when it comes to life|my perspective is|human nature is|the purpose of)\s+([^.!?\n]+)/i,
+      /(?:stoic|stoicism|nihilism|pragmatism|existentialism|utilitarianism|determinism|moral|ethics|first principles)\s+([^.!?\n]+)/i,
+    ];
+
+    for (const pattern of philosophyPatterns) {
+      const match = cleanPrompt.match(pattern);
+      if (match && match[0]) {
+        const extracted = match[0].trim();
+        if (extracted.length > 5 && extracted.length < 250) {
+          const noteEntry = `Philosophy & Worldview: ${extracted}`;
+          this.appendNoteToActiveProfile(noteEntry);
+          this.appendToNotesFiles(noteEntry, workingDir);
+          return noteEntry;
+        }
+      }
+    }
+
+    // 6. Check for Minute Nuances, Habits, Quirks & Mindset
+    const nuancePatterns = [
+      /(?:i tend to|my habit is|i get frustrated when|i feel best when|i usually think|my mindset is|i care deeply about)\s+([^.!?\n]+)/i,
+    ];
+
+    for (const pattern of nuancePatterns) {
+      const match = cleanPrompt.match(pattern);
+      if (match && match[0]) {
+        const extracted = match[0].trim();
+        if (extracted.length > 5 && extracted.length < 250) {
+          const noteEntry = `Mindset & Nuance: ${extracted}`;
+          this.appendNoteToActiveProfile(noteEntry);
+          this.appendToNotesFiles(noteEntry, workingDir);
+          return noteEntry;
+        }
+      }
+    }
+
     return null;
   }
 

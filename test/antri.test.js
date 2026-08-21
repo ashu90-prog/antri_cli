@@ -505,7 +505,7 @@ test('ToolExecutor read_file executes with start_line and line count metadata', 
   AuthManager.logout();
 });
 
-test('ProfileManager extracts life events, family background, and music hobbies', () => {
+test('ProfileManager extracts life events, family background, music hobbies, philosophy, and mindset nuances', () => {
   const profileMgr = new ProfileManager();
   
   const note1 = profileMgr.extractAndRecordNotes('I lost my father in 2021 and it changed my life.', process.cwd());
@@ -515,6 +515,14 @@ test('ProfileManager extracts life events, family background, and music hobbies'
   const note2 = profileMgr.extractAndRecordNotes('I like to listning ot music when I write code.', process.cwd());
   assert.ok(note2);
   assert.ok(note2.includes('music'));
+
+  const note3 = profileMgr.extractAndRecordNotes('My philosophy is pragmatism over dogma and I believe in epistemic humility.', process.cwd());
+  assert.ok(note3);
+  assert.ok(note3.includes('Philosophy') || note3.includes('pragmatism'));
+
+  const note4 = profileMgr.extractAndRecordNotes('I tend to over-engineer things when I am tired so keep it simple.', process.cwd());
+  assert.ok(note4);
+  assert.ok(note4.includes('Mindset') || note4.includes('I tend to'));
 });
 
 test('ToolExecutor empathy guard prevents web_search on bereavement and personal grief', async () => {
@@ -624,5 +632,37 @@ test('ToolExecutor executes coding tools (write_file, edit_file, file_info, grep
 
   AuthManager.logout();
 });
+
+test('DialecticEngine and GoalLoopEngine execute silent background pipelines with header badges', async () => {
+  const manager = new ConfigManager();
+  const dialectic = new DialecticEngine(manager.get());
+  const goalEngine = new GoalLoopEngine(manager.get());
+
+  assert.strictEqual(typeof dialectic.silentDebate, 'function');
+  assert.strictEqual(typeof goalEngine.runSilentGoal, 'function');
+
+  // Test silent debate
+  const debateRes = await dialectic.silentDebate('Should we use Redis or PostgreSQL for session caching?', 'quick');
+  assert.ok(debateRes.startsWith('> ⚔️ [Dialectic Debate Synthesized]'));
+
+  // Test silent goal
+  const goalRes = await goalEngine.runSilentGoal('Design a fault-tolerant distributed lock service');
+  assert.ok(goalRes.startsWith('> 🎯 [Goal Loop Plan Synthesized]'));
+});
+
+test('ToolExecutor executes run_silent_debate and run_silent_goal tools', async () => {
+  await AuthManager.login('silent_tester@example.com');
+  const executor = new ToolExecutor();
+  executor.setPermissionHandler(async () => true);
+
+  const debateToolRes = await executor.execute('run_silent_debate', { topic: 'Microservices vs Monolith' }, 'sd1');
+  assert.ok(debateToolRes.output.includes('[Dialectic Debate Synthesized]'));
+
+  const goalToolRes = await executor.execute('run_silent_goal', { goal: 'Create robust rate limiter' }, 'sg1');
+  assert.ok(goalToolRes.output.includes('[Goal Loop Plan Synthesized]'));
+
+  AuthManager.logout();
+});
+
 
 

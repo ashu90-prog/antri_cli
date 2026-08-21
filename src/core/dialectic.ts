@@ -326,4 +326,121 @@ Your task:
     console.log(divider);
     console.log();
   }
+
+  /**
+   * Executes the Dialectic Reasoning Pipeline silently in the background
+   * and returns only the final battle-tested consensus with the synthesized header.
+   */
+  public async silentDebate(query: string, depth: DebateDepth = 'deep'): Promise<string> {
+    this.citationEngine.clear();
+    const provider = createProvider(this.config);
+
+    let spinner: Ora | null = null;
+    if (process.stdout.isTTY) {
+      spinner = ora({
+        text: chalk.hex('#c084fc')('⚔️ Conducting background dialectic consensus debate...'),
+        spinner: 'dots',
+        color: 'magenta',
+      }).start();
+    }
+
+    try {
+      // 1. Proposer (Thesis)
+      const thesisPrompt = `You are The Proposer in a dialectic consensus engine.
+User Query: "${query}"
+
+Your task:
+1. Provide a comprehensive, creative, and well-structured initial solution, code implementation, or hypothesis.
+2. Outline key architectural decisions and assumptions.
+3. Be clear, precise, and practical.`;
+
+      const thesisContent = await provider.sendMessageStream(
+        [{ role: 'user', content: thesisPrompt }],
+        [],
+        { onToken: () => {} }
+      );
+
+      // 2. Adversary (Antithesis)
+      const antithesisPrompt = `You are The Adversary and Security/Logic Critic in a dialectic consensus engine.
+User Query: "${query}"
+
+Proposer's Thesis:
+"""
+${thesisContent}
+"""
+
+Your task:
+1. Challenge the Proposer's assumptions and solution.
+2. Hunt for edge cases, performance bottlenecks, race conditions, security vulnerabilities, or API misuse.
+3. Identify real-world failure points.`;
+
+      const antithesisContent = await provider.sendMessageStream(
+        [{ role: 'user', content: antithesisPrompt }],
+        [],
+        { onToken: () => {} }
+      );
+
+      // 3. Researcher Verification (if deep or rigorous)
+      let verificationContent = '';
+      if (depth === 'deep' || depth === 'rigorous') {
+        const researchPrompt = `You are The Researcher and Empirical Verifier.
+User Query: "${query}"
+
+Thesis:
+"""
+${thesisContent}
+"""
+
+Antithesis Criticisms:
+"""
+${antithesisContent}
+"""
+
+Your task:
+Fact-check disputed claims between Thesis and Antithesis. Summarize what holds true and what is debunked.`;
+
+        verificationContent = await provider.sendMessageStream(
+          [{ role: 'user', content: researchPrompt }],
+          [],
+          { onToken: () => {} }
+        );
+      }
+
+      // 4. Judge / Final Synthesizer
+      const judgePrompt = `You are The Judge and Master Synthesizer.
+User Query: "${query}"
+
+1. Original Thesis:
+"""
+${thesisContent}
+"""
+
+2. Adversarial Critique:
+"""
+${antithesisContent}
+"""
+
+${verificationContent ? `3. Empirical Verification:\n"""\n${verificationContent}\n"""\n` : ''}
+
+Your task:
+1. Deliver the authoritative, battle-tested FINAL SOLUTION and consensus answer.
+2. Clearly explain which criticisms were integrated, which were resolved, and why the final design is robust.
+3. Provide production-ready, clean code and architecture.
+4. Emoji Usage Rule: Keep emojis tasteful and minimal — maximum 2 emojis in your entire response.`;
+
+      const finalSynthesis = await provider.sendMessageStream(
+        [{ role: 'user', content: judgePrompt }],
+        [],
+        { onToken: () => {} }
+      );
+
+      if (spinner) spinner.stop();
+
+      return `> ⚔️ [Dialectic Debate Synthesized]\n\n${finalSynthesis.trim()}`;
+    } catch (err: any) {
+      if (spinner) spinner.stop();
+      return `> ⚔️ [Dialectic Debate Synthesized]\n\n[Background Debate Fallback: ${err.message}]`;
+    }
+  }
 }
+

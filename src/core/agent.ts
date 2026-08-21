@@ -81,15 +81,20 @@ ${modeDirective}
 
 Tooling & Workspace Capabilities:
 1. Workspace & Coding Tools: read_file (inspect files with line ranges), write_file (create/overwrite files), edit_file (precise search & replace block editing), create_directory (folder creation), delete_file (remove files/folders), find_files (glob/name discovery), grep_search (regex/text code search with line numbers), file_info (inspect size, lines, dates), git_diff (inspect git changes/diffs), list_dir, search_files, run_command (terminal execution).
-2. Sandboxed Runtime: execute_python (run safe isolated Python code scripts).
-3. Markdown Skills System: activate_skill (activate specialized expert instructions from .md skills).
-4. Web & Research Tools: web_search (multi-provider search without API key), scrape_url (deep readable content extraction into Markdown), and crawl_docs (recursive documentation crawler).
-5. Persistent Lifelong Memory & Active RAG Context: Utilize user profile preferences, project conventions, and accumulated notes in active context naturally.
+2. Autonomous Silent Debate & Goal Engines: run_silent_debate (secret multi-perspective adversarial consensus for deep research & architecture), run_silent_goal (secret 3-step goal loop optimizer).
+3. Sandboxed Runtime: execute_python (run safe isolated Python code scripts).
+4. Markdown Skills System: activate_skill (activate specialized expert instructions from .md skills).
+5. Web & Research Tools: web_search (multi-provider search without API key), scrape_url (deep readable content extraction into Markdown), and crawl_docs (recursive documentation crawler).
+6. Persistent Lifelong Memory & Active RAG Context: Utilize user profile preferences, project conventions, and accumulated notes in active context naturally.
 
 Available Skills in Ecosystem:
 ${skillListSummary}
 
 Autonomous Guidelines:
+- 🚨 EMOJI USAGE RULE: You MUST use emojis, but keep them minimal and tasteful — MAXIMUM 2 EMOJIS in your entire response (e.g. in a section header or key bullet point). Never exceed 2 emojis total across your entire response.
+- 💡 Autonomous Silent Debate & Goal Execution: For complex research queries ("research on this topic", "evaluate the best architecture for X vs Y", "compare tradeoffs", "deep dive into..."), or multi-step goal planning, you can autonomously execute 'run_silent_debate' or 'run_silent_goal' to debate and harden the solution secretly behind the scenes, and output the authoritative final conclusion with a header badge:
+  - If debate was used: Start output with \`> ⚔️ [Dialectic Debate Synthesized]\`
+  - If goal loop was used: Start output with \`> 🎯 [Goal Loop Plan Synthesized]\`
 - If a task involves specialized engineering domains (e.g. code review, system design, debugging, security, API design, database modeling, performance, test automation, UX, DevOps), apply relevant skill guidelines.
 - If a user asks for complex calculation, data analysis, or scripting, use 'execute_python'.
 - If a user asks for external technical documentation, library APIs, or external code facts, autonomously call 'web_search', 'scrape_url', or 'crawl_docs'.
@@ -137,10 +142,9 @@ Autonomous Guidelines:
     const startTime = Date.now();
     const activeProfileName = profileManager.getActiveProfileName();
 
-    // 1. Extract Real-Time Insights, Identity & Thinking Style Preferences into Profile & Notes
+    // 1. Extract Real-Time Insights, Identity, Philosophy & Thinking Style Preferences into Profile & Notes Silently
     const notedInsight = profileManager.extractAndRecordNotes(userPrompt, this.config.workingDir);
     if (notedInsight) {
-      console.log(chalk.hex('#38bdf8')(`📝 Recorded in user profile & notes.md: "${notedInsight}"`));
       await memoryManager.learn(notedInsight, 'lesson_learned', this.config.workingDir);
     }
 

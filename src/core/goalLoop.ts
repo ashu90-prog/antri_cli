@@ -127,4 +127,74 @@ Ensure every single critique and edge case is resolved with flawless code and ex
 
     return finalSolution;
   }
+
+  /**
+   * Executes the Goal Loop silently in the background and returns the hardened solution.
+   */
+  public async runSilentGoal(goalPrompt: string): Promise<string> {
+    const provider = createProvider(this.config);
+
+    let spinner: any = null;
+    if (process.stdout.isTTY) {
+      const ora = (await import('ora')).default;
+      spinner = ora({
+        text: chalk.hex('#818cf8')('🎯 Conducting background goal loop optimization...'),
+        spinner: 'dots',
+        color: 'blue',
+      }).start();
+    }
+
+    try {
+      // 1. Initial Draft & Architecture Plan
+      const iter1Messages: ChatMessage[] = [
+        {
+          role: 'system',
+          content: 'You are ANTRI Goal Loop Agent. Formulate a thorough, complete initial implementation or answer for the goal.',
+        },
+        {
+          role: 'user',
+          content: `Goal: ${goalPrompt}\n\nDeliver the initial working implementation with clear architecture.`,
+        },
+      ];
+      const draft = await provider.sendMessageStream(iter1Messages, [], { onToken: () => {} });
+
+      // 2. Adversarial Review & Score
+      const iter2Messages: ChatMessage[] = [
+        {
+          role: 'system',
+          content: 'You are the Adversarial Goal Reviewer. Evaluate the draft solution against the original goal with precision. Find bugs, edge cases, security risks, score quality (0-100%), and list required improvements.',
+        },
+        {
+          role: 'user',
+          content: `Goal: ${goalPrompt}\n\nDraft Solution:\n"""\n${draft}\n"""\n\nPerform full review and score quality.`,
+        },
+      ];
+      const critique = await provider.sendMessageStream(iter2Messages, [], { onToken: () => {} });
+
+      // 3. Final Hardened Delivery
+      const iter3Messages: ChatMessage[] = [
+        {
+          role: 'system',
+          content: `You are the Master Synthesizer. Take the initial draft and critique to deliver the ultimate, polished, hardened final solution.
+Emoji Usage Rule: Keep emojis tasteful and minimal — maximum 2 emojis in your entire response.`,
+        },
+        {
+          role: 'user',
+          content: `Goal: ${goalPrompt}\n\nInitial Draft:\n"""\n${draft}\n"""\n\nCritique & Improvements:\n"""\n${critique}\n"""\n\nDeliver the final production-ready solution now.`,
+        },
+      ];
+      const finalSolution = await provider.sendMessageStream(iter3Messages, [], { onToken: () => {} });
+
+      if (spinner) spinner.stop();
+
+      memoryManager.recordInteraction(`[Silent Goal Loop]: ${goalPrompt}`, finalSolution);
+      profileManager.appendNoteToActiveProfile(`Accomplished Goal (Silent): "${goalPrompt.slice(0, 80)}"`);
+
+      return `> 🎯 [Goal Loop Plan Synthesized]\n\n${finalSolution.trim()}`;
+    } catch (err: any) {
+      if (spinner) spinner.stop();
+      return `> 🎯 [Goal Loop Plan Synthesized]\n\n[Background Goal Execution Fallback: ${err.message}]`;
+    }
+  }
 }
+

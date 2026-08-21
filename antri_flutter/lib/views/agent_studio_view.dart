@@ -512,7 +512,7 @@ class _AgentStudioViewState extends State<AgentStudioView> {
 
     // 1. Autonomous Conversation Note-Taking: Extract preferences/conventions
     final profiles = await widget.storageService.loadProfiles(widget.config.syncKey);
-    final recordedNote = await NoteSynthesizer.extractAndRecordNote(
+    await NoteSynthesizer.extractAndRecordNote(
       userPrompt: text,
       activeProfileName: widget.config.activeProfile,
       profiles: profiles,
@@ -521,23 +521,13 @@ class _AgentStudioViewState extends State<AgentStudioView> {
       projectId: widget.config.firestoreProjectId,
     );
 
-    if (recordedNote != null && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Note captured to ${widget.config.activeProfile}: "$recordedNote"'),
-          duration: const Duration(seconds: 2),
-          backgroundColor: const Color(0xFF15803D),
-        ),
-      );
-    }
-
     try {
       final activeProfContent = profiles[widget.config.activeProfile]?.content ?? '';
       final memories = await widget.storageService.loadMemories(widget.config.syncKey);
       final memoriesText = memories.isNotEmpty ? '\n\n### Captured Lifelong Cognitive Memories:\n${memories.take(15).map((m) => '- $m').join('\n')}' : '';
 
       final systemPrompt = '''
-You are ANTRI Code, an intelligent AI companion and cognitive coding agent.
+You are ANTRI Code, an intelligent AI companion, autonomous meta-agent, and cognitive coding partner.
 Active Operating Mode: ${widget.config.mode.toUpperCase()}
 
 ================================================================================
@@ -545,6 +535,8 @@ Active Operating Mode: ${widget.config.mode.toUpperCase()}
 The following context contains user preferences, active thinking profile rules, identity facts, and accumulated notes.
 Use this active knowledge naturally to inform responses, follow coding preferences, and recall user facts without forced persona changes.
 🚨 Conversational Recall Rule: When the user asks what you know about them, their thinking style, hobbies, or background, answer conversationally and concisely like a helpful human partner. Synthesize the known facts smoothly without dumping raw markdown files, section headers, or unformatted template boilerplate.
+🚨 Emoji Usage Rule: You MUST use emojis, but keep them minimal and tasteful — MAXIMUM 2 EMOJIS in your whole response. Never exceed 2 emojis total.
+🚨 Dialectic & Goal Header Directive: For research synthesis, multi-perspective debates, or goal loop plans performed in the background, start your response with a header badge: '> ⚔️ [Dialectic Debate Synthesized]' or '> 🎯 [Goal Loop Plan Synthesized]'.
 ================================================================================
 ### Active Thinking Profile: ${widget.config.activeProfile}.md
 $activeProfContent
@@ -552,14 +544,32 @@ $memoriesText
 ================================================================================
 ''';
 
-      // Pass the entire ongoing multi-turn conversation context to preserve chat state
-      final responseText = await widget.aiService.executePrompt(
-        config: widget.config,
-        systemPrompt: systemPrompt,
-        userPrompt: userMsg.content,
-        conversationHistory: _currentSession.messages,
-        attachmentPaths: userMsg.attachmentPaths,
-      );
+      String responseText = '';
+      final lower = text.toLowerCase();
+
+      // Check if prompt is an explicit silent debate / research request
+      if (lower.startsWith('/debate ') || lower.startsWith('/silent-debate ') || lower.startsWith('research on ') || lower.startsWith('debate on ')) {
+        final queryClean = text.replaceFirst(RegExp(r'^(/debate|/silent-debate|research on|debate on)\s*', caseSensitive: false), '').trim();
+        responseText = await widget.aiService.runSilentDebate(
+          config: widget.config,
+          query: queryClean.isNotEmpty ? queryClean : text,
+        );
+      } else if (lower.startsWith('/goal ') || lower.startsWith('/silent-goal ') || lower.startsWith('goal: ') || lower.startsWith('objective: ')) {
+        final goalClean = text.replaceFirst(RegExp(r'^(/goal|/silent-goal|goal:|objective:)\s*', caseSensitive: false), '').trim();
+        responseText = await widget.aiService.runSilentGoal(
+          config: widget.config,
+          objective: goalClean.isNotEmpty ? goalClean : text,
+        );
+      } else {
+        // Pass the entire ongoing multi-turn conversation context to preserve chat state
+        responseText = await widget.aiService.executePrompt(
+          config: widget.config,
+          systemPrompt: systemPrompt,
+          userPrompt: userMsg.content,
+          conversationHistory: _currentSession.messages,
+          attachmentPaths: userMsg.attachmentPaths,
+        );
+      }
 
       final assistantMsg = ChatMessage(role: 'assistant', content: responseText);
 

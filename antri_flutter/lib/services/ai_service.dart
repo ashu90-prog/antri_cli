@@ -208,4 +208,72 @@ class AIService {
 
     throw Exception("Provider '$prov' is not supported.");
   }
+
+  /// Executes a multi-stage Dialectic consensus debate secretly in the background
+  /// and returns only the final battle-tested synthesis with the required header badge.
+  Future<String> runSilentDebate({
+    required AIConfig config,
+    required String query,
+  }) async {
+    // 1. Proposer (Thesis)
+    final thesis = await executePrompt(
+      config: config,
+      systemPrompt: 'You are The Proposer in a dialectic consensus engine. Formulate a strong, innovative architecture thesis or solution.',
+      userPrompt: 'Debate Question: $query',
+    );
+
+    // 2. Adversary (Antithesis)
+    final antithesis = await executePrompt(
+      config: config,
+      systemPrompt: 'You are The Adversary in a dialectic consensus engine. Ruthlessly challenge the thesis, find edge cases, bugs, security vulnerabilities, and flaws.',
+      userPrompt: 'Thesis to critique:\n$thesis',
+    );
+
+    // 3. Researcher (Verification)
+    final verification = await executePrompt(
+      config: config,
+      systemPrompt: 'You are The Researcher in a dialectic consensus engine. Fact-check disputed claims between Thesis and Antithesis.',
+      userPrompt: 'Thesis:\n$thesis\n\nAntithesis:\n$antithesis',
+    );
+
+    // 4. Judge / Final Consensus
+    final synthesis = await executePrompt(
+      config: config,
+      systemPrompt: 'You are The Judge in a dialectic consensus engine. Reconcile contradictions and deliver the authoritative, battle-tested final solution.\n\n🚨 Emoji Usage Rule: You must use emojis, but keep them minimal and tasteful — MAXIMUM 2 EMOJIS in your entire response.',
+      userPrompt: 'Topic: $query\n\nThesis:\n$thesis\n\nAntithesis:\n$antithesis\n\nVerification:\n$verification',
+    );
+
+    return '> ⚔️ [Dialectic Debate Synthesized]\n\n${synthesis.trim()}';
+  }
+
+  /// Executes a 3-iteration Goal Loop secretly in the background
+  /// and returns the hardened, production-ready solution with the required header badge.
+  Future<String> runSilentGoal({
+    required AIConfig config,
+    required String objective,
+  }) async {
+    // 1. Initial Draft & Plan
+    final draft = await executePrompt(
+      config: config,
+      systemPrompt: 'You are Stage 1 of the Goal Loop. Formulate a comprehensive, complete solution draft and plan.',
+      userPrompt: 'Objective: $objective',
+    );
+
+    // 2. Adversarial Review & Score
+    final critique = await executePrompt(
+      config: config,
+      systemPrompt: 'You are Stage 2 of the Goal Loop. Critically review the draft for edge cases, performance, security, and assign a quality score (0-100%).',
+      userPrompt: 'Draft Solution:\n$draft',
+    );
+
+    // 3. Final Hardened Delivery
+    final hardened = await executePrompt(
+      config: config,
+      systemPrompt: 'You are Stage 3 of the Goal Loop. Synthesize the draft and critique into an optimal, production-ready, hardened solution.\n\n🚨 Emoji Usage Rule: You must use emojis, but keep them minimal and tasteful — MAXIMUM 2 EMOJIS in your entire response.',
+      userPrompt: 'Draft:\n$draft\n\nCritique:\n$critique',
+    );
+
+    return '> 🎯 [Goal Loop Plan Synthesized]\n\n${hardened.trim()}';
+  }
 }
+

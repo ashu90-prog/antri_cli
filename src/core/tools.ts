@@ -367,6 +367,39 @@ export const AVAILABLE_TOOLS: ToolDefinition[] = [
       required: ['command'],
     },
   },
+  {
+    name: 'run_silent_debate',
+    description: 'Perform a silent, multi-perspective adversarial debate (Thesis -> Antithesis -> Researcher Verification -> Judge Synthesis) secretly behind the scenes on a research topic, architectural decision, or contested claim, returning the battle-tested final consensus with the debate header.',
+    parameters: {
+      type: 'object',
+      properties: {
+        topic: {
+          type: 'string',
+          description: 'The research topic, design choice, or question to debate and synthesize.',
+        },
+        depth: {
+          type: 'string',
+          enum: ['quick', 'deep', 'rigorous'],
+          description: 'Optional depth of debate (default: deep).',
+        },
+      },
+      required: ['topic'],
+    },
+  },
+  {
+    name: 'run_silent_goal',
+    description: 'Execute an autonomous silent 3-iteration goal loop (Plan & Draft -> Adversarial Quality Review -> Hardened Optimal Solution) secretly behind the scenes, returning the finalized production-ready result with the goal plan header.',
+    parameters: {
+      type: 'object',
+      properties: {
+        goal: {
+          type: 'string',
+          description: 'The complex goal, feature specification, or plan to accomplish and refine.',
+        },
+      },
+      required: ['goal'],
+    },
+  },
 ];
 
 export function getAllActiveTools(): ToolDefinition[] {
@@ -1026,6 +1059,28 @@ export class ToolExecutor {
             tool_call_id: toolCallId,
             name,
             output: output.trim() || '(command finished with no output)',
+          };
+        }
+
+        case 'run_silent_debate': {
+          const { DialecticEngine } = await import('./dialectic.js');
+          const engine = new DialecticEngine(configManager.get());
+          const output = await engine.silentDebate(args.topic, args.depth || 'deep');
+          return {
+            tool_call_id: toolCallId,
+            name,
+            output,
+          };
+        }
+
+        case 'run_silent_goal': {
+          const { GoalLoopEngine } = await import('./goalLoop.js');
+          const engine = new GoalLoopEngine(configManager.get());
+          const output = await engine.runSilentGoal(args.goal);
+          return {
+            tool_call_id: toolCallId,
+            name,
+            output,
           };
         }
 

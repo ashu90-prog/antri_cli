@@ -14,6 +14,11 @@ class NoteSynthesizer {
     RegExp(r'(?:i like|i love|i enjoy|i listen|my hobby|in my free time)\s+(?:to |listening to |listning ot )?([^\.\n]+)', caseSensitive: false),
     // 4. Preferences & Coding Rules
     RegExp(r'(?:i prefer|i want|always use|never use|make sure to|remember that|my preference|in flutter|in typescript|in python|format with|clean architecture|keep it concise|don\x27t use|please use|style:|pattern:)\s+([^\.\n]+)', caseSensitive: false),
+    // 5. Philosophical Views, Ethics, Mental Models & Worldview
+    RegExp(r'(?:i believe in|my philosophy is|philosophically|in life|i think that life|the way i see it|fundamentally|existentially|epistemically|my core belief|i live by|my worldview|i value|what matters most to me is|when it comes to life|my perspective is|human nature is|the purpose of)\s+([^\.\n]+)', caseSensitive: false),
+    RegExp(r'(?:stoic|stoicism|nihilism|pragmatism|existentialism|utilitarianism|determinism|moral|ethics|first principles)\s+([^\.\n]+)', caseSensitive: false),
+    // 6. Minute Nuances, Habits, Quirks & Mindset
+    RegExp(r'(?:i tend to|my habit is|i get frustrated when|i feel best when|i usually think|my mindset is|i care deeply about)\s+([^\.\n]+)', caseSensitive: false),
   ];
 
   /// Analyzes a chat turn and extracts preferences, constraints, or personal notes
