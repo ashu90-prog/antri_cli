@@ -94,6 +94,9 @@
       <button class="nav-item" onclick="showTab('memory')">
         <span class="nav-label">Memory Graph</span>
       </button>
+      <button class="nav-item" onclick="showTab('artifacts')">
+        <span class="nav-label">Artifacts Hub</span>
+      </button>
 
       <div class="sidebar-footer">
         <div class="sync-status">
@@ -434,7 +437,44 @@
         </div>
       </section>
 
+      <!-- TAB 7: Artifacts Hub -->
+      <section id="tab-artifacts" class="tab-panel">
+        <div class="panel-header">
+          <div class="panel-title-group">
+            <h2 class="panel-title">Generated Artifacts Hub</h2>
+            <p class="panel-subtitle">Browse interactive HTML applications, stretching routines, and code architecture graphs grouped by chat session.</p>
+          </div>
+          <button class="action-btn" onclick="loadArtifactsTab()">⟳ Refresh Artifacts</button>
+        </div>
+
+        <div id="artifacts-grouped-container" class="artifacts-container">
+          <!-- Populated dynamically via JS -->
+        </div>
+      </section>
+
     </main>
+  </div>
+
+  <!-- ARTIFACT VIEWER MODAL -->
+  <div id="artifact-viewer-modal" class="modal-backdrop" style="display:none;" onclick="if(event.target===this)closeArtifactViewer()">
+    <div class="modal-box modal-box-large">
+      <div class="modal-header">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span id="modal-artifact-icon" style="font-size:20px;">🌐</span>
+          <div>
+            <h3 id="modal-artifact-title" style="margin:0;font-size:16px;">Artifact View</h3>
+            <span id="modal-artifact-type" class="badge" style="font-size:11px;color:var(--text-muted);">Interactive View</span>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="action-btn" style="padding:4px 10px;font-size:12px;" onclick="reloadArtifactIframe()">⟳ Reload</button>
+          <button class="modal-close" onclick="closeArtifactViewer()">✕</button>
+        </div>
+      </div>
+      <div class="modal-body" style="padding:0;height:75vh;">
+        <iframe id="artifact-viewer-iframe" style="width:100%;height:100%;border:none;border-radius:0 0 12px 12px;background:#ffffff;"></iframe>
+      </div>
+    </div>
   </div>
 
   <!-- AUTH MODAL -->

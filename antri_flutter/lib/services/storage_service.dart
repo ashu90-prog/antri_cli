@@ -4,6 +4,7 @@ import '../models/ai_config.dart';
 import '../models/thinking_profile.dart';
 import '../models/chat_message.dart';
 import '../models/chat_session.dart';
+import '../models/artifact.dart';
 
 class StorageService {
   static const String _keyConfig = 'antri_flutter_config';
@@ -150,4 +151,44 @@ class StorageService {
     final key = _getUserMemoriesKey(syncKey);
     await prefs.setStringList(key, memories);
   }
+
+  static String _getUserArtifactsKey(String? syncKey) => 'antri_artifacts_${syncKey != null && syncKey.isNotEmpty ? syncKey : "guest"}';
+
+  Future<List<Artifact>> loadArtifacts([String? syncKey]) async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = _getUserArtifactsKey(syncKey);
+    final raw = prefs.getString(key);
+    if (raw != null) {
+      try {
+        final List list = jsonDecode(raw);
+        return list.map((item) => Artifact.fromJson(item)).toList();
+      } catch (_) {}
+    }
+    return [];
+  }
+
+  Future<void> saveArtifacts(List<Artifact> artifacts, [String? syncKey]) async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = _getUserArtifactsKey(syncKey);
+    final list = artifacts.map((a) => a.toJson()).toList();
+    await prefs.setString(key, jsonEncode(list));
+  }
+
+  Future<void> saveArtifact(Artifact artifact, [String? syncKey]) async {
+    final list = await loadArtifacts(syncKey);
+    final index = list.indexWhere((a) => a.id == artifact.id);
+    if (index >= 0) {
+      list[index] = artifact;
+    } else {
+      list.insert(0, artifact);
+    }
+    await saveArtifacts(list, syncKey);
+  }
+
+  Future<void> deleteArtifact(String id, [String? syncKey]) async {
+    final list = await loadArtifacts(syncKey);
+    list.removeWhere((a) => a.id == id);
+    await saveArtifacts(list, syncKey);
+  }
 }
+

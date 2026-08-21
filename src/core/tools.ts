@@ -400,6 +400,29 @@ export const AVAILABLE_TOOLS: ToolDefinition[] = [
       required: ['goal'],
     },
   },
+  {
+    name: 'create_artifact',
+    description: 'Create and save an interactive HTML application/plan or a visual code architecture graph artifact (Claude-style Artifact).',
+    parameters: {
+      type: 'object',
+      properties: {
+        title: {
+          type: 'string',
+          description: 'Descriptive title of the artifact (e.g., "2-Day Football Stretching Plan", "Payment Microservice Flowchart").',
+        },
+        type: {
+          type: 'string',
+          enum: ['html', 'graph'],
+          description: 'Type of artifact: "html" for interactive HTML/CSS/JS applications and plans, or "graph" for Mermaid/architecture flowcharts.',
+        },
+        content: {
+          type: 'string',
+          description: 'The complete self-contained HTML/CSS/JS code or Mermaid diagram syntax.',
+        },
+      },
+      required: ['title', 'type', 'content'],
+    },
+  },
 ];
 
 export function getAllActiveTools(): ToolDefinition[] {
@@ -1081,6 +1104,26 @@ export class ToolExecutor {
             tool_call_id: toolCallId,
             name,
             output,
+          };
+        }
+
+        case 'create_artifact': {
+          const { artifactManager } = await import('./artifactManager.js');
+          const id = 'art_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+          const artifact = artifactManager.saveArtifact({
+            id,
+            sessionId: 'cli_session',
+            sessionTitle: 'Workspace Chat',
+            title: args.title || 'Interactive Artifact',
+            type: args.type || 'html',
+            content: args.content,
+            createdAt: Date.now(),
+          });
+          const pathMsg = artifactManager.getArtifactFilePath(id);
+          return {
+            tool_call_id: toolCallId,
+            name,
+            output: `Successfully created artifact "${artifact.title}" (ID: ${artifact.id}, Type: ${artifact.type})${pathMsg ? `\nSaved file: ${pathMsg}` : ''}`,
           };
         }
 

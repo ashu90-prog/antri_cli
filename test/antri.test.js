@@ -1,5 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert';
+import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
 import { ConfigManager } from '../dist/core/config.js';
 import { ConversationHistory } from '../dist/core/history.js';
 import { ToolExecutor, AVAILABLE_TOOLS, getAllActiveTools, SENSITIVE_TOOLS } from '../dist/core/tools.js';
@@ -663,6 +666,90 @@ test('ToolExecutor executes run_silent_debate and run_silent_goal tools', async 
 
   AuthManager.logout();
 });
+
+test('ArtifactManager creates, stores, groups, and parses Claude-style artifacts', async () => {
+  const { ArtifactManager } = await import('../dist/core/artifactManager.js');
+  const tempArtifactsDir = path.join(os.tmpdir(), 'antri_test_artifacts_' + Date.now());
+  const manager = new ArtifactManager(tempArtifactsDir);
+
+  // 1. Save artifact
+  const art1 = manager.saveArtifact({
+    id: 'test_art_1',
+    sessionId: 'session_1',
+    sessionTitle: 'Football Routine Chat',
+    title: '2-Day Football Stretching Plan',
+    type: 'html',
+    content: '<!DOCTYPE html><html><body><h1>Day 1 Warmup</h1></body></html>',
+    createdAt: Date.now(),
+  });
+  assert.strictEqual(art1.id, 'test_art_1');
+  assert.strictEqual(manager.getArtifact('test_art_1')?.title, '2-Day Football Stretching Plan');
+
+  // 2. Save graph artifact
+  const art2 = manager.saveArtifact({
+    id: 'test_art_2',
+    sessionId: 'session_1',
+    sessionTitle: 'Football Routine Chat',
+    title: 'Workout Architecture Flowchart',
+    type: 'graph',
+    content: 'graph TD\nA[Warmup] --> B[Dynamic Stretch]',
+    createdAt: Date.now() + 100,
+  });
+  assert.strictEqual(art2.type, 'graph');
+
+  // 3. Check session grouping
+  const grouped = manager.getArtifactsGroupedBySession();
+  assert.ok(grouped.length >= 1);
+  const session1Group = grouped.find((g) => g.sessionId === 'session_1');
+  assert.ok(session1Group);
+  assert.strictEqual(session1Group.artifacts.length, 2);
+
+  // 4. Parse from text
+  const rawResponse = 'Here is your stretching plan:\n<antri_artifact id="art_parsed_1" type="html" title="Hamstring Plan">\n<p>Hamstring stretches...</p>\n</antri_artifact>\nEnjoy your workout!';
+  const { cleanText, artifacts } = manager.parseAndStoreArtifacts(rawResponse, 'session_2', 'Stretching Chat');
+  assert.strictEqual(artifacts.length, 1);
+  assert.strictEqual(artifacts[0].title, 'Hamstring Plan');
+  assert.ok(cleanText.includes('[Artifact Created: Hamstring Plan]'));
+
+  // 5. Delete artifact
+  const deleted = manager.deleteArtifact('test_art_1');
+  assert.strictEqual(deleted, true);
+  assert.strictEqual(manager.getArtifact('test_art_1'), null);
+
+  // Cleanup
+  try {
+    fs.rmSync(tempArtifactsDir, { recursive: true, force: true });
+  } catch {}
+});
+
+test('ToolExecutor executes create_artifact tool', async () => {
+  await AuthManager.login('artifact_tester@example.com');
+  const executor = new ToolExecutor();
+  executor.setPermissionHandler(async () => true);
+
+  const res = await executor.execute(
+    'create_artifact',
+    {
+      title: 'Interactive Plan Test',
+      type: 'html',
+      content: '<html><body>Interactive App</body></html>',
+    },
+    'art_tool_1'
+  );
+  assert.ok(res.output.includes('Successfully created artifact'));
+  assert.ok(res.output.includes('Interactive Plan Test'));
+
+  AuthManager.logout();
+});
+
+test('Prompt Toolkit contains /imagine, /view, and /artifacts commands', async () => {
+  const { PROMPT_TOOLKIT_COMMANDS } = await import('../dist/cli/promptToolkit.js');
+  const cmdNames = PROMPT_TOOLKIT_COMMANDS.map((c) => c.name);
+  assert.ok(cmdNames.includes('/imagine'));
+  assert.ok(cmdNames.includes('/view'));
+  assert.ok(cmdNames.includes('/artifacts'));
+});
+
 
 
 

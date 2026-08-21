@@ -3,9 +3,12 @@ import 'package:image_picker/image_picker.dart';
 import '../models/ai_config.dart';
 import '../models/chat_message.dart';
 import '../models/chat_session.dart';
+import '../models/artifact.dart';
 import '../services/ai_service.dart';
 import '../services/storage_service.dart';
 import '../services/note_synthesizer.dart';
+import 'artifact_viewer_view.dart';
+import 'artifacts_view.dart';
 
 class AgentStudioView extends StatefulWidget {
   final AIConfig config;
@@ -335,9 +338,54 @@ class _AgentStudioViewState extends State<AgentStudioView> {
               ),
             ),
 
+            // Artifacts Hub Button (Just above New Chat)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 2, 14, 6),
+              child: InkWell(
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (ctx) => ArtifactsView(
+                        config: widget.config,
+                        storageService: widget.storageService,
+                      ),
+                    ),
+                  );
+                },
+                borderRadius: BorderRadius.circular(24),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF7F4EE),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: const Color(0xFFE6E0D4)),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.palette_outlined, color: Color(0xFF1C1917), size: 18),
+                      SizedBox(width: 12),
+                      Text(
+                        'Artifacts',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF1C1917),
+                        ),
+                      ),
+                      Spacer(),
+                      Icon(Icons.arrow_forward_ios, size: 12, color: Color(0xFFA8A29E)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
             // Gemini-Style "+ New Chat" Action Button
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               child: InkWell(
                 onTap: () {
                   Navigator.pop(context);
@@ -537,6 +585,15 @@ Use this active knowledge naturally to inform responses, follow coding preferenc
 🚨 Conversational Recall Rule: When the user asks what you know about them, their thinking style, hobbies, or background, answer conversationally and concisely like a helpful human partner. Synthesize the known facts smoothly without dumping raw markdown files, section headers, or unformatted template boilerplate.
 🚨 Emoji Usage Rule: You MUST use emojis, but keep them minimal and tasteful — MAXIMUM 2 EMOJIS in your whole response. Never exceed 2 emojis total.
 🚨 Dialectic & Goal Header Directive: For research synthesis, multi-perspective debates, or goal loop plans performed in the background, start your response with a header badge: '> ⚔️ [Dialectic Debate Synthesized]' or '> 🎯 [Goal Loop Plan Synthesized]'.
+🎨 Claude-Style Interactive Artifacts & Graphs: When asked to generate a plan, routine, guide, UI dashboard, quiz, workout/stretching routine, or architecture diagram (or when the user asks with /view or /imagine), generate a complete, self-contained interactive HTML document or Mermaid graph enclosed in an artifact tag:
+<antri_artifact id="art_UNIQUE_ID" type="html" title="DESCRIPTIVE TITLE">
+<!DOCTYPE html><html><head><style>...</style></head><body>...interactive elements...</body></html>
+</antri_artifact>
+For graphs:
+<antri_artifact id="graph_UNIQUE_ID" type="graph" title="ARCHITECTURE TITLE">
+graph TD
+  ...
+</antri_artifact>
 ================================================================================
 ### Active Thinking Profile: ${widget.config.activeProfile}.md
 $activeProfContent
@@ -560,6 +617,24 @@ $memoriesText
           config: widget.config,
           objective: goalClean.isNotEmpty ? goalClean : text,
         );
+      } else if (lower.startsWith('/imagine ') || lower == '/imagine') {
+        final queryClean = text.replaceFirst(RegExp(r'^/imagine\s*', caseSensitive: false), '').trim();
+        final imaginePrompt = 'Create a comprehensive visual architecture diagram and flowchart graph for: "${queryClean.isNotEmpty ? queryClean : "System Architecture"}". You MUST output the Mermaid graph enclosed in an artifact tag: <antri_artifact id="graph_${DateTime.now().millisecondsSinceEpoch}" type="graph" title="${queryClean.isNotEmpty ? queryClean : "Architecture Graph"}">\ngraph TD\n...\n</antri_artifact>';
+        responseText = await widget.aiService.executePrompt(
+          config: widget.config,
+          systemPrompt: systemPrompt,
+          userPrompt: imaginePrompt,
+          conversationHistory: _currentSession.messages,
+        );
+      } else if (lower.startsWith('/view ') || lower == '/view') {
+        final queryClean = text.replaceFirst(RegExp(r'^/view\s*', caseSensitive: false), '').trim();
+        final viewPrompt = 'Generate a complete, self-contained, highly interactive HTML/CSS/JS application or plan for: "${queryClean.isNotEmpty ? queryClean : "Interactive Plan"}". Include modern styling and interactive buttons/checklists. You MUST output the HTML document enclosed in an artifact tag: <antri_artifact id="art_${DateTime.now().millisecondsSinceEpoch}" type="html" title="${queryClean.isNotEmpty ? queryClean : "Interactive Plan"}">\n<!DOCTYPE html>\n<html>...</html>\n</antri_artifact>';
+        responseText = await widget.aiService.executePrompt(
+          config: widget.config,
+          systemPrompt: systemPrompt,
+          userPrompt: viewPrompt,
+          conversationHistory: _currentSession.messages,
+        );
       } else {
         // Pass the entire ongoing multi-turn conversation context to preserve chat state
         responseText = await widget.aiService.executePrompt(
@@ -569,6 +644,27 @@ $memoriesText
           conversationHistory: _currentSession.messages,
           attachmentPaths: userMsg.attachmentPaths,
         );
+      }
+
+      // Parse and persist any generated artifacts from response
+      final artRegex = RegExp(r'<antri_artifact\s+id="([^"]+)"\s+type="([^"]+)"\s+title="([^"]+)">([\s\S]*?)<\/antri_artifact>', caseSensitive: false);
+      for (final match in artRegex.allMatches(responseText)) {
+        final artId = match.group(1)?.trim() ?? 'art_${DateTime.now().millisecondsSinceEpoch}';
+        final artType = match.group(2)?.trim().toLowerCase() ?? 'html';
+        final artTitle = match.group(3)?.trim() ?? 'Interactive Artifact';
+        final artContent = match.group(4)?.trim() ?? '';
+
+        final artifact = Artifact(
+          id: artId,
+          sessionId: _currentSession.id,
+          sessionTitle: _currentSession.title,
+          title: artTitle,
+          type: artType,
+          content: artContent,
+          createdAt: DateTime.now(),
+        );
+
+        await widget.storageService.saveArtifact(artifact, widget.config.syncKey);
       }
 
       final assistantMsg = ChatMessage(role: 'assistant', content: responseText);
@@ -802,14 +898,112 @@ $memoriesText
                                         .toList(),
                                   ),
                                 ),
-                              SelectableText(
-                                msg.content,
-                                style: TextStyle(
-                                  fontSize: 13.5,
-                                  color: isUser ? Colors.white : textPrimary,
-                                  height: 1.6,
+                              if (!isUser && msg.content.contains('<antri_artifact')) ...[
+                                Builder(
+                                  builder: (context) {
+                                    final artMatch = RegExp(r'<antri_artifact\s+id="([^"]+)"\s+type="([^"]+)"\s+title="([^"]+)">([\s\S]*?)<\/antri_artifact>', caseSensitive: false).firstMatch(msg.content);
+                                    final cleanText = msg.content.replaceAll(RegExp(r'<antri_artifact[\s\S]*?<\/antri_artifact>', caseSensitive: false), '').trim();
+                                    
+                                    final artId = artMatch?.group(1)?.trim() ?? 'art_${DateTime.now().millisecondsSinceEpoch}';
+                                    final artType = artMatch?.group(2)?.trim().toLowerCase() ?? 'html';
+                                    final artTitle = artMatch?.group(3)?.trim() ?? 'Interactive Artifact';
+                                    final artContent = artMatch?.group(4)?.trim() ?? '';
+                                    final isGraph = artType == 'graph';
+
+                                    final artifactObj = Artifact(
+                                      id: artId,
+                                      sessionId: _currentSession.id,
+                                      sessionTitle: _currentSession.title,
+                                      title: artTitle,
+                                      type: artType,
+                                      content: artContent,
+                                      createdAt: DateTime.now(),
+                                    );
+
+                                    return Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        if (cleanText.isNotEmpty)
+                                          SelectableText(
+                                            cleanText,
+                                            style: const TextStyle(fontSize: 13.5, color: textPrimary, height: 1.6),
+                                          ),
+                                        Container(
+                                          margin: const EdgeInsets.only(top: 8),
+                                          padding: const EdgeInsets.all(12),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFF7F4EE),
+                                            borderRadius: BorderRadius.circular(10),
+                                            border: Border.all(color: borderMain),
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              Container(
+                                                padding: const EdgeInsets.all(8),
+                                                decoration: BoxDecoration(
+                                                  color: isGraph ? const Color(0xFFEFF6FF) : const Color(0xFFF0FDF4),
+                                                  borderRadius: BorderRadius.circular(8),
+                                                ),
+                                                child: Icon(
+                                                  isGraph ? Icons.account_tree_outlined : Icons.language,
+                                                  size: 18,
+                                                  color: isGraph ? const Color(0xFF1D4ED8) : const Color(0xFF15803D),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 10),
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      artTitle,
+                                                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: textPrimary),
+                                                      maxLines: 1,
+                                                      overflow: TextOverflow.ellipsis,
+                                                    ),
+                                                    Text(
+                                                      isGraph ? 'Architecture Graph' : 'Interactive HTML Plan',
+                                                      style: const TextStyle(fontSize: 11, color: Color(0xFF78716C)),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              ElevatedButton.icon(
+                                                style: ElevatedButton.styleFrom(
+                                                  backgroundColor: textPrimary,
+                                                  foregroundColor: Colors.white,
+                                                  elevation: 0,
+                                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                                ),
+                                                icon: const Icon(Icons.visibility, size: 14),
+                                                label: const Text('View', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                                                onPressed: () {
+                                                  Navigator.push(
+                                                    context,
+                                                    MaterialPageRoute(
+                                                      builder: (ctx) => ArtifactViewerView(artifact: artifactObj),
+                                                    ),
+                                                  );
+                                                },
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    );
+                                  },
                                 ),
-                              ),
+                              ] else ...[
+                                SelectableText(
+                                  msg.content,
+                                  style: TextStyle(
+                                    fontSize: 13.5,
+                                    color: isUser ? Colors.white : textPrimary,
+                                    height: 1.6,
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
                         ),

@@ -169,7 +169,7 @@ async function showTab(tabName) {
   const targetPanel = document.getElementById(`tab-${tabName}`);
   if (targetPanel) targetPanel.classList.add('active');
 
-  const navIndex = ['chat', 'dialectic', 'goal', 'profiles', 'skills', 'memory'].indexOf(tabName);
+  const navIndex = ['chat', 'dialectic', 'goal', 'profiles', 'skills', 'memory', 'artifacts'].indexOf(tabName);
   const navButtons = document.querySelectorAll('.nav-item');
   if (navButtons[navIndex]) navButtons[navIndex].classList.add('active');
 
@@ -179,6 +179,8 @@ async function showTab(tabName) {
     await loadSkills();
   } else if (tabName === 'memory') {
     await loadMemory();
+  } else if (tabName === 'artifacts') {
+    await loadArtifactsTab();
   }
 }
 
@@ -640,8 +642,30 @@ async function submitPrompt() {
               assistantMsgEl.insertBefore(toolBadge, contentEl);
               scrollToBottom();
             }
-          } catch (e) {}
-        }
+    if (accumulated && accumulated.includes('<antri_artifact')) {
+      const artMatch = accumulated.match(/<antri_artifact\s+id="([^"]+)"\s+type="([^"]+)"\s+title="([^"]+)">([\s\S]*?)<\/antri_artifact>/i);
+      const cleanText = accumulated.replace(/<antri_artifact[\s\S]*?<\/antri_artifact>/gi, '').trim();
+      contentEl.textContent = cleanText;
+
+      if (artMatch) {
+        const artId = artMatch[1];
+        const artType = artMatch[2].toLowerCase();
+        const artTitle = artMatch[3];
+        const isGraph = artType === 'graph';
+
+        const embed = document.createElement('div');
+        embed.className = 'chat-artifact-embed';
+        embed.innerHTML = `
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span style="font-size:22px;">${isGraph ? '📊' : '🌐'}</span>
+            <div>
+              <div style="font-weight:700;font-size:13.5px;color:var(--text-primary);">${escapeHtml(artTitle)}</div>
+              <div style="font-size:11.5px;color:var(--text-muted);">${isGraph ? 'Code Architecture Graph' : 'Interactive HTML Plan'}</div>
+            </div>
+          </div>
+          <button class="chat-artifact-btn" onclick="openArtifactViewer('${artId}', '${escapeHtml(artTitle)}', '${artType}')">👁️ View Artifact</button>
+        `;
+        assistantMsgEl.appendChild(embed);
       }
     }
   } catch (err) {
@@ -679,11 +703,159 @@ function appendMessage(role, text) {
   row.className = `msg-row ${role}`;
   const content = document.createElement('div');
   content.className = 'msg-content';
-  content.textContent = text;
-  row.appendChild(content);
+
+  if (role === 'assistant' && text && text.includes('<antri_artifact')) {
+    const artMatch = text.match(/<antri_artifact\s+id="([^"]+)"\s+type="([^"]+)"\s+title="([^"]+)">([\s\S]*?)<\/antri_artifact>/i);
+    const cleanText = text.replace(/<antri_artifact[\s\S]*?<\/antri_artifact>/gi, '').trim();
+    content.textContent = cleanText;
+    row.appendChild(content);
+
+    if (artMatch) {
+      const artId = artMatch[1];
+      const artType = artMatch[2].toLowerCase();
+      const artTitle = artMatch[3];
+      const isGraph = artType === 'graph';
+
+      const embed = document.createElement('div');
+      embed.className = 'chat-artifact-embed';
+      embed.innerHTML = `
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="font-size:22px;">${isGraph ? '📊' : '🌐'}</span>
+          <div>
+            <div style="font-weight:700;font-size:13.5px;color:var(--text-primary);">${escapeHtml(artTitle)}</div>
+            <div style="font-size:11.5px;color:var(--text-muted);">${isGraph ? 'Code Architecture Graph' : 'Interactive HTML Plan'}</div>
+          </div>
+        </div>
+        <button class="chat-artifact-btn" onclick="openArtifactViewer('${artId}', '${escapeHtml(artTitle)}', '${artType}')">👁️ View Artifact</button>
+      `;
+      row.appendChild(embed);
+    }
+  } else {
+    content.textContent = text;
+    row.appendChild(content);
+  }
+
   container.appendChild(row);
   scrollToBottom();
   return row;
+}
+
+// Artifact Hub Management
+async function loadArtifactsTab() {
+  try {
+    const res = await fetch('/api/artifacts');
+    const data = await res.json();
+    const container = document.getElementById('artifacts-grouped-container');
+    if (!container) return;
+    container.innerHTML = '';
+
+    if (!data.grouped || data.grouped.length === 0) {
+      container.innerHTML = `
+        <div style="text-align:center;padding:48px 16px;color:var(--text-muted);">
+          <div style="font-size:36px;margin-bottom:12px;">🎨</div>
+          <h3 style="color:var(--text-primary);margin-bottom:6px;">No Artifacts Generated Yet</h3>
+          <p style="font-size:13px;">Generate interactive HTML plans or architecture graphs with <code>/view</code> or <code>/imagine</code> in chat.</p>
+        </div>
+      `;
+      return;
+    }
+
+    data.grouped.forEach((grp) => {
+      const groupEl = document.createElement('div');
+      groupEl.className = 'artifact-session-group';
+
+      let cardsHtml = '';
+      grp.artifacts.forEach((art) => {
+        const isGraph = art.type === 'graph';
+        const typeClass = isGraph ? 'badge-graph' : 'badge-html';
+        const typeText = isGraph ? 'Code Graph' : 'Interactive HTML';
+        const icon = isGraph ? '📊' : '🌐';
+        const dateStr = new Date(art.createdAt).toLocaleDateString();
+
+        cardsHtml += `
+          <div class="artifact-item-card">
+            <div>
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+                <span class="artifact-card-badge ${typeClass}">${icon} ${typeText}</span>
+                <span style="font-size:11px;color:var(--text-muted);">${dateStr}</span>
+              </div>
+              <div style="font-weight:700;font-size:14px;color:var(--text-primary);margin-bottom:4px;">${escapeHtml(art.title)}</div>
+              <div style="font-size:12px;color:var(--text-muted);">ID: ${art.id}</div>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">
+              <button class="chat-artifact-btn" onclick="openArtifactViewer('${art.id}', '${escapeHtml(art.title)}', '${art.type}')">👁️ View Artifact</button>
+              <button style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px;" title="Delete Artifact" onclick="deleteArtifactDesktop('${art.id}')">🗑️</button>
+            </div>
+          </div>
+        `;
+      });
+
+      groupEl.innerHTML = `
+        <div class="artifact-session-header">
+          <div class="artifact-session-title">
+            <span>📁</span>
+            <span>${escapeHtml(grp.sessionTitle || 'Chat Session')}</span>
+          </div>
+          <span style="font-size:12px;color:var(--text-muted);">${grp.artifacts.length} ${grp.artifacts.length === 1 ? 'artifact' : 'artifacts'}</span>
+        </div>
+        <div class="artifacts-grid">
+          ${cardsHtml}
+        </div>
+      `;
+      container.appendChild(groupEl);
+    });
+  } catch (err) {
+    console.error('Failed to load artifacts tab:', err);
+  }
+}
+
+function openArtifactViewer(id, title = 'Artifact View', type = 'html') {
+  const modal = document.getElementById('artifact-viewer-modal');
+  const iframe = document.getElementById('artifact-viewer-iframe');
+  const titleEl = document.getElementById('modal-artifact-title');
+  const typeEl = document.getElementById('modal-artifact-type');
+  const iconEl = document.getElementById('modal-artifact-icon');
+
+  if (titleEl) titleEl.textContent = title;
+  if (typeEl) typeEl.textContent = type === 'graph' ? 'Code Architecture Graph' : 'Interactive HTML View';
+  if (iconEl) iconEl.textContent = type === 'graph' ? '📊' : '🌐';
+
+  if (iframe) iframe.src = `/api/artifacts/${encodeURIComponent(id)}/view`;
+  if (modal) modal.style.display = 'flex';
+}
+
+function closeArtifactViewer() {
+  const modal = document.getElementById('artifact-viewer-modal');
+  const iframe = document.getElementById('artifact-viewer-iframe');
+  if (iframe) iframe.src = 'about:blank';
+  if (modal) modal.style.display = 'none';
+}
+
+function reloadArtifactIframe() {
+  const iframe = document.getElementById('artifact-viewer-iframe');
+  if (iframe) iframe.src = iframe.src;
+}
+
+async function deleteArtifactDesktop(id) {
+  if (!confirm('Are you sure you want to delete this artifact?')) return;
+  try {
+    const res = await fetch('/api/artifacts/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast('Artifact deleted');
+      await loadArtifactsTab();
+    }
+  } catch (e) {
+    showToast('Failed to delete artifact', true);
+  }
+}
+
+function escapeHtml(str) {
+  return (str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 function scrollToBottom() {

@@ -166,3 +166,16 @@ export interface DialecticResult {
   stages: DialecticStage[];
   sources?: string[];
 }
+
+export type ArtifactType = 'html' | 'graph' | 'svg' | 'markdown';
+
+export interface Artifact {
+  id: string;
+  sessionId: string;
+  sessionTitle: string;
+  title: string;
+  type: ArtifactType;
+  content: string;
+  createdAt: number;
+}
+

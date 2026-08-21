@@ -268,6 +268,42 @@ export class DesktopServer {
       return;
     }
 
+    // GET /api/artifacts (List all artifacts & grouped by chat session)
+    if (pathname === '/api/artifacts' && req.method === 'GET') {
+      const { artifactManager } = await import('../core/artifactManager.js');
+      const artifacts = artifactManager.getAllArtifacts();
+      const grouped = artifactManager.getArtifactsGroupedBySession();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ artifacts, grouped }));
+      return;
+    }
+
+    // GET /api/artifacts/:id/view (Render standalone HTML / visual graph artifact)
+    if (pathname?.startsWith('/api/artifacts/') && pathname.endsWith('/view') && req.method === 'GET') {
+      const { artifactManager } = await import('../core/artifactManager.js');
+      const id = pathname.replace('/api/artifacts/', '').replace('/view', '').trim();
+      const artifact = artifactManager.getArtifact(id);
+      if (!artifact) {
+        res.writeHead(404, { 'Content-Type': 'text/plain' });
+        res.end('Artifact not found');
+        return;
+      }
+      if (artifact.type === 'html') {
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        res.end(artifact.content);
+      } else {
+        const filePath = artifactManager.getArtifactFilePath(id);
+        if (filePath && fs.existsSync(filePath) && filePath.endsWith('.html')) {
+          res.writeHead(200, { 'Content-Type': 'text/html' });
+          res.end(fs.readFileSync(filePath, 'utf-8'));
+        } else {
+          res.writeHead(200, { 'Content-Type': 'text/plain' });
+          res.end(artifact.content);
+        }
+      }
+      return;
+    }
+
     // Read Body for POST requests
     let body = '';
     req.on('data', (chunk) => {
@@ -598,6 +634,15 @@ export class DesktopServer {
           const result = await FirestoreSyncManager.pullFromFirestore();
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify(result));
+          return;
+        }
+
+        // POST /api/artifacts/delete
+        if (pathname === '/api/artifacts/delete' && req.method === 'POST') {
+          const { artifactManager } = await import('../core/artifactManager.js');
+          const ok = artifactManager.deleteArtifact(payload.id);
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: ok }));
           return;
         }
 

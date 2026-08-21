@@ -80,7 +80,7 @@ Core Behavioral Principles:
 ${modeDirective}
 
 Tooling & Workspace Capabilities:
-1. Workspace & Coding Tools: read_file (inspect files with line ranges), write_file (create/overwrite files), edit_file (precise search & replace block editing), create_directory (folder creation), delete_file (remove files/folders), find_files (glob/name discovery), grep_search (regex/text code search with line numbers), file_info (inspect size, lines, dates), git_diff (inspect git changes/diffs), list_dir, search_files, run_command (terminal execution).
+1. Workspace & Coding Tools: read_file (inspect files with line ranges), write_file (create/overwrite files), edit_file (precise search & replace block editing), create_directory (folder creation), delete_file (remove files/folders), find_files (glob/name discovery), grep_search (regex/text code search with line numbers), file_info (inspect size, lines, dates), git_diff (inspect git changes/diffs), list_dir, search_files, run_command (terminal execution), create_artifact.
 2. Autonomous Silent Debate & Goal Engines: run_silent_debate (secret multi-perspective adversarial consensus for deep research & architecture), run_silent_goal (secret 3-step goal loop optimizer).
 3. Sandboxed Runtime: execute_python (run safe isolated Python code scripts).
 4. Markdown Skills System: activate_skill (activate specialized expert instructions from .md skills).
@@ -92,6 +92,16 @@ ${skillListSummary}
 
 Autonomous Guidelines:
 - 🚨 EMOJI USAGE RULE: You MUST use emojis, but keep them minimal and tasteful — MAXIMUM 2 EMOJIS in your entire response (e.g. in a section header or key bullet point). Never exceed 2 emojis total across your entire response.
+- 🎨 Claude-Style Interactive Artifacts & Visual Graphs (/imagine & /view):
+  - When the user asks for an interactive plan, routine, guide, UI dashboard, quiz, or calculator (e.g. "generate me a 2 day plan for football stretching", "/view ...", "build an interactive tracker"), generate a complete, self-contained interactive HTML/CSS/JS document wrapped in an artifact block:
+    <antri_artifact id="art_UNIQUE_ID" type="html" title="DESCRIPTIVE TITLE">
+    <!DOCTYPE html><html><head><style>/* modern sleek dark/cream styling */</style></head><body>...interactive components with buttons/toggles...<script>/* clean interactivity */</script></body></html>
+    </antri_artifact>
+  - When the user asks for a code architecture diagram, system flowchart, or uses /imagine, generate a visual Mermaid graph wrapped in:
+    <antri_artifact id="graph_UNIQUE_ID" type="graph" title="ARCHITECTURE TITLE">
+    graph TD
+      A[Component A] --> B[Component B]
+    </antri_artifact>
 - 💡 Autonomous Silent Debate & Goal Execution: For complex research queries ("research on this topic", "evaluate the best architecture for X vs Y", "compare tradeoffs", "deep dive into..."), or multi-step goal planning, you can autonomously execute 'run_silent_debate' or 'run_silent_goal' to debate and harden the solution secretly behind the scenes, and output the authoritative final conclusion with a header badge:
   - If debate was used: Start output with \`> ⚔️ [Dialectic Debate Synthesized]\`
   - If goal loop was used: Start output with \`> 🎯 [Goal Loop Plan Synthesized]\`
@@ -191,6 +201,15 @@ Autonomous Guidelines:
     sessionManager.addMessageToActiveSession(userMsg);
 
     const response = await this.runAgentLoop(0, contextText, skillContext, onStreamToken, onToolCall);
+
+    // 5b. Parse and persist any interactive Claude-style artifacts (<antri_artifact>...</antri_artifact>)
+    const { artifactManager } = await import('./artifactManager.js');
+    const activeSession = sessionManager.getActiveSession();
+    artifactManager.parseAndStoreArtifacts(
+      response,
+      activeSession?.id || 'cli_session',
+      activeSession?.title || 'CLI Session'
+    );
 
     // 6. Record interaction into persistent episodic memory & meta-optimizer
     memoryManager.recordInteraction(userPrompt, response);

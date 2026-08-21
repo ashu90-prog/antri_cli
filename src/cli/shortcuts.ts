@@ -281,6 +281,82 @@ export class ShortcutHandler {
       return { handled: true };
     }
 
+    // /imagine [code/topic] -> Generate architecture graph artifact
+    if (trimmed === '/imagine' || trimmed.startsWith('/imagine ')) {
+      let query = trimmed.replace(/^\/imagine/, '').trim();
+      if (!query) {
+        const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+        const promptAsync = (q: string) => new Promise<string>((res) => rl.question(q, res));
+        console.log(chalk.bold.hex('#c084fc')('\n📊 Architecture & Code Graph Visualizer'));
+        query = await promptAsync(chalk.cyan('Enter topic or code structure to visualize into a graph: '));
+        rl.close();
+      }
+
+      if (query.trim()) {
+        const imaginePrompt = `Create a comprehensive visual architecture diagram and flowchart graph for: "${query.trim()}".
+You MUST generate the visual graph enclosed in an artifact tag:
+<antri_artifact id="graph_${Date.now().toString(36)}" type="graph" title="${query.trim().slice(0, 40)} Graph">
+graph TD
+  ...
+</antri_artifact>`;
+        await this.agent.chat(imaginePrompt);
+      }
+      return { handled: true };
+    }
+
+    // /view [topic/plan] -> Generate interactive HTML artifact
+    if (trimmed === '/view' || trimmed.startsWith('/view ')) {
+      let query = trimmed.replace(/^\/view/, '').trim();
+      if (!query) {
+        const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+        const promptAsync = (q: string) => new Promise<string>((res) => rl.question(q, res));
+        console.log(chalk.bold.hex('#818cf8')('\n🌐 Interactive HTML Artifact Creator'));
+        query = await promptAsync(chalk.cyan('Enter plan or app description to build into an interactive HTML view: '));
+        rl.close();
+      }
+
+      if (query.trim()) {
+        const viewPrompt = `Generate a complete, self-contained, highly interactive HTML/CSS/JS application or plan for: "${query.trim()}".
+Ensure it has sleek modern styling (dark/slate or warm cream), interactive buttons/timers/tabs, and works standalone.
+You MUST output the HTML document enclosed in an artifact tag:
+<antri_artifact id="art_${Date.now().toString(36)}" type="html" title="${query.trim().slice(0, 40)}">
+<!DOCTYPE html>
+<html>
+<head><style>...</style></head>
+<body>...<script>...</script></body>
+</html>
+</antri_artifact>`;
+        await this.agent.chat(viewPrompt);
+      }
+      return { handled: true };
+    }
+
+    // /artifacts -> View all artifacts grouped by session
+    if (trimmed === '/artifacts' || trimmed === '/artifact') {
+      const { artifactManager } = await import('../core/artifactManager.js');
+      const groups = artifactManager.getArtifactsGroupedBySession();
+      console.log(chalk.bold.hex('#c084fc')('\n🎨 ANTRI Generated Artifacts Hub'));
+      console.log(chalk.hex('#334155')('─'.repeat(72)));
+      if (groups.length === 0) {
+        console.log(chalk.gray('No artifacts generated yet. Use /view [plan] or /imagine [code] to create one.'));
+      } else {
+        for (const grp of groups) {
+          console.log(chalk.bold.hex('#818cf8')(`\n📁 Session: ${grp.sessionTitle} (${grp.sessionId})`));
+          for (const art of grp.artifacts) {
+            const dateStr = new Date(art.createdAt).toLocaleString();
+            const typeBadge = art.type === 'graph' ? chalk.hex('#38bdf8')('[GRAPH]') : chalk.hex('#4ade80')('[HTML]');
+            console.log(`  ${typeBadge} ${chalk.bold(art.title)} ${chalk.gray(`(ID: ${art.id} · ${dateStr})`)}`);
+            const filePath = artifactManager.getArtifactFilePath(art.id);
+            if (filePath) {
+              console.log(chalk.gray(`     Path: ${filePath}`));
+            }
+          }
+        }
+      }
+      console.log(chalk.hex('#334155')('\n' + '─'.repeat(72) + '\n'));
+      return { handled: true };
+    }
+
     // /profile or /profiles dialog
     if (trimmed === '/profile' || trimmed === '/profiles') {
       await runProfilePickerWorkflow();
@@ -657,6 +733,9 @@ export class ShortcutHandler {
       ['/goal [task]', 'Run autonomous multi-step goal loop: plan, critique, refine & deliver'],
       ['/silent-goal [t]', 'Run Goal Loop optimization silently in background and return final plan'],
       ['/loop [task]', 'Iterate on a task until optimal battle-tested result is achieved'],
+      ['/imagine [topic]', 'Create visual architecture diagram & code graph artifact'],
+      ['/view [plan]', 'Generate interactive HTML/JS application/plan artifact and launch view'],
+      ['/artifacts', 'List all generated interactive HTML and graph artifacts'],
       ['/meta', 'View Meta-Optimization metrics, success rates & self-healing stats'],
       ['/skills', 'List built-in & dynamically synthesized custom skills'],
       ['/memory', 'View Persistent Memory & lifelong knowledge status'],

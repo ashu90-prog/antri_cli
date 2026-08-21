@@ -123,29 +123,35 @@ When asked for deep research, architectural tradeoffs, or multi-step goal execut
   [Production-ready implementation and architecture plan]
   ```
 
-### 5. Tasteful Output Style & Emoji Rule
-ANTRI follows strict system directives across CLI, Desktop, and Mobile to enforce clean, elegant communication:
-- **Maximum 2 Emojis Total**: Emojis are used tastefully (e.g. in section headers or key callouts) and never exceed 2 emojis in an entire response.
+### 5. Claude-Style Interactive Artifacts & Visual Graphs (`/imagine`, `/view`, Artifacts Hub)
+ANTRI allows you to generate, preview, and interact with rich visual applications, plans, and diagrams directly inside the interface:
+- **`/imagine [topic/code]`**: Automatically crafts an interactive visual code architecture diagram and flowchart graph (rendered with Mermaid/SVG nodes).
+- **`/view [plan/app]`**: Generates a complete, self-contained interactive HTML/CSS/JS application or plan (e.g. *"generate me a 2 day plan for football stretching"*, interactive habit tracker, dashboard, or calculator).
+- **"👁️ View Artifact" In-Chat Action**: Every generated artifact in chat displays a sleek interactive card. Tapping **"View Artifact"** launches the live, interactive app/diagram directly inside the app interface without exposing raw code!
+- **Dedicated "Artifacts" Hub (Side Drawer)**: Located directly **above the `+ New chat` button** in the sliding navigation drawer. Displays all generated artifacts neatly separated and grouped by **Chat Title / Session** (e.g. `Chat - 1` with its 2 artifacts) with one-click interactive viewing and management.
 
-### 6. 100% Silent & Nuanced Philosophy Note Capture
+### 6. Tasteful Emojis Directive (Max 2 Emojis)
+ANTRI strictly adheres to a clean, professional communication standard with a hard limit of **maximum 2 emojis per response**, ensuring readability without clutter.
+
+### 7. 100% Silent & Nuanced Philosophy Note Capture
 ANTRI continuously listens and adapts to your thinking style without interruptive banners or snackbars:
 - **Completely Silent**: Note capture happens 100% in the background.
 - **Minute Nuance & Philosophy Extraction**: Automatically recognizes philosophical worldviews (*stoicism, pragmatism, existentialism, ethics, first principles, epistemic humility*), core values, thinking habits, and subtle personal preferences, compounding them into your active thinking profile (`~/.antri/profiles/profile_1.md`).
 - View captured insights anytime with `/notes`.
 
-### 7. Multi-Profile Thinking System (`/profile`, `/notes`)
+### 8. Multi-Profile Thinking System (`/profile`, `/notes`)
 - Maintains distinct Markdown thinking profiles (`~/.antri/profiles/profile_1.md`, `profile_2.md` on Desktop/CLI, and on-device profiles on Mobile).
 - **Interactive Profile Selector**: Switch profiles on the fly with `/profile`.
 - **RAG Active Context**: Profile rules and notes are seamlessly recalled into conversations.
 
-### 8. Multi-Tiered Persistent Memory (Lifelong Learning)
+### 9. Multi-Tiered Persistent Memory (Lifelong Learning)
 - **Episodic Store**: Session transcripts and debate histories.
 - **Semantic Memory**: Dense 128-dimensional vector store with cosine similarity.
 - **Workspace Conventions**: Remembers repository-specific patterns (`.antri/conventions.md`).
 - **Autonomous Self-Recall**: Queries past solutions before answering new prompts.
 - `/memory` (inspect store) · `/consolidate` (run reflection) · `/learn <text>` (save rule).
 
-### 9. The Meta-Agent (Autonomous Self-Evolution)
+### 10. The Meta-Agent (Autonomous Self-Evolution)
 - **Sandboxed Python Runtime (`execute_python`)**: Safe execution of code snippets.
 - **Autonomous Self-Debugging**: Intercepts stack traces, analyzes root causes, creates patches, and retries automatically.
 - **Dynamic Skill Synthesis (`synthesize_skill`)**: The agent writes its own Python/JS tools, verifies them via dry-run, and persists them in `~/.agent-cli/skills/`.
@@ -198,6 +204,9 @@ antri --provider <name>              # Specify provider
 | `/plan` | Switch to **Plan Mode** (collaborative architecture before coding) |
 | `/vibe` | Switch to **Vibe Mode** (direct fast coding flow) |
 | `/desktop` | Launch the **Desktop Control Plane** in standalone window |
+| `/imagine [code]` | Create **Visual Code Architecture Diagram & Graph** artifact |
+| `/view [plan]` | Generate **Interactive HTML/JS Application & Plan** artifact |
+| `/artifacts` | List all generated interactive HTML and graph artifacts |
 | `/mobile` | Launch the **Mobile App PWA server** |
 | `/alwaysallow` | Toggle permission prompts for sensitive tools |
 | `/goal [task]` | Run autonomous goal execution & refinement loop with live stages |
