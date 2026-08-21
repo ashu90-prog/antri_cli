@@ -130,88 +130,347 @@ class _AgentStudioViewState extends State<AgentStudioView> {
     }
   }
 
-  void _showSessionsBottomSheet() {
+  void _showChatOptionsMenu(ChatSession session) {
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFFFFFFFF),
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setModalState) => SafeArea(
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-            constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.6),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      '💬 Chat Sessions',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF1C1917)),
-                    ),
-                    ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF1C1917),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        elevation: 0,
-                      ),
-                      onPressed: () {
-                        Navigator.pop(ctx);
-                        _createNewSession();
-                      },
-                      icon: const Icon(Icons.add, size: 16),
-                      label: const Text('New Chat', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
-                    ),
-                  ],
-                ),
-                const Divider(height: 20),
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: _sessions.length,
-                    itemBuilder: (context, idx) {
-                      final s = _sessions[idx];
-                      final isActive = s.id == _activeSessionId;
-                      return ListTile(
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        leading: Icon(
-                          isActive ? Icons.chat_bubble : Icons.chat_bubble_outline,
-                          color: isActive ? const Color(0xFF1C1917) : const Color(0xFF8C827A),
-                        ),
-                        title: Text(
-                          s.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontWeight: isActive ? FontWeight.w800 : FontWeight.w500,
-                            color: const Color(0xFF1C1917),
-                          ),
-                        ),
-                        subtitle: Text(
-                          '${s.messages.length} messages',
-                          style: const TextStyle(fontSize: 11, color: Color(0xFF8C827A)),
-                        ),
-                        trailing: _sessions.length > 1
-                            ? IconButton(
-                                icon: const Icon(Icons.delete_outline, size: 20, color: Color(0xFFDC2626)),
-                                onPressed: () {
-                                  _deleteSession(s.id);
-                                  setModalState(() {});
-                                },
-                              )
-                            : null,
-                        onTap: () {
-                          Navigator.pop(ctx);
-                          _switchSession(s.id);
-                        },
-                      );
-                    },
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (sheetCtx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                child: Text(
+                  session.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF1C1917),
                   ),
                 ),
-              ],
+              ),
+              const Divider(height: 12, color: Color(0xFFE6E0D4)),
+              ListTile(
+                leading: const Icon(Icons.edit_outlined, color: Color(0xFF1C1917)),
+                title: const Text('Rename chat', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                onTap: () {
+                  Navigator.pop(sheetCtx);
+                  _showRenameDialog(session);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.delete_outline, color: Color(0xFFDC2626)),
+                title: const Text(
+                  'Delete chat',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: Color(0xFFDC2626)),
+                ),
+                onTap: () {
+                  Navigator.pop(sheetCtx);
+                  _confirmDeleteSession(session);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _confirmDeleteSession(ChatSession session) {
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: const Color(0xFFFFFFFF),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          'Delete chat?',
+          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: Color(0xFF1C1917)),
+        ),
+        content: Text(
+          'Are you sure you want to delete "${session.title}"? This will permanently remove its message history.',
+          style: const TextStyle(fontSize: 13.5, color: Color(0xFF57534E)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx),
+            child: const Text('Cancel', style: TextStyle(color: Color(0xFF78716C), fontWeight: FontWeight.w600)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFDC2626),
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () async {
+              Navigator.pop(dialogCtx);
+              await _deleteSession(session.id);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Chat "${session.title}" deleted.'),
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
+              }
+            },
+            child: const Text('Delete', style: TextStyle(fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showRenameDialog(ChatSession session) {
+    final renameCtrl = TextEditingController(text: session.title);
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: const Color(0xFFFFFFFF),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          'Rename chat',
+          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: Color(0xFF1C1917)),
+        ),
+        content: TextField(
+          controller: renameCtrl,
+          autofocus: true,
+          style: const TextStyle(fontSize: 14, color: Color(0xFF1C1917)),
+          decoration: const InputDecoration(
+            hintText: 'Enter chat title',
+            filled: true,
+            fillColor: Color(0xFFF7F4EE),
+            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.all(Radius.circular(8)),
+              borderSide: BorderSide(color: Color(0xFFE6E0D4)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.all(Radius.circular(8)),
+              borderSide: BorderSide(color: Color(0xFF1C1917), width: 1.5),
             ),
           ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx),
+            child: const Text('Cancel', style: TextStyle(color: Color(0xFF78716C), fontWeight: FontWeight.w600)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF1C1917),
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () async {
+              final newTitle = renameCtrl.text.trim();
+              if (newTitle.isNotEmpty) {
+                setState(() {
+                  session.title = newTitle;
+                });
+                await widget.storageService.saveChatSessions(_sessions, widget.config.syncKey);
+              }
+              if (dialogCtx.mounted) {
+                Navigator.pop(dialogCtx);
+              }
+            },
+            child: const Text('Save', style: TextStyle(fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDrawer(BuildContext context) {
+    return Drawer(
+      backgroundColor: const Color(0xFFFCFBF9),
+      elevation: 0,
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Drawer Top Bar: Brand & Close Button
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 14, 10, 10),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1C1917),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(Icons.bolt, color: Colors.white, size: 18),
+                      ),
+                      const SizedBox(width: 10),
+                      const Text(
+                        'ANTRI Studio',
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.5,
+                          color: Color(0xFF1C1917),
+                        ),
+                      ),
+                    ],
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 20, color: Color(0xFF78716C)),
+                    onPressed: () => Navigator.pop(context),
+                    tooltip: 'Close menu',
+                  ),
+                ],
+              ),
+            ),
+
+            // Gemini-Style "+ New Chat" Action Button
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              child: InkWell(
+                onTap: () {
+                  Navigator.pop(context);
+                  _createNewSession();
+                },
+                borderRadius: BorderRadius.circular(24),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF2EFE9),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: const Color(0xFFE6E0D4)),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.add, color: Color(0xFF1C1917), size: 20),
+                      SizedBox(width: 12),
+                      Text(
+                        'New chat',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF1C1917),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 6),
+
+            // Section Header: "Recent"
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 18, vertical: 6),
+              child: Text(
+                'Recent',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF8C827A),
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+
+            // Chat Sessions List with Click & Hold Deletion / Context Menu
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                itemCount: _sessions.length,
+                itemBuilder: (context, index) {
+                  final session = _sessions[index];
+                  final isActive = session.id == _activeSessionId;
+
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 2),
+                    child: InkWell(
+                      onTap: () {
+                        Navigator.pop(context);
+                        _switchSession(session.id);
+                      },
+                      onLongPress: () {
+                        _showChatOptionsMenu(session);
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: isActive ? const Color(0xFFEBE7DF) : Colors.transparent,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              isActive ? Icons.chat_bubble : Icons.chat_bubble_outline,
+                              size: 18,
+                              color: isActive ? const Color(0xFF1C1917) : const Color(0xFF78716C),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                session.title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 13.5,
+                                  fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                                  color: const Color(0xFF1C1917),
+                                ),
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.more_horiz, size: 18, color: Color(0xFFA8A29E)),
+                              splashRadius: 16,
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              onPressed: () {
+                                _showChatOptionsMenu(session);
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+
+            const Divider(height: 1, color: Color(0xFFE6E0D4)),
+
+            // Drawer Footer: Profile Info
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                children: [
+                  const Icon(Icons.psychology_outlined, size: 18, color: Color(0xFF78716C)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Profile: ${widget.config.activeProfile}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF57534E)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -346,64 +605,51 @@ $memoriesText
 
     return Scaffold(
       backgroundColor: creamBg,
+      drawer: _buildDrawer(context),
       appBar: AppBar(
         backgroundColor: subtleBg,
         elevation: 0,
-        title: InkWell(
-          onTap: _showSessionsBottomSheet,
-          borderRadius: BorderRadius.circular(8),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'ANTRI',
-                  style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: 1.2, color: textPrimary, fontSize: 16),
-                ),
-                const SizedBox(width: 6),
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 110),
-                  child: Text(
-                    _currentSession.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF78716C)),
-                  ),
-                ),
-                const Icon(Icons.arrow_drop_down, size: 18, color: Color(0xFF78716C)),
-              ],
-            ),
+        leading: Builder(
+          builder: (ctx) => IconButton(
+            icon: const Icon(Icons.menu, color: textPrimary, size: 22),
+            tooltip: 'Menu',
+            onPressed: () => Scaffold.of(ctx).openDrawer(),
+          ),
+        ),
+        title: Text(
+          _currentSession.title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.2,
+            color: textPrimary,
+            fontSize: 16,
           ),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.add_comment_outlined, size: 20, color: textPrimary),
+            icon: const Icon(Icons.edit_square, size: 20, color: textPrimary),
             tooltip: 'New Chat',
             onPressed: _createNewSession,
-          ),
-          IconButton(
-            icon: const Icon(Icons.forum_outlined, size: 20, color: textPrimary),
-            tooltip: 'Chat Sessions',
-            onPressed: _showSessionsBottomSheet,
           ),
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert, size: 20, color: textPrimary),
             onSelected: (val) {
               if (val == 'clear') {
                 _clearCurrentSessionMessages();
-              } else if (val == 'new') {
-                _createNewSession();
+              } else if (val == 'rename') {
+                _showRenameDialog(_currentSession);
               }
             },
             itemBuilder: (ctx) => [
               const PopupMenuItem(
-                value: 'new',
+                value: 'rename',
                 child: Row(
                   children: [
-                    Icon(Icons.add, size: 18, color: textPrimary),
+                    Icon(Icons.edit_outlined, size: 18, color: textPrimary),
                     SizedBox(width: 8),
-                    Text('New Chat'),
+                    Text('Rename Chat'),
                   ],
                 ),
               ),
