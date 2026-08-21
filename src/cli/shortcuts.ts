@@ -318,21 +318,21 @@ graph TD
       if (query.trim()) {
         const viewPrompt = `Generate a complete, self-contained, highly interactive, and aesthetically stunning MULTI-PAGE Single-Page Application (SPA) for: "${query.trim()}".
 Requirements:
-1. Multi-Page Architecture: Provide at least 3 to 10 distinct switchable pages/tabs (e.g., Overview, Day 1..Day 7, Tools, Timers, Progress Tracker).
-2. Premium CSS Styling: Dark glassmorphism background (#090d16), frosted glass cards (rgba(30,41,59,0.7) with backdrop-filter: blur(16px)), glowing accent gradients (indigo #6366f1, cyan #38bdf8, emerald #10b981), pill badges, and smooth transitions.
-3. Rich JS Interactivity: Working countdown stopwatch/timer with start/pause/reset, dynamic checkable checklists that update completion percentage and progress bars in real time, and interactive calculators/sliders.
+1. Multi-Page Architecture: Provide at least 3 to 10 distinct switchable pages/tabs (e.g., Overview, Day 1..Day 7, Interactive Stopwatch/Timer, Macro/Metrics Tracker) with a horizontal scrolling tab bar and bottom previous/next stepper buttons.
+2. Aurora Glassmorphism CSS: Ambient glow background (radial-gradient with indigo/cyan highlights over #0a0e17), frosted glass cards (rgba(18,24,38,0.7) with backdrop-filter: blur(16px)), glowing gradient badges (indigo #6366f1, cyan #06b6d4, emerald #10b981), and smooth animations.
+3. Rich JS Interactivity: Working countdown stopwatch/timer with start/pause/reset and quick presets (+15s, +30s, +60s), dynamic checkable checklists that automatically update completion percentage and progress bars in real time, and interactive calculation sliders.
 You MUST output the HTML document enclosed in an artifact tag:
 <antri_artifact id="art_${Date.now().toString(36)}" type="html" title="${query.trim().slice(0, 40)}">
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>/* aesthetic css */</style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <style>/* aesthetic aurora glassmorphism css */</style>
 </head>
 <body>
-  <!-- header, tabs, pages, timer, interactive checklists -->
-  <script>/* interactive js */</script>
+  <!-- sticky header, scrolling tabs, page views, stopwatch/timer, dynamic checklists, footer stepper -->
+  <script>/* complete interactive js */</script>
 </body>
 </html>
 </antri_artifact>`;
