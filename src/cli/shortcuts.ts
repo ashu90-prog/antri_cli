@@ -316,8 +316,11 @@ graph TD
       }
 
       if (query.trim()) {
-        const viewPrompt = `Generate a complete, self-contained, highly interactive, MULTI-PAGE Single-Page Application (SPA) for: "${query.trim()}".
-You MUST structure it with at least 3 to 10 distinct navigable pages / modules (using a sleek tab bar or navigation menu), with working interactive tools (e.g. countdown stopwatches/timers with start/pause, dynamic progress checklists, calculators, interactive widgets), dark glassmorphism styling, and smooth page switching.
+        const viewPrompt = `Generate a complete, self-contained, highly interactive, and aesthetically stunning MULTI-PAGE Single-Page Application (SPA) for: "${query.trim()}".
+Requirements:
+1. Multi-Page Architecture: Provide at least 3 to 10 distinct switchable pages/tabs (e.g., Overview, Day 1..Day 7, Tools, Timers, Progress Tracker).
+2. Premium CSS Styling: Dark glassmorphism background (#090d16), frosted glass cards (rgba(30,41,59,0.7) with backdrop-filter: blur(16px)), glowing accent gradients (indigo #6366f1, cyan #38bdf8, emerald #10b981), pill badges, and smooth transitions.
+3. Rich JS Interactivity: Working countdown stopwatch/timer with start/pause/reset, dynamic checkable checklists that update completion percentage and progress bars in real time, and interactive calculators/sliders.
 You MUST output the HTML document enclosed in an artifact tag:
 <antri_artifact id="art_${Date.now().toString(36)}" type="html" title="${query.trim().slice(0, 40)}">
 <!DOCTYPE html>
@@ -325,11 +328,11 @@ You MUST output the HTML document enclosed in an artifact tag:
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>...</style>
+  <style>/* aesthetic css */</style>
 </head>
 <body>
-  ...navigable pages with <div id="page-1" class="page">...
-  <script>function showPage(id){...}</script>
+  <!-- header, tabs, pages, timer, interactive checklists -->
+  <script>/* interactive js */</script>
 </body>
 </html>
 </antri_artifact>`;
