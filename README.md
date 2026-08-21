@@ -43,7 +43,7 @@ A minimalist cream-white desktop control center with visual agent studio, live d
 <br />
 
 ### 3. Mobile App & PWA
-A standalone, touch-optimized mobile control center designed for iOS and Android. Runs independently with **on-device standalone thinking profiles**, camera/gallery **`+` image upload button**, dialectic debates, goal loops, and local memory.
+A standalone, touch-optimized mobile control center designed for iOS and Android. Features a modern **Gemini-style sliding side menu (Drawer)** with a `+ New chat` pill button, active session highlighting, **click-and-hold (long-press) chat options** to delete or rename sessions, standalone thinking profiles, camera/gallery `+` upload button, silent dialectic debates, and local memory.
 
 ---
 
@@ -99,50 +99,53 @@ antri update
 - **Interactive `@` File Attachment Picker**: Type `@` in the prompt box to trigger an interactive folder & file explorer. Navigate with arrow keys, hit Enter, and inject full file contexts directly into your conversation.
 - **Interactive `/` Prompt Toolkit Palette**: Type `/` in the Desktop and Terminal prompt box for live command autocomplete with full keyboard navigation.
 
-### 3. Privacy & Security Tool Permission Gate
-To safeguard your privacy and workspace integrity:
-- Sensitive actions (web search, page scraping, shell execution, python runtime, dynamic skill authoring) prompt for explicit approval:
-  ```text
-  PRIVACY & SECURITY PERMISSION Agent requested tool execution: web_search
-  Allow execution? [y: Yes / n: Deny / a: Always Allow]:
+### 3. Comprehensive Workspace & Coding Tools (CLI & Desktop)
+ANTRI includes surgical code manipulation and repository tools built directly into the agent:
+- `edit_file`: Precise search-and-replace block editing preserving indentation, comments, and structure without full rewrites.
+- `create_directory` & `delete_file`: File and folder scaffolding and cleanup.
+- `find_files`: Glob and extension file discovery (e.g. `*.ts`, `src/**/*.tsx`), filtering out noise.
+- `grep_search`: Codebase-wide regex and literal pattern search with file paths, line numbers, and matching snippets.
+- `file_info` & `git_diff`: File metadata inspection and uncommitted git diff analysis.
+- `read_file`, `write_file`, `list_dir`, `search_files`, `run_command`, `execute_python`.
+
+### 4. Autonomous Silent Debate & Goal Engines (Background Synthesis)
+When asked for deep research, architectural tradeoffs, or multi-step goal execution, ANTRI runs reasoning engines **secretly in the background** without polluting your terminal or chat logs with intermediate chatter:
+- **Silent Dialectic Debate (`/silent-debate [query]`, `/sdebate`, `run_silent_debate`)**: The agent secretly pits a *Proposer (Thesis)*, *Adversary (Antithesis)*, and *Researcher (Verification)* against each other before delivering the final consensus under a badge:
+  ```markdown
+  > ⚔️ [Dialectic Debate Synthesized]
+  
+  [Authoritative conclusion and hardened recommendations]
   ```
-- Toggle permanently with `/alwaysallow` or start with:
-  ```bash
-  antri -alwaysallow
+- **Silent Goal Loop (`/silent-goal [task]`, `/sgoal`, `run_silent_goal`)**: The agent runs a 3-stage optimization loop (Draft -> Adversarial Critique & Score -> Hardened Synthesis) and returns:
+  ```markdown
+  > 🎯 [Goal Loop Plan Synthesized]
+  
+  [Production-ready implementation and architecture plan]
   ```
 
-### 4. Autonomous Goal Loop (`/goal`, `/loop`, `antri --goal`)
-Forces the agent through a multi-iteration self-refinement cycle:
-1. **Stage 1 (Formulation)**: Drafts initial solution & code.
-2. **Stage 2 (Adversarial Critique & Score)**: Critiques edge cases, security flaws, and assigns a 0-100% quality score.
-3. **Stage 3 (Hardening & Synthesis)**: Synthesizes feedback into a battle-tested, optimal result.
+### 5. Tasteful Output Style & Emoji Rule
+ANTRI follows strict system directives across CLI, Desktop, and Mobile to enforce clean, elegant communication:
+- **Maximum 2 Emojis Total**: Emojis are used tastefully (e.g. in section headers or key callouts) and never exceed 2 emojis in an entire response.
 
-```bash
-antri --goal "Refactor user authentication to support distributed Redis sessions"
-```
+### 6. 100% Silent & Nuanced Philosophy Note Capture
+ANTRI continuously listens and adapts to your thinking style without interruptive banners or snackbars:
+- **Completely Silent**: Note capture happens 100% in the background.
+- **Minute Nuance & Philosophy Extraction**: Automatically recognizes philosophical worldviews (*stoicism, pragmatism, existentialism, ethics, first principles, epistemic humility*), core values, thinking habits, and subtle personal preferences, compounding them into your active thinking profile (`~/.antri/profiles/profile_1.md`).
+- View captured insights anytime with `/notes`.
 
-### 5. Multi-Profile Thinking System (`/profile`, `/notes`)
-- Maintains distinct Markdown thinking profiles (`~/.antri/profiles/profile_1.md`, `profile_2.md` on Desktop/CLI, and dedicated on-device profiles on Mobile).
+### 7. Multi-Profile Thinking System (`/profile`, `/notes`)
+- Maintains distinct Markdown thinking profiles (`~/.antri/profiles/profile_1.md`, `profile_2.md` on Desktop/CLI, and on-device profiles on Mobile).
 - **Interactive Profile Selector**: Switch profiles on the fly with `/profile`.
-- **Live Note-Taking**: Observes your feedback and coding preferences during chat and compounds insights directly into the active profile.
-- View captured notes anytime with `/notes`.
+- **RAG Active Context**: Profile rules and notes are seamlessly recalled into conversations.
 
-### 6. Dialectic Reasoning Engine (`/debate`, `antri --debate`)
-Multi-persona self-debate pipeline arguing with itself before delivering consensus:
-- **The Proposer (Thesis)**: Generates initial solutions and hypotheses.
-- **The Adversary / Critic (Antithesis)**: Hunts bugs, assumptions, and logical flaws.
-- **The Researcher (Verifier)**: Uses autonomous web tools to fact-check disputed claims in real time.
-- **The Judge (Synthesis)**: Reconciles contradictions and outputs a robust answer.
-- Configurable debate depth: `quick`, `deep`, or `rigorous` (`/depth <level>`).
-
-### 7. Multi-Tiered Persistent Memory (Lifelong Learning)
+### 8. Multi-Tiered Persistent Memory (Lifelong Learning)
 - **Episodic Store**: Session transcripts and debate histories.
 - **Semantic Memory**: Dense 128-dimensional vector store with cosine similarity.
 - **Workspace Conventions**: Remembers repository-specific patterns (`.antri/conventions.md`).
 - **Autonomous Self-Recall**: Queries past solutions before answering new prompts.
 - `/memory` (inspect store) · `/consolidate` (run reflection) · `/learn <text>` (save rule).
 
-### 8. The Meta-Agent (Autonomous Self-Evolution)
+### 9. The Meta-Agent (Autonomous Self-Evolution)
 - **Sandboxed Python Runtime (`execute_python`)**: Safe execution of code snippets.
 - **Autonomous Self-Debugging**: Intercepts stack traces, analyzes root causes, creates patches, and retries automatically.
 - **Dynamic Skill Synthesis (`synthesize_skill`)**: The agent writes its own Python/JS tools, verifies them via dry-run, and persists them in `~/.agent-cli/skills/`.
@@ -197,13 +200,15 @@ antri --provider <name>              # Specify provider
 | `/desktop` | Launch the **Desktop Control Plane** in standalone window |
 | `/mobile` | Launch the **Mobile App PWA server** |
 | `/alwaysallow` | Toggle permission prompts for sensitive tools |
-| `/goal [task]` | Run autonomous goal execution & refinement loop |
+| `/goal [task]` | Run autonomous goal execution & refinement loop with live stages |
+| `/silent-goal [task]` | Run goal loop optimization **silently in background** with final plan |
 | `/loop [task]` | Alias for `/goal` loop |
+| `/debate [query]` | Launch Dialectic multi-persona self-debate with live argument streams |
+| `/silent-debate [q]` | Run Dialectic debate **silently in background** with final consensus |
+| `/depth <level>` | Set debate depth (`quick`, `deep`, `rigorous`) |
 | `/profile [name]` | Open interactive profile switcher or switch thinking profile |
 | `/notes` | View active profile notes & recorded style insights |
 | `/update` | Self-update ANTRI Code CLI |
-| `/debate [query]` | Launch Dialectic multi-persona self-debate |
-| `/depth <level>` | Set debate depth (`quick`, `deep`, `rigorous`) |
 | `/connect` | Open interactive AI Provider selector |
 | `/models` | Search and select from available models |
 | `/tools` / `Ctrl+O` | Inspect recently executed workspace tools |
@@ -271,7 +276,7 @@ npm install
 # 3. Build TypeScript & assets
 npm run build
 
-# 4. Run automated test suite (26 unit tests)
+# 4. Run automated test suite (43 unit tests)
 npm test
 
 # 5. Run in dev mode
@@ -283,3 +288,4 @@ npm run dev
 ## License
 
 Distributed under the **MIT License**. See `LICENSE` for more information.
+
