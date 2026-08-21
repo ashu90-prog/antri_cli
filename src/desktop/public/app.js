@@ -632,7 +632,12 @@ async function submitPrompt() {
               scrollToBottom();
             } else if (data.token) {
               accumulated += data.token;
-              contentEl.textContent = accumulated;
+              if (accumulated.includes('<antri_artifact')) {
+                const cleanStreaming = accumulated.replace(/<antri_artifact[\s\S]*$/i, '').trim();
+                contentEl.textContent = (cleanStreaming ? cleanStreaming + '\n\n' : '') + '🎨 [Generating Multi-Page Interactive Artifact...]';
+              } else {
+                contentEl.textContent = accumulated;
+              }
               scrollToBottom();
             } else if (data.name && data.arguments) {
               // Tool call badge
@@ -642,6 +647,11 @@ async function submitPrompt() {
               assistantMsgEl.insertBefore(toolBadge, contentEl);
               scrollToBottom();
             }
+          } catch (e) {}
+        }
+      }
+    }
+
     if (accumulated && accumulated.includes('<antri_artifact')) {
       const artMatch = accumulated.match(/<antri_artifact\s+id="([^"]+)"\s+type="([^"]+)"\s+title="([^"]+)">([\s\S]*?)<\/antri_artifact>/i);
       const cleanText = accumulated.replace(/<antri_artifact[\s\S]*?<\/antri_artifact>/gi, '').trim();
@@ -660,7 +670,7 @@ async function submitPrompt() {
             <span style="font-size:22px;">${isGraph ? '📊' : '🌐'}</span>
             <div>
               <div style="font-weight:700;font-size:13.5px;color:var(--text-primary);">${escapeHtml(artTitle)}</div>
-              <div style="font-size:11.5px;color:var(--text-muted);">${isGraph ? 'Code Architecture Graph' : 'Interactive HTML Plan'}</div>
+              <div style="font-size:11.5px;color:var(--text-muted);">${isGraph ? 'Code Architecture Graph' : 'Interactive Multi-Page HTML App'}</div>
             </div>
           </div>
           <button class="chat-artifact-btn" onclick="openArtifactViewer('${artId}', '${escapeHtml(artTitle)}', '${artType}')">👁️ View Artifact</button>

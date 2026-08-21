@@ -585,11 +585,13 @@ Use this active knowledge naturally to inform responses, follow coding preferenc
 🚨 Conversational Recall Rule: When the user asks what you know about them, their thinking style, hobbies, or background, answer conversationally and concisely like a helpful human partner. Synthesize the known facts smoothly without dumping raw markdown files, section headers, or unformatted template boilerplate.
 🚨 Emoji Usage Rule: You MUST use emojis, but keep them minimal and tasteful — MAXIMUM 2 EMOJIS in your whole response. Never exceed 2 emojis total.
 🚨 Dialectic & Goal Header Directive: For research synthesis, multi-perspective debates, or goal loop plans performed in the background, start your response with a header badge: '> ⚔️ [Dialectic Debate Synthesized]' or '> 🎯 [Goal Loop Plan Synthesized]'.
-🎨 Claude-Style Interactive Artifacts & Graphs: When asked to generate a plan, routine, guide, UI dashboard, quiz, workout/stretching routine, or architecture diagram (or when the user asks with /view or /imagine), generate a complete, self-contained interactive HTML document or Mermaid graph enclosed in an artifact tag:
+🎨 Claude-Style Multi-Page Interactive Artifacts & Graphs: When asked to generate a plan, routine, guide, UI dashboard, quiz, workout/stretching routine, or architecture diagram (or when using /view or /imagine):
+- For plans/apps (/view): You MUST build a creative, MULTI-PAGE Single-Page Application (SPA) with at least 3 to 10 distinct switchable pages/tabs (e.g. Navigation bar with tabs for Overview, Day 1, Day 2, Day 3... Day 7, Tools/Calculators, Rest Timer, Progress Tracker with dynamic checklists). Use modern dark styling (#0f172a, #1e293b, glowing indigo/emerald accents #6366f1, #38bdf8), interactive timers, dynamic progress bars, and smooth page switching.
+- Wrap the complete multi-page HTML in:
 <antri_artifact id="art_UNIQUE_ID" type="html" title="DESCRIPTIVE TITLE">
-<!DOCTYPE html><html><head><style>...</style></head><body>...interactive elements...</body></html>
+<!DOCTYPE html><html lang="en"><head><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>...</style></head><body>...<nav>...</nav><div id="page-1" class="page">...</div><script>function showPage(id){...}</script></body></html>
 </antri_artifact>
-For graphs:
+For graphs (/imagine):
 <antri_artifact id="graph_UNIQUE_ID" type="graph" title="ARCHITECTURE TITLE">
 graph TD
   ...
@@ -628,7 +630,7 @@ $memoriesText
         );
       } else if (lower.startsWith('/view ') || lower == '/view') {
         final queryClean = text.replaceFirst(RegExp(r'^/view\s*', caseSensitive: false), '').trim();
-        final viewPrompt = 'Generate a complete, self-contained, highly interactive HTML/CSS/JS application or plan for: "${queryClean.isNotEmpty ? queryClean : "Interactive Plan"}". Include modern styling and interactive buttons/checklists. You MUST output the HTML document enclosed in an artifact tag: <antri_artifact id="art_${DateTime.now().millisecondsSinceEpoch}" type="html" title="${queryClean.isNotEmpty ? queryClean : "Interactive Plan"}">\n<!DOCTYPE html>\n<html>...</html>\n</antri_artifact>';
+        final viewPrompt = 'Generate a complete, self-contained, highly interactive, MULTI-PAGE Single-Page Application (SPA) for: "${queryClean.isNotEmpty ? queryClean : "Interactive Plan"}". You MUST structure it with at least 3 to 10 distinct switchable pages / tabs (e.g. Navigation tabs for Overview, Day 1, Day 2... Day 7, Tools & Calculators, Timers, and Progress Tracker), dark glassmorphism styling, interactive buttons/timers/checklists, and smooth page switching. You MUST output the HTML document enclosed in an artifact tag: <antri_artifact id="art_${DateTime.now().millisecondsSinceEpoch}" type="html" title="${queryClean.isNotEmpty ? queryClean : "Interactive Plan"}">\n<!DOCTYPE html>\n<html lang="en">\n<head><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>...</style></head>\n<body>...<script>...</script></body>\n</html>\n</antri_artifact>';
         responseText = await widget.aiService.executePrompt(
           config: widget.config,
           systemPrompt: systemPrompt,

@@ -316,14 +316,21 @@ graph TD
       }
 
       if (query.trim()) {
-        const viewPrompt = `Generate a complete, self-contained, highly interactive HTML/CSS/JS application or plan for: "${query.trim()}".
-Ensure it has sleek modern styling (dark/slate or warm cream), interactive buttons/timers/tabs, and works standalone.
+        const viewPrompt = `Generate a complete, self-contained, highly interactive, MULTI-PAGE Single-Page Application (SPA) for: "${query.trim()}".
+You MUST structure it with at least 3 to 10 distinct navigable pages / modules (using a sleek tab bar or navigation menu), with working interactive tools (e.g. countdown stopwatches/timers with start/pause, dynamic progress checklists, calculators, interactive widgets), dark glassmorphism styling, and smooth page switching.
 You MUST output the HTML document enclosed in an artifact tag:
 <antri_artifact id="art_${Date.now().toString(36)}" type="html" title="${query.trim().slice(0, 40)}">
 <!DOCTYPE html>
-<html>
-<head><style>...</style></head>
-<body>...<script>...</script></body>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>...</style>
+</head>
+<body>
+  ...navigable pages with <div id="page-1" class="page">...
+  <script>function showPage(id){...}</script>
+</body>
 </html>
 </antri_artifact>`;
         await this.agent.chat(viewPrompt);

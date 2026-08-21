@@ -289,17 +289,46 @@ export class DesktopServer {
         return;
       }
       if (artifact.type === 'html') {
-        res.writeHead(200, { 'Content-Type': 'text/html' });
-        res.end(artifact.content);
-      } else {
-        const filePath = artifactManager.getArtifactFilePath(id);
-        if (filePath && fs.existsSync(filePath) && filePath.endsWith('.html')) {
-          res.writeHead(200, { 'Content-Type': 'text/html' });
-          res.end(fs.readFileSync(filePath, 'utf-8'));
-        } else {
-          res.writeHead(200, { 'Content-Type': 'text/plain' });
-          res.end(artifact.content);
+        let content = artifact.content.trim();
+        if (!content.toLowerCase().includes('<!doctype html>') && !content.toLowerCase().includes('<html')) {
+          content = `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;background:#0f172a;color:#f8fafc;padding:16px;}</style></head><body>${content}</body></html>`;
         }
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+        res.end(content);
+      } else {
+        const htmlGraph = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${artifact.title}</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    body { margin: 0; padding: 24px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #f8fafc; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+    .header { text-align: center; margin-bottom: 24px; }
+    h1 { font-size: 20px; color: #ffffff; margin: 0 0 8px 0; }
+    .badge { font-size: 11px; background: #1e1b4b; color: #a5b4fc; padding: 4px 10px; border-radius: 9999px; border: 1px solid #3730a3; text-transform: uppercase; font-weight: 700; }
+    .mermaid-container { background: #1e293b; padding: 32px; border-radius: 12px; border: 1px solid #334155; box-shadow: 0 10px 25px rgba(0,0,0,0.5); max-width: 100%; overflow: auto; width: 100%; display: flex; justify-content: center; }
+    .mermaid { width: 100%; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <span class="badge">Architecture Graph</span>
+    <h1>${artifact.title}</h1>
+  </div>
+  <div class="mermaid-container">
+    <pre class="mermaid">
+${artifact.content.trim()}
+    </pre>
+  </div>
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: 'dark', securityLevel: 'loose' });
+  </script>
+</body>
+</html>`;
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+        res.end(htmlGraph);
       }
       return;
     }
