@@ -55,12 +55,15 @@ To connect your favorite LLM provider:
 How can I assist you with your project today?`;
     }
 
-    // Stream the tokens with realistic delay
+    // Stream the tokens with realistic delay (0ms in test mode)
+    const isTest = process.env.NODE_ENV === 'test';
     const words = responseText.split(' ');
     for (let i = 0; i < words.length; i++) {
       const token = (i === 0 ? '' : ' ') + words[i];
       callbacks.onToken(token);
-      await new Promise((r) => setTimeout(r, 18));
+      if (!isTest) {
+        await new Promise((r) => setTimeout(r, 18));
+      }
     }
 
     if (callbacks.onComplete) {

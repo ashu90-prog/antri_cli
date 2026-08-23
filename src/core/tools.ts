@@ -27,6 +27,49 @@ export const SENSITIVE_TOOLS = new Set([
   'delete_file',
 ]);
 
+/**
+ * Extracts pure conversational messages from shell echo/printf commands.
+ */
+export function extractEchoMessage(command: string): string | null {
+  if (!command || typeof command !== 'string') return null;
+  const trimmed = command.trim();
+
+  // If command redirects to a file or pipes to another command, it's a real shell command
+  if (/[><|;&`]/.test(trimmed)) {
+    const hasRedirection = /(?:>>|>|<|\||&&|;|\$\()/.test(trimmed);
+    if (hasRedirection) {
+      const match = trimmed.match(/^echo\s+(['"])([\s\S]*)\1$/i);
+      if (!match) return null;
+    }
+  }
+
+  // 1. Match echo '...' or echo "..."
+  const quoteMatch = trimmed.match(/^echo\s+(['"])([\s\S]*)\1$/i);
+  if (quoteMatch) {
+    return quoteMatch[2].replace(/\\(['"])/g, '$1').trim();
+  }
+
+  // 2. Match echo -e '...' / echo -n '...'
+  const echoOptMatch = trimmed.match(/^echo\s+-[enE]+\s+(['"])([\s\S]*)\1$/i);
+  if (echoOptMatch) {
+    return echoOptMatch[2].replace(/\\(['"])/g, '$1').trim();
+  }
+
+  // 3. Match printf '...' / printf "..." / printf '%s\n' "..."
+  const printfMatch = trimmed.match(/^printf\s+(?:['"][^'"]*['"]\s+)?(['"])([\s\S]*)\1$/i);
+  if (printfMatch) {
+    return printfMatch[2].replace(/\\(['"])/g, '$1').trim();
+  }
+
+  // 4. Match plain echo Hello world (without quotes)
+  if (/^echo\s+[^><|&;$`]+$/i.test(trimmed)) {
+    const raw = trimmed.replace(/^echo\s+/i, '').trim();
+    return raw.replace(/^['"]|['"]$/g, '').replace(/\\(['"])/g, '$1').trim();
+  }
+
+  return null;
+}
+
 export const AVAILABLE_TOOLS: ToolDefinition[] = [
   {
     name: 'web_search',
@@ -355,13 +398,13 @@ export const AVAILABLE_TOOLS: ToolDefinition[] = [
   },
   {
     name: 'run_command',
-    description: 'Execute a shell command in the workspace.',
+    description: 'Execute a terminal/shell command in the workspace (e.g. npm, git, tsc, build scripts, tests). STRICTLY FORBIDDEN FOR CONVERSATION: NEVER use this tool to communicate with the user, greet the user, or print messages (e.g. do NOT run "echo ...", "printf ...", etc. to reply to the user). Always reply directly with text.',
     parameters: {
       type: 'object',
       properties: {
         command: {
           type: 'string',
-          description: 'The terminal command to execute.',
+          description: 'The terminal command to execute in the workspace (e.g. "git status", "npm test", "cargo build"). Never use echo or printf for conversational messages.',
         },
       },
       required: ['command'],
@@ -402,22 +445,22 @@ export const AVAILABLE_TOOLS: ToolDefinition[] = [
   },
   {
     name: 'create_artifact',
-    description: 'Create and save an interactive HTML application/plan or a visual code architecture graph artifact (Claude-style Artifact).',
+    description: 'Create and save an interactive HTML application/plan, visual code architecture graph, or hierarchical visual mind map artifact (Claude-style Artifact).',
     parameters: {
       type: 'object',
       properties: {
         title: {
           type: 'string',
-          description: 'Descriptive title of the artifact (e.g., "2-Day Football Stretching Plan", "Payment Microservice Flowchart").',
+          description: 'Descriptive title of the artifact (e.g., "2-Day Football Stretching Plan", "Payment Microservice Flowchart", "System Design Mind Map").',
         },
         type: {
           type: 'string',
-          enum: ['html', 'graph'],
-          description: 'Type of artifact: "html" for interactive HTML/CSS/JS applications and plans, or "graph" for Mermaid/architecture flowcharts.',
+          enum: ['html', 'graph', 'mindmap'],
+          description: 'Type of artifact: "html" for interactive HTML/CSS/JS applications and plans, "graph" for Mermaid/architecture flowcharts, or "mindmap" for visual hierarchical mind maps.',
         },
         content: {
           type: 'string',
-          description: 'The complete self-contained HTML/CSS/JS code or Mermaid diagram syntax.',
+          description: 'The complete self-contained HTML/CSS/JS code or Mermaid diagram / mindmap syntax.',
         },
       },
       required: ['title', 'type', 'content'],
@@ -464,6 +507,11 @@ export class ToolExecutor {
     }
 
     if (!ToolExecutor.isSensitive(name)) {
+      return true;
+    }
+
+    // Harmless echo/conversational commands do not require user confirmation
+    if (name === 'run_command' && args?.command && extractEchoMessage(args.command) !== null) {
       return true;
     }
 
@@ -1072,16 +1120,26 @@ export class ToolExecutor {
         }
 
         case 'run_command': {
+          const cmd = (args.command || '').trim();
+          const echoMessage = extractEchoMessage(cmd);
+          if (echoMessage !== null) {
+            return {
+              tool_call_id: toolCallId,
+              name,
+              output: echoMessage,
+            };
+          }
           const { stdout, stderr } = await execPromise(args.command, {
             cwd: this.workingDir,
             timeout: 30000,
             maxBuffer: 1024 * 1024,
           });
           const output = (stdout || '') + (stderr ? `\n[STDERR]: ${stderr}` : '');
+          const cleanOutput = output.trim() || '(command finished with no output)';
           return {
             tool_call_id: toolCallId,
             name,
-            output: output.trim() || '(command finished with no output)',
+            output: cleanOutput,
           };
         }
 

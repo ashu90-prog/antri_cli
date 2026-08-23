@@ -1502,6 +1502,12 @@ body.antri-app {
   border: 1px solid rgba(56, 189, 248, 0.3);
 }
 
+.badge-mindmap {
+  background: rgba(168, 85, 247, 0.15);
+  color: #c084fc;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+}
+
 /* Chat Message Artifact Card */
 .chat-artifact-embed {
   margin-top: 0.75rem;

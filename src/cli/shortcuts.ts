@@ -304,6 +304,38 @@ graph TD
       return { handled: true };
     }
 
+    // /mindmap [topic] -> Generate interactive visual mind map artifact
+    if (trimmed === '/mindmap' || trimmed.startsWith('/mindmap ')) {
+      let query = trimmed.replace(/^\/mindmap/, '').trim();
+      if (!query) {
+        const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+        const promptAsync = (q: string) => new Promise<string>((res) => rl.question(q, res));
+        console.log(chalk.bold.hex('#c084fc')('\n🧠 Visual Mind Map & Concept Hierarchy Creator'));
+        query = await promptAsync(chalk.cyan('Enter concept, topic, or system to generate a mind map for: '));
+        rl.close();
+      }
+
+      if (query.trim()) {
+        const mindmapPrompt = `Create a rich, comprehensive, and well-structured visual mind map and concept tree for: "${query.trim()}".
+Break the topic down hierarchically into core pillars, subtopics, and granular leaf details.
+You MUST output the Mermaid mindmap enclosed in an artifact tag:
+<antri_artifact id="mindmap_${Date.now().toString(36)}" type="mindmap" title="${query.trim().slice(0, 40)} Mind Map">
+mindmap
+  root((${query.trim().slice(0, 30)}))
+    Pillar 1
+      Subtopic A
+      Subtopic B
+    Pillar 2
+      Subtopic C
+        Detail 1
+    Pillar 3
+      Subtopic D
+</antri_artifact>`;
+        await this.agent.chat(mindmapPrompt);
+      }
+      return { handled: true };
+    }
+
     // /view [topic/plan] -> Generate interactive HTML artifact
     if (trimmed === '/view' || trimmed.startsWith('/view ')) {
       let query = trimmed.replace(/^\/view/, '').trim();
@@ -319,7 +351,7 @@ graph TD
         const viewPrompt = `Generate a complete, self-contained, highly interactive, and aesthetically stunning MULTI-PAGE Single-Page Application (SPA) for: "${query.trim()}".
 Requirements:
 1. Multi-Page Architecture: Provide at least 3 to 10 distinct switchable pages/tabs (e.g., Overview, Day 1..Day 7, Interactive Stopwatch/Timer, Macro/Metrics Tracker) with a horizontal scrolling tab bar and bottom previous/next stepper buttons.
-2. Aurora Glassmorphism CSS: Ambient glow background (radial-gradient with indigo/cyan highlights over #0a0e17), frosted glass cards (rgba(18,24,38,0.7) with backdrop-filter: blur(16px)), glowing gradient badges (indigo #6366f1, cyan #06b6d4, emerald #10b981), and smooth animations.
+2. Aesthetic CSS: Prioritize clean, bright, and elegant LIGHT COLOR PALETTES (background: radial-gradient(circle at 15% 15%, rgba(99, 102, 241, 0.08) 0%, transparent 40%), radial-gradient(circle at 85% 85%, rgba(236, 72, 153, 0.08) 0%, transparent 40%), #f8fafc;), frosted white glass cards (rgba(255,255,255,0.9) with backdrop-filter: blur(16px)), crisp high-contrast dark text (#0f172a), glowing gradient badges (#4f46e5, #0284c7, #10b981, #e11d48). If dark theme is used, use multi-color POSTER MESH GRADIENTS with ambient radiant auras (never flat solid black).
 3. Rich JS Interactivity: Working countdown stopwatch/timer with start/pause/reset and quick presets (+15s, +30s, +60s), dynamic checkable checklists that automatically update completion percentage and progress bars in real time, and interactive calculation sliders.
 You MUST output the HTML document enclosed in an artifact tag:
 <antri_artifact id="art_${Date.now().toString(36)}" type="html" title="${query.trim().slice(0, 40)}">
@@ -348,13 +380,17 @@ You MUST output the HTML document enclosed in an artifact tag:
       console.log(chalk.bold.hex('#c084fc')('\n🎨 ANTRI Generated Artifacts Hub'));
       console.log(chalk.hex('#334155')('─'.repeat(72)));
       if (groups.length === 0) {
-        console.log(chalk.gray('No artifacts generated yet. Use /view [plan] or /imagine [code] to create one.'));
+        console.log(chalk.gray('No artifacts generated yet. Use /view [plan], /mindmap [topic], or /imagine [code] to create one.'));
       } else {
         for (const grp of groups) {
           console.log(chalk.bold.hex('#818cf8')(`\n📁 Session: ${grp.sessionTitle} (${grp.sessionId})`));
           for (const art of grp.artifacts) {
             const dateStr = new Date(art.createdAt).toLocaleString();
-            const typeBadge = art.type === 'graph' ? chalk.hex('#38bdf8')('[GRAPH]') : chalk.hex('#4ade80')('[HTML]');
+            const typeBadge = art.type === 'mindmap'
+              ? chalk.hex('#c084fc')('[MINDMAP]')
+              : art.type === 'graph'
+              ? chalk.hex('#38bdf8')('[GRAPH]')
+              : chalk.hex('#4ade80')('[HTML]');
             console.log(`  ${typeBadge} ${chalk.bold(art.title)} ${chalk.gray(`(ID: ${art.id} · ${dateStr})`)}`);
             const filePath = artifactManager.getArtifactFilePath(art.id);
             if (filePath) {
@@ -744,8 +780,9 @@ You MUST output the HTML document enclosed in an artifact tag:
       ['/silent-goal [t]', 'Run Goal Loop optimization silently in background and return final plan'],
       ['/loop [task]', 'Iterate on a task until optimal battle-tested result is achieved'],
       ['/imagine [topic]', 'Create visual architecture diagram & code graph artifact'],
+      ['/mindmap [topic]', 'Generate interactive visual mind map and concept tree artifact'],
       ['/view [plan]', 'Generate interactive HTML/JS application/plan artifact and launch view'],
-      ['/artifacts', 'List all generated interactive HTML and graph artifacts'],
+      ['/artifacts', 'List all generated interactive HTML, graph, and mind map artifacts'],
       ['/meta', 'View Meta-Optimization metrics, success rates & self-healing stats'],
       ['/skills', 'List built-in & dynamically synthesized custom skills'],
       ['/memory', 'View Persistent Memory & lifelong knowledge status'],

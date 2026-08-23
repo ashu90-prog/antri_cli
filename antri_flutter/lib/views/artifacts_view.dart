@@ -171,7 +171,7 @@ class _ArtifactsViewState extends State<ArtifactsView> {
                               const Padding(
                                 padding: EdgeInsets.symmetric(horizontal: 32),
                                 child: Text(
-                                  'Ask the AI to generate a plan, dashboard, or graph using /view or /imagine in chat.',
+                                  'Ask the AI to generate a plan, dashboard, mind map, or graph using /view, /mindmap, or /imagine in chat.',
                                   textAlign: TextAlign.center,
                                   style: TextStyle(fontSize: 13, color: Color(0xFF78716C), height: 1.4),
                                 ),
@@ -226,7 +226,39 @@ class _ArtifactsViewState extends State<ArtifactsView> {
 
                                   // Artifact Cards
                                   ...items.map((art) {
+                                    final isMindmap = art.type == 'mindmap';
                                     final isGraph = art.type == 'graph';
+
+                                    final Color leadBg = isMindmap
+                                        ? const Color(0xFFFAF5FF)
+                                        : isGraph
+                                            ? const Color(0xFFEFF6FF)
+                                            : const Color(0xFFF0FDF4);
+
+                                    final Color leadBorder = isMindmap
+                                        ? const Color(0xFFE9D5FF)
+                                        : isGraph
+                                            ? const Color(0xFFBFDBFE)
+                                            : const Color(0xFFBBF7D0);
+
+                                    final Color iconCol = isMindmap
+                                        ? const Color(0xFF7E22CE)
+                                        : isGraph
+                                            ? const Color(0xFF1D4ED8)
+                                            : const Color(0xFF15803D);
+
+                                    final IconData leadIcon = isMindmap
+                                        ? Icons.psychology_outlined
+                                        : isGraph
+                                            ? Icons.account_tree_outlined
+                                            : Icons.language;
+
+                                    final String typeSubtitle = isMindmap
+                                        ? 'Interactive Mind Map'
+                                        : isGraph
+                                            ? 'Code Architecture Graph'
+                                            : 'Interactive HTML Plan';
+
                                     return Container(
                                       margin: const EdgeInsets.only(bottom: 10),
                                       decoration: BoxDecoration(
@@ -242,15 +274,15 @@ class _ArtifactsViewState extends State<ArtifactsView> {
                                         leading: Container(
                                           padding: const EdgeInsets.all(10),
                                           decoration: BoxDecoration(
-                                            color: isGraph ? const Color(0xFFEFF6FF) : const Color(0xFFF0FDF4),
+                                            color: leadBg,
                                             borderRadius: BorderRadius.circular(10),
                                             border: Border.all(
-                                              color: isGraph ? const Color(0xFFBFDBFE) : const Color(0xFFBBF7D0),
+                                              color: leadBorder,
                                             ),
                                           ),
                                           child: Icon(
-                                            isGraph ? Icons.account_tree_outlined : Icons.language,
-                                            color: isGraph ? const Color(0xFF1D4ED8) : const Color(0xFF15803D),
+                                            leadIcon,
+                                            color: iconCol,
                                             size: 20,
                                           ),
                                         ),
@@ -263,7 +295,7 @@ class _ArtifactsViewState extends State<ArtifactsView> {
                                         subtitle: Padding(
                                           padding: const EdgeInsets.only(top: 4),
                                           child: Text(
-                                            '${isGraph ? "Code Architecture Graph" : "Interactive HTML Plan"} · ${art.createdAt.day}/${art.createdAt.month}/${art.createdAt.year}',
+                                            '$typeSubtitle · ${art.createdAt.day}/${art.createdAt.month}/${art.createdAt.year}',
                                             style: const TextStyle(fontSize: 12, color: Color(0xFF78716C)),
                                           ),
                                         ),

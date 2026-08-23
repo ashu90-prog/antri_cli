@@ -3,7 +3,7 @@ class Artifact {
   final String sessionId;
   final String sessionTitle;
   final String title;
-  final String type; // 'html' | 'graph'
+  final String type; // 'html' | 'graph' | 'mindmap'
   final String content;
   final DateTime createdAt;
 

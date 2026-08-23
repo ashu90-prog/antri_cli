@@ -123,10 +123,11 @@ When asked for deep research, architectural tradeoffs, or multi-step goal execut
   [Production-ready implementation and architecture plan]
   ```
 
-### 5. Claude-Style Interactive Artifacts & Visual Graphs (`/imagine`, `/view`, Artifacts Hub)
-ANTRI allows you to generate, preview, and interact with rich visual applications, plans, and diagrams directly inside the interface:
-- **`/imagine [topic/code]`**: Automatically crafts an interactive visual code architecture diagram and flowchart graph (rendered with Mermaid/SVG nodes).
-- **`/view [plan/app]`**: Generates a complete, self-contained interactive HTML/CSS/JS application or plan (e.g. *"generate me a 2 day plan for football stretching"*, interactive habit tracker, dashboard, or calculator).
+### 5. Claude-Style Interactive Artifacts, Visual Graphs & Mind Maps (`/imagine`, `/mindmap`, `/view`, Artifacts Hub)
+ANTRI allows you to generate, preview, and interact with rich visual applications, plans, diagrams, and hierarchical concept mind maps directly inside the interface:
+- **`🧠 /mindmap [topic/concept]`**: Automatically generates rich, interactive, and beautifully styled hierarchical **Visual Mind Maps** (rendered with Mermaid 10 and dark cyber neon styling) complete with Zoom In/Out, Reset, Pan gestures, and code export on both Desktop and Mobile!
+- **`📊 /imagine [topic/code]`**: Automatically crafts an interactive visual code architecture diagram and flowchart graph (rendered with Mermaid/SVG nodes).
+- **`🌐 /view [plan/app]`**: Generates a complete, self-contained interactive HTML/CSS/JS application or plan (e.g. *"generate me a 7-day workout plan"*, interactive habit tracker, dashboard, or calculator).
 - **"👁️ View Artifact" In-Chat Action**: Every generated artifact in chat displays a sleek interactive card. Tapping **"View Artifact"** launches the live, interactive app/diagram directly inside the app interface without exposing raw code!
 - **Dedicated "Artifacts" Hub (Side Drawer)**: Located directly **above the `+ New chat` button** in the sliding navigation drawer. Displays all generated artifacts neatly separated and grouped by **Chat Title / Session** (e.g. `Chat - 1` with its 2 artifacts) with one-click interactive viewing and management.
 
@@ -205,8 +206,9 @@ antri --provider <name>              # Specify provider
 | `/vibe` | Switch to **Vibe Mode** (direct fast coding flow) |
 | `/desktop` | Launch the **Desktop Control Plane** in standalone window |
 | `/imagine [code]` | Create **Visual Code Architecture Diagram & Graph** artifact |
+| `/mindmap [topic]` | Create **Interactive Hierarchical Visual Mind Map** artifact |
 | `/view [plan]` | Generate **Interactive HTML/JS Application & Plan** artifact |
-| `/artifacts` | List all generated interactive HTML and graph artifacts |
+| `/artifacts` | List all generated interactive HTML, graph, and mind map artifacts |
 | `/mobile` | Launch the **Mobile App PWA server** |
 | `/alwaysallow` | Toggle permission prompts for sensitive tools |
 | `/goal [task]` | Run autonomous goal execution & refinement loop with live stages |
@@ -272,7 +274,76 @@ OLLAMA_BASE_URL=http://localhost:11434
 
 ---
 
-## Local Development & Testing
+## 🧪 Reproducible Testing & Evaluation Guide (For Hackathon Judges)
+
+Follow these step-by-step instructions to reproduce and evaluate all core agentic features deterministically:
+
+### 1. Run the Full Automated Test Suite (100% Offline & Isolated)
+ANTRI includes **47 comprehensive automated unit tests** covering configuration, vector memory, goal loops, dialectic pipelines, file manipulation tools, artifact parsers, mobile servers, and echo interceptors:
+
+```bash
+npm test
+```
+*Expected Result: `47 passing tests (0 failures)` completing in ~2–4 seconds.*
+
+---
+
+### 2. Test Autonomous Dialectic Debate (`/debate`)
+Observe multi-persona background debate (Thesis $\rightarrow$ Antithesis $\rightarrow$ Empirical Verification $\rightarrow$ Consensus):
+
+```bash
+# In the interactive CLI:
+antri
+> /debate "Should we use PostgreSQL or Redis for high-throughput session caching?"
+```
+*Expected Result: Live streaming personas clash and synthesize into a final consensus.*
+
+---
+
+### 3. Test Claude-Style Live Interactive Multi-Page SPA Artifacts (`/view`)
+Test on-the-fly generation of rich, runnable web applications rendered natively with zero raw code exposure:
+
+```bash
+> /view "7-day football conditioning and stretching routine with interactive timers and progress checklist"
+```
+*Expected Result: Renders an interactive **"👁️ View Artifact"** card. Opening it launches a multi-tab web application with working countdown stopwatch, dynamic progress percentage checklists, and bottom stepper navigation.*
+
+---
+
+### 4. Test Reference-Style Collapsible Mind Maps (`/mindmap`)
+Test the Markmap hierarchical tree visualization engine:
+
+```bash
+> /mindmap "Distributed Systems Architecture and Consensus Protocols"
+```
+*Expected Result: Renders a collapsible horizontal mind map tree. Click the `<` / `>` circular handles to fold/unfold subtrees, pan/drag the canvas, and toggle light/poster-dark themes.*
+
+---
+
+### 5. Test Persistent Thinking Profiles & Silent Note Capture (`/profile`, `/notes`)
+Test lifelong cognitive memory and persona extraction:
+
+```bash
+> /profile
+# Navigate and switch between thinking profiles with arrow keys
+> /notes
+# View automatically extracted coding conventions and philosophy rules
+```
+
+---
+
+### 6. Test Native Flutter Mobile Client (`antri_flutter`)
+Run the cross-platform mobile client with floating Prompt Toolkit and Gemini-style navigation drawer:
+
+```bash
+cd antri_flutter
+flutter test     # Run mobile widget tests
+flutter run      # Launch mobile client on device/emulator
+```
+
+---
+
+## Local Development & Setup
 
 ```bash
 # 1. Clone the repository
@@ -285,7 +356,7 @@ npm install
 # 3. Build TypeScript & assets
 npm run build
 
-# 4. Run automated test suite (43 unit tests)
+# 4. Run automated test suite (47 unit tests)
 npm test
 
 # 5. Run in dev mode

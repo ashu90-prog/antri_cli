@@ -661,16 +661,19 @@ async function submitPrompt() {
         const artId = artMatch[1];
         const artType = artMatch[2].toLowerCase();
         const artTitle = artMatch[3];
+        const isMindmap = artType === 'mindmap';
         const isGraph = artType === 'graph';
+        const artIcon = isMindmap ? '🧠' : isGraph ? '📊' : '🌐';
+        const artSubtitle = isMindmap ? 'Interactive Mind Map' : isGraph ? 'Code Architecture Graph' : 'Interactive Multi-Page HTML App';
 
         const embed = document.createElement('div');
         embed.className = 'chat-artifact-embed';
         embed.innerHTML = `
           <div style="display:flex;align-items:center;gap:10px;">
-            <span style="font-size:22px;">${isGraph ? '📊' : '🌐'}</span>
+            <span style="font-size:22px;">${artIcon}</span>
             <div>
               <div style="font-weight:700;font-size:13.5px;color:var(--text-primary);">${escapeHtml(artTitle)}</div>
-              <div style="font-size:11.5px;color:var(--text-muted);">${isGraph ? 'Code Architecture Graph' : 'Interactive Multi-Page HTML App'}</div>
+              <div style="font-size:11.5px;color:var(--text-muted);">${artSubtitle}</div>
             </div>
           </div>
           <button class="chat-artifact-btn" onclick="openArtifactViewer('${artId}', '${escapeHtml(artTitle)}', '${artType}')">👁️ View Artifact</button>
@@ -724,16 +727,19 @@ function appendMessage(role, text) {
       const artId = artMatch[1];
       const artType = artMatch[2].toLowerCase();
       const artTitle = artMatch[3];
+      const isMindmap = artType === 'mindmap';
       const isGraph = artType === 'graph';
+      const artIcon = isMindmap ? '🧠' : isGraph ? '📊' : '🌐';
+      const artSubtitle = isMindmap ? 'Interactive Mind Map' : isGraph ? 'Code Architecture Graph' : 'Interactive HTML Plan';
 
       const embed = document.createElement('div');
       embed.className = 'chat-artifact-embed';
       embed.innerHTML = `
         <div style="display:flex;align-items:center;gap:10px;">
-          <span style="font-size:22px;">${isGraph ? '📊' : '🌐'}</span>
+          <span style="font-size:22px;">${artIcon}</span>
           <div>
             <div style="font-weight:700;font-size:13.5px;color:var(--text-primary);">${escapeHtml(artTitle)}</div>
-            <div style="font-size:11.5px;color:var(--text-muted);">${isGraph ? 'Code Architecture Graph' : 'Interactive HTML Plan'}</div>
+            <div style="font-size:11.5px;color:var(--text-muted);">${artSubtitle}</div>
           </div>
         </div>
         <button class="chat-artifact-btn" onclick="openArtifactViewer('${artId}', '${escapeHtml(artTitle)}', '${artType}')">👁️ View Artifact</button>
@@ -764,7 +770,7 @@ async function loadArtifactsTab() {
         <div style="text-align:center;padding:48px 16px;color:var(--text-muted);">
           <div style="font-size:36px;margin-bottom:12px;">🎨</div>
           <h3 style="color:var(--text-primary);margin-bottom:6px;">No Artifacts Generated Yet</h3>
-          <p style="font-size:13px;">Generate interactive HTML plans or architecture graphs with <code>/view</code> or <code>/imagine</code> in chat.</p>
+          <p style="font-size:13px;">Generate interactive HTML plans, architecture graphs, or mind maps with <code>/view</code>, <code>/mindmap</code>, or <code>/imagine</code> in chat.</p>
         </div>
       `;
       return;
@@ -776,10 +782,11 @@ async function loadArtifactsTab() {
 
       let cardsHtml = '';
       grp.artifacts.forEach((art) => {
+        const isMindmap = art.type === 'mindmap';
         const isGraph = art.type === 'graph';
-        const typeClass = isGraph ? 'badge-graph' : 'badge-html';
-        const typeText = isGraph ? 'Code Graph' : 'Interactive HTML';
-        const icon = isGraph ? '📊' : '🌐';
+        const typeClass = isMindmap ? 'badge-mindmap' : isGraph ? 'badge-graph' : 'badge-html';
+        const typeText = isMindmap ? 'Mind Map' : isGraph ? 'Code Graph' : 'Interactive HTML';
+        const icon = isMindmap ? '🧠' : isGraph ? '📊' : '🌐';
         const dateStr = new Date(art.createdAt).toLocaleDateString();
 
         cardsHtml += `
@@ -827,8 +834,8 @@ function openArtifactViewer(id, title = 'Artifact View', type = 'html') {
   const iconEl = document.getElementById('modal-artifact-icon');
 
   if (titleEl) titleEl.textContent = title;
-  if (typeEl) typeEl.textContent = type === 'graph' ? 'Code Architecture Graph' : 'Interactive HTML View';
-  if (iconEl) iconEl.textContent = type === 'graph' ? '📊' : '🌐';
+  if (typeEl) typeEl.textContent = type === 'mindmap' ? 'Interactive Mind Map' : type === 'graph' ? 'Code Architecture Graph' : 'Interactive HTML View';
+  if (iconEl) iconEl.textContent = type === 'mindmap' ? '🧠' : type === 'graph' ? '📊' : '🌐';
 
   if (iframe) iframe.src = `/api/artifacts/${encodeURIComponent(id)}/view`;
   if (modal) modal.style.display = 'flex';

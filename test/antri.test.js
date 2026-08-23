@@ -1,11 +1,12 @@
+process.env.NODE_ENV = 'test';
 import test from 'node:test';
 import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { ConfigManager } from '../dist/core/config.js';
+import { ConfigManager, configManager } from '../dist/core/config.js';
 import { ConversationHistory } from '../dist/core/history.js';
-import { ToolExecutor, AVAILABLE_TOOLS, getAllActiveTools, SENSITIVE_TOOLS } from '../dist/core/tools.js';
+import { ToolExecutor, AVAILABLE_TOOLS, getAllActiveTools, SENSITIVE_TOOLS, extractEchoMessage } from '../dist/core/tools.js';
 import { PROMPT_TOOLKIT_COMMANDS } from '../dist/cli/promptToolkit.js';
 import { PROVIDER_CATALOGS, getAvailableModels } from '../dist/providers/models.js';
 import { PROVIDERS_LIST } from '../dist/cli/dialogs/providerPicker.js';
@@ -70,7 +71,7 @@ test('ToolExecutor identifies privacy & security sensitive tools', () => {
 
 test('Updater reports correct package name and current version', () => {
   assert.strictEqual(Updater.PACKAGE_NAME, 'antri_cli');
-  assert.strictEqual(Updater.CURRENT_VERSION, '1.57.0');
+  assert.strictEqual(Updater.CURRENT_VERSION, '1.57.4');
 });
 
 test('GoalLoopEngine initializes with active configuration', () => {
@@ -637,9 +638,9 @@ test('ToolExecutor executes coding tools (write_file, edit_file, file_info, grep
 });
 
 test('DialecticEngine and GoalLoopEngine execute silent background pipelines with header badges', async () => {
-  const manager = new ConfigManager();
-  const dialectic = new DialecticEngine(manager.get());
-  const goalEngine = new GoalLoopEngine(manager.get());
+  const mockConfig = { ...new ConfigManager().get(), provider: 'mock' };
+  const dialectic = new DialecticEngine(mockConfig);
+  const goalEngine = new GoalLoopEngine(mockConfig);
 
   assert.strictEqual(typeof dialectic.silentDebate, 'function');
   assert.strictEqual(typeof goalEngine.runSilentGoal, 'function');
@@ -655,6 +656,8 @@ test('DialecticEngine and GoalLoopEngine execute silent background pipelines wit
 
 test('ToolExecutor executes run_silent_debate and run_silent_goal tools', async () => {
   await AuthManager.login('silent_tester@example.com');
+  const prevProvider = configManager.get().provider;
+  configManager.setProvider('mock');
   const executor = new ToolExecutor();
   executor.setPermissionHandler(async () => true);
 
@@ -664,6 +667,7 @@ test('ToolExecutor executes run_silent_debate and run_silent_goal tools', async 
   const goalToolRes = await executor.execute('run_silent_goal', { goal: 'Create robust rate limiter' }, 'sg1');
   assert.ok(goalToolRes.output.includes('[Goal Loop Plan Synthesized]'));
 
+  configManager.setProvider(prevProvider);
   AuthManager.logout();
 });
 
@@ -697,19 +701,36 @@ test('ArtifactManager creates, stores, groups, and parses Claude-style artifacts
   });
   assert.strictEqual(art2.type, 'graph');
 
+  // 2b. Save mindmap artifact
+  const art3 = manager.saveArtifact({
+    id: 'test_art_3',
+    sessionId: 'session_1',
+    sessionTitle: 'Football Routine Chat',
+    title: 'Workout Concept Mind Map',
+    type: 'mindmap',
+    content: 'mindmap\n  root((Workout))\n    Warmup\n    Main\n    Cooldown',
+    createdAt: Date.now() + 200,
+  });
+  assert.strictEqual(art3.type, 'mindmap');
+  assert.strictEqual(manager.getArtifact('test_art_3')?.title, 'Workout Concept Mind Map');
+
   // 3. Check session grouping
   const grouped = manager.getArtifactsGroupedBySession();
   assert.ok(grouped.length >= 1);
   const session1Group = grouped.find((g) => g.sessionId === 'session_1');
   assert.ok(session1Group);
-  assert.strictEqual(session1Group.artifacts.length, 2);
+  assert.strictEqual(session1Group.artifacts.length, 3);
 
   // 4. Parse from text
-  const rawResponse = 'Here is your stretching plan:\n<antri_artifact id="art_parsed_1" type="html" title="Hamstring Plan">\n<p>Hamstring stretches...</p>\n</antri_artifact>\nEnjoy your workout!';
+  const rawResponse = 'Here is your stretching plan:\n<antri_artifact id="art_parsed_1" type="html" title="Hamstring Plan">\n<p>Hamstring stretches...</p>\n</antri_artifact>\nAnd mind map:\n<antri_artifact id="art_parsed_2" type="mindmap" title="Stretching Tree">\nmindmap\n  root((Stretching))\n</antri_artifact>\nEnjoy!';
   const { cleanText, artifacts } = manager.parseAndStoreArtifacts(rawResponse, 'session_2', 'Stretching Chat');
-  assert.strictEqual(artifacts.length, 1);
+  assert.strictEqual(artifacts.length, 2);
   assert.strictEqual(artifacts[0].title, 'Hamstring Plan');
+  assert.strictEqual(artifacts[1].title, 'Stretching Tree');
+  assert.strictEqual(artifacts[1].type, 'mindmap');
   assert.ok(cleanText.includes('[Artifact Created: Hamstring Plan]'));
+  assert.ok(cleanText.includes('[Artifact Created: Stretching Tree]'));
+  assert.ok(cleanText.includes('🧠 Interactive Mind Map'));
 
   // 5. Delete artifact
   const deleted = manager.deleteArtifact('test_art_1');
@@ -722,7 +743,7 @@ test('ArtifactManager creates, stores, groups, and parses Claude-style artifacts
   } catch {}
 });
 
-test('ToolExecutor executes create_artifact tool', async () => {
+test('ToolExecutor executes create_artifact tool with mindmap', async () => {
   await AuthManager.login('artifact_tester@example.com');
   const executor = new ToolExecutor();
   executor.setPermissionHandler(async () => true);
@@ -730,25 +751,53 @@ test('ToolExecutor executes create_artifact tool', async () => {
   const res = await executor.execute(
     'create_artifact',
     {
-      title: 'Interactive Plan Test',
-      type: 'html',
-      content: '<html><body>Interactive App</body></html>',
+      title: 'Distributed Systems Mind Map',
+      type: 'mindmap',
+      content: 'mindmap\n  root((Distributed Systems))\n    Consensus\n      Raft\n      Paxos\n    Storage\n      LSM\n      B-Tree',
     },
-    'art_tool_1'
+    'art_tool_mindmap'
   );
   assert.ok(res.output.includes('Successfully created artifact'));
-  assert.ok(res.output.includes('Interactive Plan Test'));
+  assert.ok(res.output.includes('Distributed Systems Mind Map'));
+  assert.ok(res.output.includes('mindmap'));
 
   AuthManager.logout();
 });
 
-test('Prompt Toolkit contains /imagine, /view, and /artifacts commands', async () => {
+test('Prompt Toolkit contains /imagine, /mindmap, /view, and /artifacts commands', async () => {
   const { PROMPT_TOOLKIT_COMMANDS } = await import('../dist/cli/promptToolkit.js');
   const cmdNames = PROMPT_TOOLKIT_COMMANDS.map((c) => c.name);
   assert.ok(cmdNames.includes('/imagine'));
+  assert.ok(cmdNames.includes('/mindmap'));
   assert.ok(cmdNames.includes('/view'));
   assert.ok(cmdNames.includes('/artifacts'));
 });
+
+test('extractEchoMessage extracts speech from echo/printf commands and ToolExecutor handles echo directly', async () => {
+  const msg1 = extractEchoMessage("echo 'Hello again, I\\'m ANTRI Code, your intelligent companion.'");
+  assert.strictEqual(msg1, "Hello again, I'm ANTRI Code, your intelligent companion.");
+
+  const msg2 = extractEchoMessage('echo "Welcome to ANTRI!"');
+  assert.strictEqual(msg2, 'Welcome to ANTRI!');
+
+  const msg3 = extractEchoMessage('printf "Hello world"');
+  assert.strictEqual(msg3, 'Hello world');
+
+  const nonEcho = extractEchoMessage('npm test');
+  assert.strictEqual(nonEcho, null);
+
+  const redirectCmd = extractEchoMessage('echo "foo" > file.txt');
+  assert.strictEqual(redirectCmd, null);
+
+  // Test ToolExecutor handling
+  await AuthManager.login('echo_tester@example.com');
+  const executor = new ToolExecutor();
+  const res = await executor.execute('run_command', { command: 'echo "Hello there!"' }, 'echo_c1');
+  assert.strictEqual(res.output, 'Hello there!');
+  assert.strictEqual(res.error, undefined);
+  AuthManager.logout();
+});
+
 
 
 

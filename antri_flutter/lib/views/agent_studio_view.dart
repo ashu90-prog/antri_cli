@@ -28,19 +28,170 @@ class AgentStudioView extends StatefulWidget {
   State<AgentStudioView> createState() => _AgentStudioViewState();
 }
 
+class PromptCommand {
+  final String name;
+  final String description;
+  final IconData icon;
+  final Color color;
+
+  const PromptCommand({
+    required this.name,
+    required this.description,
+    required this.icon,
+    required this.color,
+  });
+}
+
+const List<PromptCommand> _promptCommands = [
+  PromptCommand(
+    name: '/mindmap',
+    description: 'Generate interactive collapsible hierarchical mind map',
+    icon: Icons.psychology_outlined,
+    color: Color(0xFF9333EA),
+  ),
+  PromptCommand(
+    name: '/imagine',
+    description: 'Generate visual architecture & flowchart diagrams',
+    icon: Icons.account_tree_outlined,
+    color: Color(0xFF2563EB),
+  ),
+  PromptCommand(
+    name: '/view',
+    description: 'Build interactive multi-page SPA plan or app',
+    icon: Icons.language_outlined,
+    color: Color(0xFF059669),
+  ),
+  PromptCommand(
+    name: '/artifacts',
+    description: 'Browse gallery of generated interactive artifacts',
+    icon: Icons.auto_awesome_mosaic_outlined,
+    color: Color(0xFFD97706),
+  ),
+  PromptCommand(
+    name: '/goal',
+    description: 'Run autonomous multi-step goal execution loop',
+    icon: Icons.track_changes_outlined,
+    color: Color(0xFFDC2626),
+  ),
+  PromptCommand(
+    name: '/silent-goal',
+    description: 'Run background goal loop without step spam',
+    icon: Icons.gps_fixed_outlined,
+    color: Color(0xFF7C3AED),
+  ),
+  PromptCommand(
+    name: '/debate',
+    description: 'Launch Dialectic multi-persona debate',
+    icon: Icons.forum_outlined,
+    color: Color(0xFFEA580C),
+  ),
+  PromptCommand(
+    name: '/silent-debate',
+    description: 'Synthesize Dialectic consensus silently in background',
+    icon: Icons.bolt_outlined,
+    color: Color(0xFF4F46E5),
+  ),
+  PromptCommand(
+    name: '/notes',
+    description: 'Inspect captured mindset & philosophy notes',
+    icon: Icons.menu_book_outlined,
+    color: Color(0xFF0D9488),
+  ),
+  PromptCommand(
+    name: '/profile',
+    description: 'Switch active cognitive thinking profile',
+    icon: Icons.person_outline,
+    color: Color(0xFF0891B2),
+  ),
+  PromptCommand(
+    name: '/models',
+    description: 'Select AI model and reasoning engine',
+    icon: Icons.smart_toy_outlined,
+    color: Color(0xFF4B5563),
+  ),
+  PromptCommand(
+    name: '/connect',
+    description: 'Configure AI providers and API keys',
+    icon: Icons.link_outlined,
+    color: Color(0xFF6366F1),
+  ),
+  PromptCommand(
+    name: '/clear',
+    description: 'Clear current conversation messages',
+    icon: Icons.delete_outline,
+    color: Color(0xFFEF4444),
+  ),
+  PromptCommand(
+    name: '/help',
+    description: 'Display all available commands and help',
+    icon: Icons.help_outline,
+    color: Color(0xFF6B7280),
+  ),
+];
+
 class _AgentStudioViewState extends State<AgentStudioView> {
   final TextEditingController _promptController = TextEditingController();
+  final FocusNode _promptFocus = FocusNode();
   final ScrollController _scrollController = ScrollController();
   final List<ChatSession> _sessions = [];
   String _activeSessionId = '';
   final List<ChatMessage> _messages = [];
   final List<XFile> _attachedFiles = [];
   bool _isLoading = false;
+  bool _showCommandPalette = false;
+  String _commandFilter = '';
 
   @override
   void initState() {
     super.initState();
     _loadSessions();
+    _promptController.addListener(_handlePromptChange);
+  }
+
+  @override
+  void dispose() {
+    _promptController.removeListener(_handlePromptChange);
+    _promptController.dispose();
+    _promptFocus.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _handlePromptChange() {
+    final text = _promptController.text;
+    if (text.startsWith('/')) {
+      final filter = text.substring(1).toLowerCase().split(' ').first;
+      if (!_showCommandPalette || _commandFilter != filter) {
+        if (mounted) {
+          setState(() {
+            _showCommandPalette = true;
+            _commandFilter = filter;
+          });
+        }
+      }
+    } else {
+      if (_showCommandPalette) {
+        if (mounted) {
+          setState(() {
+            _showCommandPalette = false;
+            _commandFilter = '';
+          });
+        }
+      }
+    }
+  }
+
+  void _selectCommand(PromptCommand cmd) {
+    _promptController.text = '${cmd.name} ';
+    _promptController.selection = TextSelection.fromPosition(
+      TextPosition(offset: _promptController.text.length),
+    );
+    if (mounted) {
+      setState(() {
+        _showCommandPalette = false;
+      });
+    }
+    _promptFocus.requestFocus();
   }
 
   ChatSession get _currentSession {
@@ -583,21 +734,32 @@ Active Operating Mode: ${widget.config.mode.toUpperCase()}
 The following context contains user preferences, active thinking profile rules, identity facts, and accumulated notes.
 Use this active knowledge naturally to inform responses, follow coding preferences, and recall user facts without forced persona changes.
 🚨 Conversational Recall Rule: When the user asks what you know about them, their thinking style, hobbies, or background, answer conversationally and concisely like a helpful human partner. Synthesize the known facts smoothly without dumping raw markdown files, section headers, or unformatted template boilerplate.
+🚨 Direct Conversation Mandate: When the user greets you (e.g. "hello", "hi", "hey"), asks questions, or chats, always respond directly with natural conversational text. Never call shell echo/printf commands to converse.
 🚨 Empathy & Motivation Memory Directive: When the user shares personal history, loved ones, loss, or foundational inspirations (e.g. "my father passed away and he liked workout so that's why i like it too"), warmly acknowledge this in your conversation and honor this permanently in your lifelong cognitive memories.
 🚨 Emoji Usage Rule: You MUST use emojis, but keep them minimal and tasteful — MAXIMUM 2 EMOJIS in your whole response. Never exceed 2 emojis total.
 🚨 Dialectic & Goal Header Directive: For research synthesis, multi-perspective debates, or goal loop plans performed in the background, start your response with a header badge: '> ⚔️ [Dialectic Debate Synthesized]' or '> 🎯 [Goal Loop Plan Synthesized]'.
 🎨 Claude-Style Multi-Page Interactive Artifacts & Graphs: When asked to generate a plan, routine, guide, UI dashboard, quiz, workout/stretching routine, or architecture diagram (or when using /view or /imagine):
 - For plans/apps (/view): You MUST build an aesthetically stunning, MULTI-PAGE Single-Page Application (SPA) with at least 3 to 10 distinct switchable pages/tabs (e.g. Navigation bar with tabs for Overview, Day 1..Day 7, Live Stopwatch/Timer, Macro/Metrics Tracker) and bottom previous/next stepper buttons.
-  * Design (CSS): Aurora glassmorphism theme with ambient radial aura glow over #0a0e17, frosted glass cards (rgba(18,24,38,0.7) with backdrop-filter: blur(16px)), glowing accent gradients (indigo #6366f1, cyan #06b6d4, emerald #10b981), pill badges, and fluid mobile responsiveness.
+  * Design (CSS): Prioritize clean, bright, and elegant LIGHT COLOR PALETTES in the background (radial-gradient(circle at 15% 15%, rgba(99, 102, 241, 0.08) 0%, transparent 40%), radial-gradient(circle at 85% 85%, rgba(236, 72, 153, 0.08) 0%, transparent 40%), #f8fafc), frosted white glass cards (rgba(255,255,255,0.9) with backdrop-filter: blur(16px)), high-contrast crisp dark text (#0f172a), glowing accent badges (#4f46e5, #0284c7, #10b981), and fluid responsiveness. If dark theme is used, use multi-color POSTER MESH GRADIENTS with radiant auras (never flat solid black).
   * Interactivity (JS): Working countdown stopwatch/timer with start/pause/reset and quick preset chips, dynamic checkable checklists that update completion percentage and progress bars in real time, and interactive calculation sliders.
 - Wrap the complete multi-page HTML in:
 <antri_artifact id="art_UNIQUE_ID" type="html" title="DESCRIPTIVE TITLE">
-<!DOCTYPE html><html lang="en"><head><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"><style>/* aesthetic aurora glassmorphism css */</style></head><body>...<script>/* interactive js */</script></body></html>
+<!DOCTYPE html><html lang="en"><head><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"><style>/* aesthetic css */</style></head><body>...<script>/* interactive js */</script></body></html>
 </antri_artifact>
 For graphs (/imagine):
 <antri_artifact id="graph_UNIQUE_ID" type="graph" title="ARCHITECTURE TITLE">
 graph TD
   ...
+</antri_artifact>
+For mind maps (/mindmap):
+<antri_artifact id="mindmap_UNIQUE_ID" type="mindmap" title="MIND MAP TITLE">
+mindmap
+  root((Central Topic))
+    Branch 1
+      Subtopic A
+      Subtopic B
+    Branch 2
+      Subtopic C
 </antri_artifact>
 ================================================================================
 ### Active Thinking Profile: ${widget.config.activeProfile}.md
@@ -631,9 +793,18 @@ $memoriesText
           userPrompt: imaginePrompt,
           conversationHistory: _currentSession.messages,
         );
+      } else if (lower.startsWith('/mindmap ') || lower == '/mindmap') {
+        final queryClean = text.replaceFirst(RegExp(r'^/mindmap\s*', caseSensitive: false), '').trim();
+        final mindmapPrompt = 'Create a rich, comprehensive, and well-structured visual mind map and concept tree for: "${queryClean.isNotEmpty ? queryClean : "Concept Hierarchy"}". Break the topic down hierarchically into core pillars, subtopics, and granular leaf details. You MUST output the Mermaid mindmap enclosed in an artifact tag: <antri_artifact id="mindmap_${DateTime.now().millisecondsSinceEpoch}" type="mindmap" title="${queryClean.isNotEmpty ? queryClean : "Mind Map"}">\nmindmap\n  root((${queryClean.isNotEmpty ? queryClean : "Concept"}))\n    Pillar 1\n      Subtopic A\n      Subtopic B\n    Pillar 2\n      Subtopic C\n</antri_artifact>';
+        responseText = await widget.aiService.executePrompt(
+          config: widget.config,
+          systemPrompt: systemPrompt,
+          userPrompt: mindmapPrompt,
+          conversationHistory: _currentSession.messages,
+        );
       } else if (lower.startsWith('/view ') || lower == '/view') {
         final queryClean = text.replaceFirst(RegExp(r'^/view\s*', caseSensitive: false), '').trim();
-        final viewPrompt = 'Generate a complete, self-contained, highly interactive, and aesthetically stunning MULTI-PAGE Single-Page Application (SPA) for: "${queryClean.isNotEmpty ? queryClean : "Interactive Plan"}". Requirements: 1) Multi-page tab navigation (3 to 10 distinct switchable pages/tabs: Overview, Day 1..Day 7, Tools, Timers, Progress Tracker) with horizontal scrolling tabs and bottom stepper buttons, 2) Modern Aurora glassmorphism CSS styling with ambient aura gradients (#6366f1, #06b6d4, #10b981) and frosted cards, 3) Real JS interactivity including working countdown stopwatch/rest timer, dynamic checkable checklists with real-time percentage progress bars, and calculators. You MUST output the HTML document enclosed in an artifact tag: <antri_artifact id="art_${DateTime.now().millisecondsSinceEpoch}" type="html" title="${queryClean.isNotEmpty ? queryClean : "Interactive Plan"}">\n<!DOCTYPE html>\n<html lang="en">\n<head><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"><style>/* aesthetic css */</style></head>\n<body>...<script>/* interactive js */</script></body>\n</html>\n</antri_artifact>';
+        final viewPrompt = 'Generate a complete, self-contained, highly interactive, and aesthetically stunning MULTI-PAGE Single-Page Application (SPA) for: "${queryClean.isNotEmpty ? queryClean : "Interactive Plan"}". Requirements: 1) Multi-page tab navigation (3 to 10 distinct switchable pages/tabs: Overview, Day 1..Day 7, Tools, Timers, Progress Tracker) with horizontal scrolling tabs and bottom stepper buttons, 2) Prioritize clean, bright, and elegant LIGHT COLOR PALETTES in background (soft porcelain mesh #f8fafc with pastel gradients), frosted white cards, and high-contrast dark text (#0f172a). If dark theme is used, use radiant multi-color POSTER MESH GRADIENTS (never flat solid black), 3) Real JS interactivity including working countdown stopwatch/rest timer, dynamic checkable checklists with real-time percentage progress bars, and calculators. You MUST output the HTML document enclosed in an artifact tag: <antri_artifact id="art_${DateTime.now().millisecondsSinceEpoch}" type="html" title="${queryClean.isNotEmpty ? queryClean : "Interactive Plan"}">\n<!DOCTYPE html>\n<html lang="en">\n<head><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"><style>/* aesthetic css */</style></head>\n<body>...<script>/* interactive js */</script></body>\n</html>\n</antri_artifact>';
         responseText = await widget.aiService.executePrompt(
           config: widget.config,
           systemPrompt: systemPrompt,
@@ -913,7 +1084,32 @@ $memoriesText
                                     final artType = artMatch?.group(2)?.trim().toLowerCase() ?? 'html';
                                     final artTitle = artMatch?.group(3)?.trim() ?? 'Interactive Artifact';
                                     final artContent = artMatch?.group(4)?.trim() ?? '';
+                                    final isMindmap = artType == 'mindmap';
                                     final isGraph = artType == 'graph';
+
+                                    final Color leadBg = isMindmap
+                                        ? const Color(0xFFFAF5FF)
+                                        : isGraph
+                                            ? const Color(0xFFEFF6FF)
+                                            : const Color(0xFFF0FDF4);
+
+                                    final Color iconCol = isMindmap
+                                        ? const Color(0xFF7E22CE)
+                                        : isGraph
+                                            ? const Color(0xFF1D4ED8)
+                                            : const Color(0xFF15803D);
+
+                                    final IconData leadIcon = isMindmap
+                                        ? Icons.psychology_outlined
+                                        : isGraph
+                                            ? Icons.account_tree_outlined
+                                            : Icons.language;
+
+                                    final String typeSubtitle = isMindmap
+                                        ? 'Interactive Mind Map'
+                                        : isGraph
+                                            ? 'Architecture Graph'
+                                            : 'Interactive HTML Plan';
 
                                     final artifactObj = Artifact(
                                       id: artId,
@@ -946,13 +1142,13 @@ $memoriesText
                                               Container(
                                                 padding: const EdgeInsets.all(8),
                                                 decoration: BoxDecoration(
-                                                  color: isGraph ? const Color(0xFFEFF6FF) : const Color(0xFFF0FDF4),
+                                                  color: leadBg,
                                                   borderRadius: BorderRadius.circular(8),
                                                 ),
                                                 child: Icon(
-                                                  isGraph ? Icons.account_tree_outlined : Icons.language,
+                                                  leadIcon,
                                                   size: 18,
-                                                  color: isGraph ? const Color(0xFF1D4ED8) : const Color(0xFF15803D),
+                                                  color: iconCol,
                                                 ),
                                               ),
                                               const SizedBox(width: 10),
@@ -967,7 +1163,7 @@ $memoriesText
                                                       overflow: TextOverflow.ellipsis,
                                                     ),
                                                     Text(
-                                                      isGraph ? 'Architecture Graph' : 'Interactive HTML Plan',
+                                                      typeSubtitle,
                                                       style: const TextStyle(fontSize: 11, color: Color(0xFF78716C)),
                                                     ),
                                                   ],
@@ -1052,6 +1248,135 @@ $memoriesText
               ),
             ),
 
+          // Mobile Prompt Toolkit Autocomplete Palette
+          if (_showCommandPalette) ...[
+            Builder(
+              builder: (ctx) {
+                final filtered = _promptCommands.where((cmd) {
+                  if (_commandFilter.isEmpty) return true;
+                  final query = _commandFilter;
+                  return cmd.name.toLowerCase().contains(query) ||
+                         cmd.description.toLowerCase().contains(query);
+                }).toList();
+
+                return Container(
+                  constraints: const BoxConstraints(maxHeight: 250),
+                  margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: cardBg,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: borderMain),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.08),
+                        blurRadius: 16,
+                        offset: const Offset(0, -4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        decoration: const BoxDecoration(
+                          color: subtleBg,
+                          borderRadius: BorderRadius.vertical(top: Radius.circular(13)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.flash_on, size: 14, color: Color(0xFFD97706)),
+                            const SizedBox(width: 6),
+                            const Text(
+                              'PROMPT TOOLKIT',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.6,
+                                color: textPrimary,
+                              ),
+                            ),
+                            const Spacer(),
+                            GestureDetector(
+                              onTap: () {
+                                setState(() => _showCommandPalette = false);
+                              },
+                              child: const Icon(Icons.close, size: 16, color: Color(0xFF78716C)),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (filtered.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.all(16.0),
+                          child: Text(
+                            'No matching commands found',
+                            style: TextStyle(fontSize: 12, color: Color(0xFF78716C)),
+                          ),
+                        )
+                      else
+                        Flexible(
+                          child: ListView.separated(
+                            shrinkWrap: true,
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            itemCount: filtered.length,
+                            separatorBuilder: (c, i) => const Divider(height: 1, color: borderMain),
+                            itemBuilder: (c, i) {
+                              final cmd = filtered[i];
+                              return InkWell(
+                                onTap: () => _selectCommand(cmd),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(6),
+                                        decoration: BoxDecoration(
+                                          color: cmd.color.withValues(alpha: 0.12),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: Icon(cmd.icon, size: 16, color: cmd.color),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              cmd.name,
+                                              style: const TextStyle(
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w700,
+                                                color: textPrimary,
+                                              ),
+                                            ),
+                                            Text(
+                                              cmd.description,
+                                              style: const TextStyle(
+                                                fontSize: 11,
+                                                color: Color(0xFF78716C),
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const Icon(Icons.chevron_right, size: 16, color: Color(0xFF94A3B8)),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ],
+
           // Chat Input Area
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -1096,13 +1421,50 @@ $memoriesText
                       );
                     },
                   ),
+                  // Prompt Toolkit Shortcut Button (/)
+                  IconButton(
+                    icon: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: _showCommandPalette ? textPrimary : subtleBg,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: borderMain),
+                      ),
+                      child: Text(
+                        '/',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w900,
+                          color: _showCommandPalette ? Colors.white : textPrimary,
+                        ),
+                      ),
+                    ),
+                    onPressed: () {
+                      if (_showCommandPalette) {
+                        setState(() => _showCommandPalette = false);
+                      } else {
+                        if (!_promptController.text.startsWith('/')) {
+                          _promptController.text = '/';
+                          _promptController.selection = TextSelection.fromPosition(
+                            TextPosition(offset: _promptController.text.length),
+                          );
+                        }
+                        setState(() {
+                          _showCommandPalette = true;
+                          _commandFilter = '';
+                        });
+                        _promptFocus.requestFocus();
+                      }
+                    },
+                  ),
                   Expanded(
                     child: TextField(
                       controller: _promptController,
+                      focusNode: _promptFocus,
                       maxLines: null,
                       style: const TextStyle(fontSize: 14, color: textPrimary),
                       decoration: const InputDecoration(
-                        hintText: 'Message ANTRI...',
+                        hintText: 'Message ANTRI or type / for commands...',
                         hintStyle: TextStyle(color: Color(0xFF8C827A), fontSize: 13.5),
                         border: InputBorder.none,
                         contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
