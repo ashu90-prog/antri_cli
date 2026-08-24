@@ -13,10 +13,18 @@ dist/
 
 # Internal Agent Memory & References (Not needed for production repo)
 Memory/
+memory/
 Refrence/
+Reference/
+refrence/
+reference/
 AGENTS.md
 GEMINI.md
 .agents/
+*.html
+!src/desktop/public/index.html
+!src/mobile/public/index.html
+!antri_flutter/web/index.html
 
 # Logs
 *.log
