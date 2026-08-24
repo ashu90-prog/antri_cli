@@ -50,9 +50,9 @@ class _ArtifactViewState extends State<ArtifactViewerView> {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>$safeTitle</title>
-  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
-  <script src="https://cdn.jsdelivr.net/npm/markmap-view@0.17.2"></script>
-  <script src="https://cdn.jsdelivr.net/npm/markmap-lib@0.17.2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/d3@7.8.5/dist/d3.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/markmap-view@0.17.2/dist/browser/index.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/markmap-lib@0.17.2/dist/browser/index.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -72,6 +72,8 @@ class _ArtifactViewState extends State<ArtifactViewerView> {
       --root-bg: #4f46e5;
       --root-border: #4338ca;
       --root-text: #ffffff;
+      --pillar-bg: #f1f5f9;
+      --pillar-border: #94a3b8;
       --link-stroke: #818cf8;
       --badge-bg: rgba(168, 85, 247, 0.12);
       --badge-color: #7e22ce;
@@ -94,13 +96,15 @@ class _ArtifactViewState extends State<ArtifactViewerView> {
       --root-bg: #6366f1;
       --root-border: #818cf8;
       --root-text: #ffffff;
+      --pillar-bg: #0f172a;
+      --pillar-border: #475569;
       --link-stroke: #6366f1;
       --badge-bg: rgba(168, 85, 247, 0.2);
       --badge-color: #c084fc;
       --badge-border: rgba(168, 85, 247, 0.35);
     }
     body {
-      margin: 0; padding: 14px 10px;
+      margin: 0; padding: 12px 8px;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background: var(--bg-page);
       color: var(--text-main);
@@ -108,7 +112,7 @@ class _ArtifactViewState extends State<ArtifactViewerView> {
       overflow-x: hidden;
       transition: background 0.3s ease;
     }
-    .header { text-align: center; margin-bottom: 10px; }
+    .header { text-align: center; margin-bottom: 8px; }
     .badge {
       display: inline-block; font-size: 10px; font-weight: 700;
       letter-spacing: 0.5px; text-transform: uppercase;
@@ -118,7 +122,7 @@ class _ArtifactViewState extends State<ArtifactViewerView> {
     }
     h1 { font-size: 15px; font-weight: 800; color: var(--text-main); margin: 0; }
     .toolbar {
-      display: flex; gap: 6px; margin-bottom: 10px;
+      display: flex; gap: 6px; margin-bottom: 8px;
       align-items: center; justify-content: center; width: 100%; flex-wrap: wrap;
     }
     .tool-btn {
@@ -128,7 +132,7 @@ class _ArtifactViewState extends State<ArtifactViewerView> {
       box-shadow: 0 1px 3px rgba(0,0,0,0.03);
     }
     .viewport {
-      width: 100%; height: 74vh; min-height: 440px;
+      width: 100%; height: 75vh; min-height: 440px;
       position: relative; overflow: hidden; border-radius: 14px;
       background: var(--bg-viewport); backdrop-filter: blur(16px);
       border: 1px solid var(--border-viewport);
@@ -136,35 +140,44 @@ class _ArtifactViewState extends State<ArtifactViewerView> {
       touch-action: none;
     }
     #mindmapSvg {
-      width: 100%; height: 100%; display: block; cursor: grab;
+      width: 100%; height: 100%; display: block; cursor: grab; user-select: none;
     }
     #mindmapSvg:active { cursor: grabbing; }
+
+    /* SVG Mindmap Nodes */
+    .mindmap-link {
+      fill: none; stroke: var(--link-stroke); stroke-width: 2.2px; stroke-linecap: round;
+    }
+    .node-rect {
+      fill: var(--node-bg); stroke: var(--node-border); stroke-width: 1.5px; cursor: pointer;
+    }
+    .node-rect.root { fill: var(--root-bg); stroke: var(--root-border); stroke-width: 2px; }
+    .node-rect.pillar { fill: var(--pillar-bg); stroke: var(--pillar-border); stroke-width: 1.8px; }
+    .node-text {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 12.5px; font-weight: 600; fill: var(--node-text); pointer-events: none;
+    }
+    .depth-0 .node-text { font-size: 14.5px; font-weight: 800; fill: var(--root-text); }
+    .depth-1 .node-text { font-size: 13px; font-weight: 700; }
+    .badge-circle { fill: var(--root-bg); stroke: var(--bg-viewport); stroke-width: 1.5px; }
+    .badge-text { font-family: monospace; font-size: 11px; font-weight: bold; fill: #ffffff; pointer-events: none; }
+
+    /* Markmap Overrides */
+    foreignObject { overflow: visible !important; }
     .markmap-foreign {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
-      font-size: 13px !important; font-weight: 600 !important; line-height: 1.4 !important;
+      font-size: 13px !important; font-weight: 600 !important; line-height: 1.35 !important;
       color: var(--node-text) !important; background: var(--node-bg) !important;
       border: 1.5px solid var(--node-border) !important; border-radius: 8px !important;
       padding: 5px 12px !important; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.04) !important;
-      display: inline-flex !important; align-items: center !important; white-space: nowrap !important;
-      transition: all 0.2s ease !important;
+      display: inline-block !important; white-space: normal !important; max-width: 300px !important;
     }
     .markmap-node[data-depth="0"] .markmap-foreign {
       background: var(--root-bg) !important; color: var(--root-text) !important;
       border-color: var(--root-border) !important; font-size: 15px !important;
       font-weight: 800 !important; border-radius: 9px !important; padding: 7px 16px !important;
-      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.35) !important;
     }
-    .markmap-node[data-depth="1"] .markmap-foreign {
-      font-weight: 700 !important; border-width: 1.8px !important;
-    }
-    .markmap-link {
-      fill: none !important; stroke: var(--link-stroke) !important;
-      stroke-width: 2px !important; stroke-linecap: round !important;
-    }
-    .markmap-node > circle {
-      fill: var(--root-bg) !important; stroke: var(--root-border) !important;
-      stroke-width: 2px !important; r: 6 !important; cursor: pointer !important;
-    }
+
     .help-hint {
       position: absolute; bottom: 8px; right: 10px; font-size: 10px;
       color: var(--text-muted); pointer-events: none;
@@ -189,154 +202,210 @@ class _ArtifactViewState extends State<ArtifactViewerView> {
   </div>
   <div class="viewport" id="viewport">
     <svg id="mindmapSvg"></svg>
-    <div class="help-hint">👆 Drag to pan · Pinch to zoom · Tap circles to collapse</div>
+    <div class="help-hint">👆 Drag to pan · Pinch to zoom · Tap +/- to collapse</div>
   </div>
   <script>
     const rawContent = $safeContent;
-    
-    function parseToMarkdown(content) {
-      if (content.startsWith('#') || content.startsWith('-') || content.includes('\\n#') || content.includes('\\n-')) {
-        return content;
-      }
+
+    function parseTree(content) {
       const lines = content.split('\\n');
-      const mdLines = [];
+      const rootNode = { name: '$safeTitle', children: [], collapsed: false };
+      const stack = [{ node: rootNode, depth: 0 }];
+
       let baseIndent = -1;
-      for (let line of lines) {
+      for (let rawLine of lines) {
+        const line = rawLine.replace(/\\r\$/, '');
         const trimmed = line.trim();
         if (!trimmed || trimmed === 'mindmap') continue;
+
         const indent = line.search(/\\S/);
         if (baseIndent === -1) baseIndent = indent;
         const rel = Math.max(0, indent - baseIndent);
-        const depth = Math.floor(rel / 2);
-        
-        let clean = trimmed;
-        if (clean.startsWith('root((') && clean.endsWith('))')) clean = clean.substring(6, clean.length - 2);
-        else if (clean.startsWith('((') && clean.endsWith('))')) clean = clean.substring(2, clean.length - 2);
-        else if (clean.startsWith('[') && clean.endsWith(']')) clean = clean.substring(1, clean.length - 1);
-        else if (clean.startsWith('(') && clean.endsWith(')')) clean = clean.substring(1, clean.length - 1);
-        else if (clean.startsWith('))') && clean.endsWith('((')) clean = clean.substring(2, clean.length - 2);
-        else if (clean.startsWith(')') && clean.endsWith('(')) clean = clean.substring(1, clean.length - 1);
-        else if (clean.startsWith('{{') && clean.endsWith('}}')) clean = clean.substring(2, clean.length - 2);
-          
+        let depth = Math.floor(rel / 2);
+
+        let clean = trimmed
+          .replace(/^#+\\s*/, '')
+          .replace(/^[-*]\\s*/, '')
+          .replace(/^root\\(\\((.*?)\\)\\)\$/, '\$1')
+          .replace(/^\\(\\((.*?)\\)\\)\$/, '\$1')
+          .replace(/^\\[(.*?)\\]\$/, '\$1')
+          .replace(/^\\((.*?)\\)\$/, '\$1')
+          .replace(/^\\)\\)(.*?)\\(\\(\$/, '\$1')
+          .replace(/^\\)(.*?)\\(\$/, '\$1')
+          .replace(/^\\{\\{(.*?)\\}\\}/, '\$1')
+          .trim();
+
         if (depth === 0) {
-          mdLines.push('# ' + clean);
-        } else if (depth === 1) {
-          mdLines.push('## ' + clean);
-        } else {
-          mdLines.push('  '.repeat(depth - 1) + '- ' + clean);
+          rootNode.name = clean || rootNode.name;
+          continue;
         }
-      }
-      return mdLines.join('\\n');
-    }
 
-    const markdownText = parseToMarkdown(rawContent);
-    let mmInstance = null;
-
-    function renderMarkmap() {
-      try {
-        if (window.markmap && window.markmap.Transformer) {
-          const { Transformer, Markmap } = window.markmap;
-          const transformer = new Transformer();
-          const { root } = transformer.transform(markdownText);
-          const svgEl = document.getElementById('mindmapSvg');
-          svgEl.innerHTML = '';
-          mmInstance = Markmap.create(svgEl, {
-            autoFit: true,
-            duration: 250,
-            nodeMinHeight: 26,
-            spacingVertical: 14,
-            spacingHorizontal: 80,
-            paddingX: 14
-          }, root);
-          return;
-        }
-      } catch (err) {
-        console.warn('Markmap mobile load error:', err);
-      }
-      renderFallbackTree();
-    }
-
-    function renderFallbackTree() {
-      const svg = document.getElementById('mindmapSvg');
-      svg.innerHTML = '';
-      const lines = markdownText.split('\\n').filter(l => l.trim().length > 0);
-      const rootNode = { name: '$safeTitle', children: [] };
-      const stack = [{ node: rootNode, depth: 0 }];
-
-      lines.forEach((line) => {
-        let depth = 1;
-        let text = line.trim();
-        if (text.startsWith('# ')) {
-          rootNode.name = text.replace('# ', '').trim();
-          return;
-        } else if (text.startsWith('## ')) {
-          depth = 1;
-          text = text.replace('## ', '').trim();
-        } else {
-          const leadSpaces = line.search(/\\S/);
-          depth = 2 + Math.floor(leadSpaces / 2);
-          text = text.replace(/^[-*]\\s*/, '').trim();
-        }
-        const newNode = { name: text, children: [] };
+        const newNode = { name: clean, children: [], collapsed: false };
         while (stack.length > depth) stack.pop();
         stack[stack.length - 1].node.children.push(newNode);
         stack.push({ node: newNode, depth: depth });
-      });
+      }
+
+      return rootNode;
+    }
+
+    const rootTree = parseTree(rawContent);
+    const svgEl = document.getElementById('mindmapSvg');
+    const viewport = document.getElementById('viewport');
+
+    let currentScale = 1;
+    let currentX = 0;
+    let currentY = 0;
+    let isPanning = false;
+    let startPointerX = 0;
+    let startPointerY = 0;
+    let startPosX = 0;
+    let startPosY = 0;
+    let bbox = { minX: 0, maxX: 800, minY: 0, maxY: 600 };
+
+    function renderTree() {
+      svgEl.innerHTML = '';
+      const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      g.setAttribute('id', 'viewportGroup');
+      svgEl.appendChild(g);
+
+      function measure(node, depth = 0) {
+        node.depth = depth;
+        const textLen = (node.name || '').length;
+        const isRoot = depth === 0;
+        const isPillar = depth === 1;
+        const fontFactor = isRoot ? 9.2 : isPillar ? 8.0 : 7.4;
+        const pad = isRoot ? 36 : 24;
+        node.w = Math.max(isRoot ? 150 : 110, Math.min(320, textLen * fontFactor + pad));
+        node.h = isRoot ? 42 : isPillar ? 36 : 32;
+        if (node.children && !node.collapsed) {
+          node.children.forEach(c => measure(c, depth + 1));
+        }
+      }
+      measure(rootTree, 0);
 
       let curY = 30;
-      function layout(node, depth = 0) {
-        node.depth = depth;
-        node.x = 40 + depth * 190;
-        if (!node.children || node.children.length === 0) {
-          node.y = curY;
-          curY += 42;
+      const HORIZ_GAP = 65;
+      const VERT_GAP = 12;
+
+      function layout(node, startX = 30) {
+        node.x = startX;
+        if (!node.children || node.children.length === 0 || node.collapsed) {
+          node.y = curY + node.h / 2;
+          curY += node.h + VERT_GAP;
         } else {
-          node.children.forEach(c => layout(c, depth + 1));
+          const nextX = startX + node.w + HORIZ_GAP;
+          node.children.forEach(c => layout(c, nextX));
           const firstY = node.children[0].y;
           const lastY = node.children[node.children.length - 1].y;
           node.y = (firstY + lastY) / 2;
         }
       }
-      layout(rootNode);
+      layout(rootTree, 30);
 
-      const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-      g.setAttribute('id', 'treeGroup');
-      svg.appendChild(g);
+      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+      function findBounds(node) {
+        minX = Math.min(minX, node.x);
+        maxX = Math.max(maxX, node.x + node.w + 20);
+        minY = Math.min(minY, node.y - node.h / 2);
+        maxY = Math.max(maxY, node.y + node.h / 2);
+        if (node.children && !node.collapsed) {
+          node.children.forEach(findBounds);
+        }
+      }
+      findBounds(rootTree);
+      bbox = { minX, maxX, minY, maxY };
 
       function draw(node) {
-        if (node.children) {
-          node.children.forEach(c => {
+        if (node.children && node.children.length > 0 && !node.collapsed) {
+          node.children.forEach(child => {
+            const x1 = node.x + node.w;
+            const y1 = node.y;
+            const x2 = child.x;
+            const y2 = child.y;
+            const dx = (x2 - x1) * 0.48;
             const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            const x1 = node.x + 110, y1 = node.y;
-            const x2 = c.x, y2 = c.y;
-            const dx = (x2 - x1) * 0.5;
             path.setAttribute('d', 'M ' + x1 + ' ' + y1 + ' C ' + (x1 + dx) + ' ' + y1 + ', ' + (x2 - dx) + ' ' + y2 + ', ' + x2 + ' ' + y2);
-            path.setAttribute('class', 'markmap-link');
+            path.setAttribute('class', 'mindmap-link');
             g.appendChild(path);
-            draw(c);
+            draw(child);
           });
         }
-        const foreign = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
-        foreign.setAttribute('x', node.x - 10);
-        foreign.setAttribute('y', node.y - 16);
-        foreign.setAttribute('width', '180');
-        foreign.setAttribute('height', '36');
-        foreign.innerHTML = '<div class="markmap-node" data-depth="' + node.depth + '"><div class="markmap-foreign">' + node.name + '</div></div>';
-        g.appendChild(foreign);
+
+        const nodeG = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        nodeG.setAttribute('class', 'mindmap-node depth-' + node.depth);
+
+        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        rect.setAttribute('x', node.x);
+        rect.setAttribute('y', node.y - node.h / 2);
+        rect.setAttribute('width', node.w);
+        rect.setAttribute('height', node.h);
+        rect.setAttribute('rx', node.depth === 0 ? '10' : '7');
+        rect.setAttribute('ry', node.depth === 0 ? '10' : '7');
+        rect.setAttribute('class', 'node-rect ' + (node.depth === 0 ? 'root' : node.depth === 1 ? 'pillar' : 'leaf'));
+        nodeG.appendChild(rect);
+
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('x', node.x + node.w / 2);
+        text.setAttribute('y', node.y + (node.depth === 0 ? 5 : 4));
+        text.setAttribute('text-anchor', 'middle');
+        text.setAttribute('class', 'node-text');
+        text.textContent = node.name;
+        nodeG.appendChild(text);
+
+        if (node.children && node.children.length > 0) {
+          const badgeG = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+          badgeG.setAttribute('transform', 'translate(' + (node.x + node.w) + ', ' + node.y + ')');
+          badgeG.style.cursor = 'pointer';
+          badgeG.onclick = (e) => {
+            e.stopPropagation();
+            node.collapsed = !node.collapsed;
+            renderTree();
+          };
+
+          const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          circle.setAttribute('r', '7');
+          circle.setAttribute('class', 'badge-circle');
+          badgeG.appendChild(circle);
+
+          const sign = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          sign.setAttribute('y', '3');
+          sign.setAttribute('text-anchor', 'middle');
+          sign.setAttribute('class', 'badge-text');
+          sign.textContent = node.collapsed ? '+' : '−';
+          badgeG.appendChild(sign);
+
+          nodeG.appendChild(badgeG);
+        }
+
+        g.appendChild(nodeG);
       }
-      draw(rootNode);
-      svg.setAttribute('viewBox', '0 0 ' + Math.max(700, curY * 1.8) + ' ' + Math.max(450, curY + 50));
+      draw(rootTree);
+
+      applyTransform();
     }
 
-    function zoomIn() {
-      if (mmInstance) mmInstance.rescale(1.25);
+    function applyTransform() {
+      const g = document.getElementById('viewportGroup');
+      if (g) {
+        g.setAttribute('transform', 'translate(' + currentX + ', ' + currentY + ') scale(' + currentScale + ')');
+      }
     }
-    function zoomOut() {
-      if (mmInstance) mmInstance.rescale(0.8);
-    }
+
     function fitView() {
-      if (mmInstance) mmInstance.fit();
+      const cw = viewport.clientWidth || 400;
+      const ch = viewport.clientHeight || 500;
+      const tw = (bbox.maxX - bbox.minX) + 60;
+      const th = (bbox.maxY - bbox.minY) + 60;
+
+      currentScale = Math.min(1.15, Math.max(0.3, Math.min((cw - 30) / tw, (ch - 30) / th)));
+      currentX = (cw - tw * currentScale) / 2 + 10 * currentScale;
+      currentY = (ch - th * currentScale) / 2 + 10 * currentScale;
+      applyTransform();
     }
+
+    function zoomIn() { currentScale = Math.min(currentScale * 1.25, 3.5); applyTransform(); }
+    function zoomOut() { currentScale = Math.max(currentScale * 0.8, 0.25); applyTransform(); }
     function toggleTheme() {
       document.body.classList.toggle('theme-dark');
       const isDark = document.body.classList.contains('theme-dark');
@@ -344,10 +413,38 @@ class _ArtifactViewState extends State<ArtifactViewerView> {
       if (btn) btn.textContent = isDark ? '☀️ Light' : '🌙 Poster Dark';
     }
 
-    window.addEventListener('load', () => {
-      setTimeout(renderMarkmap, 60);
+    viewport.addEventListener('pointerdown', (e) => {
+      isPanning = true;
+      startPointerX = e.clientX;
+      startPointerY = e.clientY;
+      startPosX = currentX;
+      startPosY = currentY;
+      viewport.setPointerCapture(e.pointerId);
     });
-    if (document.readyState === 'complete') renderMarkmap();
+
+    viewport.addEventListener('pointermove', (e) => {
+      if (!isPanning) return;
+      currentX = startPosX + (e.clientX - startPointerX);
+      currentY = startPosY + (e.clientY - startPointerY);
+      applyTransform();
+    });
+
+    const endPan = (e) => {
+      isPanning = false;
+      try { viewport.releasePointerCapture(e.pointerId); } catch (_) {}
+    };
+    viewport.addEventListener('pointerup', endPan);
+    viewport.addEventListener('pointercancel', endPan);
+
+    window.addEventListener('resize', fitView);
+    window.addEventListener('load', () => {
+      renderTree();
+      setTimeout(fitView, 50);
+    });
+    if (document.readyState === 'complete') {
+      renderTree();
+      setTimeout(fitView, 50);
+    }
   </script>
 </body>
 </html>''';
