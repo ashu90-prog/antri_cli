@@ -639,49 +639,15 @@ async function submitPrompt() {
                 contentEl.textContent = accumulated;
               }
               scrollToBottom();
-            } else if (data.name && data.arguments) {
-              // Tool call badge
-              const toolBadge = document.createElement('div');
-              toolBadge.className = 'tool-badge-pill';
-              toolBadge.textContent = `• Tool: ${data.name}`;
-              assistantMsgEl.insertBefore(toolBadge, contentEl);
-              scrollToBottom();
+            } else if (data.artifacts) {
+              lastServerArtifacts = data.artifacts;
             }
           } catch (e) {}
         }
       }
     }
 
-    function parseArtifactHelper(text) {
-      if (!text) return null;
-      const xmlMatch = text.match(/<antri_artifact\s+id="([^"]+)"\s+type="([^"]+)"\s+title="([^"]+)">([\s\S]*?)<\/antri_artifact>/i);
-      if (xmlMatch) {
-        return {
-          id: xmlMatch[1],
-          type: xmlMatch[2].toLowerCase(),
-          title: xmlMatch[3],
-          cleanText: text.replace(/<antri_artifact[\s\S]*?<\/antri_artifact>/gi, '').trim(),
-        };
-      }
-      if (text.includes('"create_artifact"')) {
-        try {
-          const jsonMatch = text.match(/\{[\s\S]*"name"\s*:\s*"create_artifact"[\s\S]*\}/);
-          if (jsonMatch) {
-            const parsed = JSON.parse(jsonMatch[0]);
-            const params = parsed.parameters || parsed.args || parsed;
-            return {
-              id: 'art_' + Date.now().toString(36),
-              type: (params.type || 'mindmap').toLowerCase(),
-              title: params.title || 'Generated Artifact',
-              cleanText: text.replace(jsonMatch[0], '').trim(),
-            };
-          }
-        } catch (_) {}
-      }
-      return null;
-    }
-
-    const artData = parseArtifactHelper(accumulated);
+    const artData = parseArtifactHelper(accumulated, lastServerArtifacts);
     if (artData) {
       contentEl.textContent = artData.cleanText;
       const isMindmap = artData.type === 'mindmap';
@@ -699,7 +665,7 @@ async function submitPrompt() {
             <div style="font-size:11.5px;color:var(--text-muted);">${artSubtitle}</div>
           </div>
         </div>
-        <button class="chat-artifact-btn" onclick="openArtifactViewer('${artData.id}', '${escapeHtml(artData.title)}', '${artData.type}')">👁️ View Artifact</button>
+        <button class="chat-artifact-btn" onclick="openArtifactViewer('${encodeURIComponent(artData.id)}', '${escapeHtml(artData.title)}', '${artData.type}')">👁️ View Artifact</button>
       `;
       assistantMsgEl.appendChild(embed);
     }
@@ -712,24 +678,67 @@ async function submitPrompt() {
   }
 }
 
-async function respondDesktopPermission(requestId, allowed, alwaysAllow) {
-  const card = document.getElementById(`card-${requestId}`);
-  if (card) {
-    card.innerHTML = `<div style="font-size:12px;font-weight:600;color:${allowed ? '#10b981' : '#f43f5e'};padding:4px 0;">${allowed ? '✓ Permission granted by user.' : '✕ Permission denied by user.'}</div>`;
+function parseArtifactHelper(text, serverArtifacts = null) {
+  if (!text) return null;
+
+  if (serverArtifacts && serverArtifacts.length > 0) {
+    const art = serverArtifacts[0];
+    return {
+      id: art.id,
+      type: (art.type || 'html').toLowerCase(),
+      title: art.title || 'Generated Artifact',
+      cleanText: text
+        .replace(/<antri_artifact[\s\S]*?<\/antri_artifact>/gi, '')
+        .replace(/\{[\s\S]*"name"\s*:\s*"create_artifact"[\s\S]*\}/gi, '')
+        .replace(/> 🎨 \*\*\[Artifact Created:[\s\S]*?launch\.\n\n/gi, '')
+        .trim(),
+    };
   }
-  try {
-    await fetch('/api/permission/response', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ requestId, allowed, alwaysAllow }),
-    });
-    if (alwaysAllow) {
-      showToast('Permissions set to Always-Allow.');
-      await loadStatus();
-    }
-  } catch (e) {
-    console.error('Failed to submit permission response:', e);
+
+  // 1. Match XML tag
+  const xmlMatch = text.match(/<antri_artifact\s+id="([^"]+)"\s+type="([^"]+)"\s+title="([^"]+)">([\s\S]*?)<\/antri_artifact>/i);
+  if (xmlMatch) {
+    return {
+      id: xmlMatch[1],
+      type: xmlMatch[2].toLowerCase(),
+      title: xmlMatch[3],
+      cleanText: text.replace(/<antri_artifact[\s\S]*?<\/antri_artifact>/gi, '').trim(),
+    };
   }
+
+  // 2. Match Markdown Badge format: ID: `art_xxx`
+  const badgeMatch = text.match(/\[Artifact Created:\s*([^\]]+)\][\s\S]*?Type:\s*`([^`]+)`[\s\S]*?ID:\s*`([^`]+)`/i);
+  if (badgeMatch) {
+    const title = badgeMatch[1].trim();
+    const rawType = badgeMatch[2].trim().toLowerCase();
+    const type = rawType.includes('mind') ? 'mindmap' : rawType.includes('graph') ? 'graph' : 'html';
+    const id = badgeMatch[3].trim();
+    return {
+      id,
+      type,
+      title,
+      cleanText: text.replace(/> 🎨 \*\*\[Artifact Created:[\s\S]*?launch\.\n\n/gi, '').trim(),
+    };
+  }
+
+  // 3. Match JSON create_artifact
+  if (text.includes('"create_artifact"')) {
+    try {
+      const jsonMatch = text.match(/\{[\s\S]*"name"\s*:\s*"create_artifact"[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        const params = parsed.parameters || parsed.args || parsed;
+        const title = params.title || 'Generated Artifact';
+        return {
+          id: title,
+          type: (params.type || 'mindmap').toLowerCase(),
+          title: title,
+          cleanText: text.replace(jsonMatch[0], '').trim(),
+        };
+      }
+    } catch (_) {}
+  }
+  return null;
 }
 
 function appendMessage(role, text) {
@@ -738,35 +747,6 @@ function appendMessage(role, text) {
   row.className = `msg-row ${role}`;
   const content = document.createElement('div');
   content.className = 'msg-content';
-
-  function parseArtifactHelper(text) {
-    if (!text) return null;
-    const xmlMatch = text.match(/<antri_artifact\s+id="([^"]+)"\s+type="([^"]+)"\s+title="([^"]+)">([\s\S]*?)<\/antri_artifact>/i);
-    if (xmlMatch) {
-      return {
-        id: xmlMatch[1],
-        type: xmlMatch[2].toLowerCase(),
-        title: xmlMatch[3],
-        cleanText: text.replace(/<antri_artifact[\s\S]*?<\/antri_artifact>/gi, '').trim(),
-      };
-    }
-    if (text.includes('"create_artifact"')) {
-      try {
-        const jsonMatch = text.match(/\{[\s\S]*"name"\s*:\s*"create_artifact"[\s\S]*\}/);
-        if (jsonMatch) {
-          const parsed = JSON.parse(jsonMatch[0]);
-          const params = parsed.parameters || parsed.args || parsed;
-          return {
-            id: 'art_' + Date.now().toString(36),
-            type: (params.type || 'mindmap').toLowerCase(),
-            title: params.title || 'Generated Artifact',
-            cleanText: text.replace(jsonMatch[0], '').trim(),
-          };
-        }
-      } catch (_) {}
-    }
-    return null;
-  }
 
   const artData = role === 'assistant' ? parseArtifactHelper(text) : null;
   if (artData) {
@@ -788,7 +768,7 @@ function appendMessage(role, text) {
           <div style="font-size:11.5px;color:var(--text-muted);">${artSubtitle}</div>
         </div>
       </div>
-      <button class="chat-artifact-btn" onclick="openArtifactViewer('${artData.id}', '${escapeHtml(artData.title)}', '${artData.type}')">👁️ View Artifact</button>
+      <button class="chat-artifact-btn" onclick="openArtifactViewer('${encodeURIComponent(artData.id)}', '${escapeHtml(artData.title)}', '${artData.type}')">👁️ View Artifact</button>
     `;
     row.appendChild(embed);
   } else {

@@ -281,8 +281,31 @@ export class DesktopServer {
     // GET /api/artifacts/:id/view (Render standalone HTML / visual graph artifact)
     if (pathname?.startsWith('/api/artifacts/') && pathname.endsWith('/view') && req.method === 'GET') {
       const { artifactManager } = await import('../core/artifactManager.js');
-      const id = pathname.replace('/api/artifacts/', '').replace('/view', '').trim();
-      const artifact = artifactManager.getArtifact(id);
+      const rawId = pathname.replace('/api/artifacts/', '').replace('/view', '').trim();
+      const id = decodeURIComponent(rawId);
+
+      let artifact: any = artifactManager.getArtifact(id);
+
+      // Fallback 1: Lookup by lowercase ID or title match
+      if (!artifact) {
+        const all = artifactManager.getAllArtifacts();
+        artifact = all.find(
+          (a) =>
+            a.id.toLowerCase() === id.toLowerCase() ||
+            a.title.toLowerCase() === id.toLowerCase() ||
+            a.title.toLowerCase().includes(id.toLowerCase())
+        );
+      }
+
+      // Fallback 2: If 'latest' or unmatched, return the newest created artifact
+      if (!artifact) {
+        const all = artifactManager.getAllArtifacts();
+        if (all && all.length > 0) {
+          const sorted = [...all].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+          artifact = sorted[0];
+        }
+      }
+
       if (!artifact) {
         res.writeHead(404, { 'Content-Type': 'text/plain' });
         res.end('Artifact not found');
@@ -382,7 +405,20 @@ export class DesktopServer {
                 });
               }
             );
-            sendEvent('complete', { fullText });
+            const { artifactManager } = await import('../core/artifactManager.js');
+            const { sessionManager } = await import('../core/sessionManager.js');
+            const activeSession = sessionManager.getActiveSession();
+            const parsed = artifactManager.parseAndStoreArtifacts(
+              fullText,
+              activeSession?.id || 'cli_session',
+              activeSession?.title || 'Desktop Session'
+            );
+
+            sendEvent('complete', {
+              fullText,
+              cleanText: parsed.cleanText,
+              artifacts: parsed.artifacts,
+            });
             res.end();
           } catch (err: any) {
             sendEvent('error', { message: err.message });
