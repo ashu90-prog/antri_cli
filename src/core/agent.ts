@@ -20,7 +20,7 @@ export function isArtifactOrVisualPrompt(prompt: string): boolean {
   const p = prompt.trim().toLowerCase();
   
   // Artifacts and visual previews are EXCLUSIVELY enabled via explicit slash commands
-  return p.startsWith('/mindmap') || p.startsWith('/imagine') || p.startsWith('/view') || p.startsWith('/artifacts');
+  return p.startsWith('/mindmap') || p.startsWith('/imagine') || p.startsWith('/view') || p.startsWith('/artifacts') || p.startsWith('/arch');
 }
 
 export class AntriAgent {
@@ -81,11 +81,11 @@ export class AntriAgent {
 
     const visualArtifactSection = isVisual
       ? `
-- 🎨 In-Chat Visual Previews & Standalone Plans (Active for /view, /artifacts, /mindmap, /imagine):
+- 🎨 In-Chat Visual Previews & Standalone Plans (Active for /view, /artifacts, /mindmap, /imagine, /arch):
+  - 🏗️ Codebase & Architecture Graphs (/arch, /imagine):
+    - When the user uses /arch or /imagine, generate a comprehensive Mermaid diagram wrapped in <antri_artifact id="graph_UNIQUE_ID" type="graph" title="ARCHITECTURE TITLE">graph TD ...</antri_artifact>.
   - 🌐 ONLY when explicitly requested via slash commands (/view, /artifacts) for non-code visual plans:
     - Build an interactive single-file SPA wrapped inside <antri_artifact id="art_UNIQUE_ID" type="html" title="DESCRIPTIVE TITLE"><!DOCTYPE html><html>...</html></antri_artifact>.
-  - 📊 Visual Architecture & Flowchart Graphs (/imagine):
-    - When the user uses /imagine, generate a Mermaid diagram wrapped in <antri_artifact id="graph_UNIQUE_ID" type="graph" title="ARCHITECTURE TITLE">graph TD ...</antri_artifact>.
   - 🧠 Interactive Visual Mind Maps (/mindmap):
     - When the user uses /mindmap, generate a rich Mermaid mindmap wrapped in <antri_artifact id="mindmap_UNIQUE_ID" type="mindmap" title="TOPIC TITLE">mindmap ...</antri_artifact>.
     - 🚨 ABSOLUTE MANDATE: You MUST tailor ALL branches and leaf nodes to the specific subject requested by the user. NEVER output generic placeholder words.`

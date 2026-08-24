@@ -19,6 +19,7 @@ export const PROMPT_TOOLKIT_COMMANDS: SlashCommand[] = [
   { name: '/goal', description: 'Run autonomous multi-step goal loop: plan, critique, refine & deliver' },
   { name: '/silent-goal', description: 'Run Goal Loop optimization silently in background and deliver final plan' },
   { name: '/loop', description: 'Iterate on a task until optimal battle-tested result is achieved' },
+  { name: '/arch', description: 'Generate an interactive visual architecture diagram of the current workspace codebase' },
   { name: '/imagine', description: 'Create a visual code architecture diagram & graph artifact' },
   { name: '/mindmap', description: 'Create an interactive visual mind map and concept tree artifact' },
   { name: '/view', description: 'Generate an interactive HTML application or plan artifact' },

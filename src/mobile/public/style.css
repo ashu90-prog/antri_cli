@@ -587,3 +587,45 @@ body.mobile-app {
 .hidden {
   display: none !important;
 }
+
+/* Mobile Modal Viewer */
+.mobile-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 12px;
+}
+
+.mobile-modal-box {
+  background: var(--bg-card, #18181b);
+  border: 1px solid var(--border-main, #27272a);
+  border-radius: 12px;
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.mobile-modal-header {
+  padding: 10px 14px;
+  background: var(--bg-header, #121214);
+  border-bottom: 1px solid var(--border-main, #27272a);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.mobile-modal-close {
+  background: transparent;
+  border: none;
+  color: var(--text-tertiary);
+  font-size: 16px;
+  cursor: pointer;
+}

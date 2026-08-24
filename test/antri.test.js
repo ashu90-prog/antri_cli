@@ -71,7 +71,7 @@ test('ToolExecutor identifies privacy & security sensitive tools', () => {
 
 test('Updater reports correct package name and current version', () => {
   assert.strictEqual(Updater.PACKAGE_NAME, 'antri_cli');
-  assert.strictEqual(Updater.CURRENT_VERSION, '1.57.21');
+  assert.strictEqual(Updater.CURRENT_VERSION, '1.57.22');
 });
 
 test('GoalLoopEngine initializes with active configuration', () => {
@@ -893,11 +893,21 @@ test('ProjectBugFixer enforces API Key Setup Gate when provider is unconfigured'
   AuthManager.logout();
 });
 
-test('Prompt Toolkit commands include /fix and /selfheal', async () => {
+test('Prompt Toolkit commands include /fix, /selfheal, and /arch', async () => {
   const { PROMPT_TOOLKIT_COMMANDS } = await import('../dist/cli/promptToolkit.js');
   const names = PROMPT_TOOLKIT_COMMANDS.map((c) => c.name);
   assert.ok(names.includes('/fix'));
   assert.ok(names.includes('/selfheal'));
+  assert.ok(names.includes('/arch'));
+});
+
+test('ArchitectureAnalyzer scans codebase and generates Mermaid flowchart', async () => {
+  const { ArchitectureAnalyzer } = await import('../dist/core/architectureAnalyzer.js');
+  const analysis = ArchitectureAnalyzer.analyze(process.cwd());
+  assert.ok(analysis.projectName.length > 0);
+  assert.ok(analysis.projectType.length > 0);
+  assert.ok(Array.isArray(analysis.directories));
+  assert.ok(analysis.mermaidDiagram.includes('graph TD'));
 });
 
 

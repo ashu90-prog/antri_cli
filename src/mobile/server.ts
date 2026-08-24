@@ -164,11 +164,46 @@ export class MobileServer {
                 });
               }
             );
-            sendEvent('complete', { fullText });
+            const { artifactManager } = await import('../core/artifactManager.js');
+            const parsed = artifactManager.parseAndStoreArtifacts(
+              fullText,
+              'mobile_session',
+              'Mobile Session'
+            );
+            sendEvent('complete', {
+              fullText,
+              cleanText: parsed.cleanText,
+              artifacts: parsed.artifacts,
+            });
             res.end();
           } catch (err: any) {
             sendEvent('error', { message: err.message });
             res.end();
+          }
+          return;
+        }
+
+        // GET /api/artifacts
+        if (pathname === '/api/artifacts' && req.method === 'GET') {
+          const { artifactManager } = await import('../core/artifactManager.js');
+          const artifacts = artifactManager.getAllArtifacts();
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ artifacts }));
+          return;
+        }
+
+        // GET /api/artifact-file/:id
+        if (pathname.startsWith('/api/artifact-file/') && req.method === 'GET') {
+          const id = pathname.replace('/api/artifact-file/', '').trim();
+          const { artifactManager } = await import('../core/artifactManager.js');
+          const art = artifactManager.getArtifact(id);
+          const htmlContent = art ? artifactManager.getArtifactHtml(art) : null;
+          if (htmlContent) {
+            res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+            res.end(htmlContent);
+          } else {
+            res.writeHead(404, { 'Content-Type': 'text/plain' });
+            res.end('Artifact Not Found');
           }
           return;
         }

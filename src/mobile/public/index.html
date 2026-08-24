@@ -43,6 +43,7 @@
           <h2>ANTRI Mobile</h2>
           <p>Standalone mobile coding intelligence with local thinking profiles, dialectic reasoning, and multimodal image inspection.</p>
           <div class="quick-pills">
+            <button onclick="setPrompt('/arch')">🏗️ /arch Diagram</button>
             <button onclick="setPrompt('Analyze software architecture trade-offs')">Architecture</button>
             <button onclick="setPrompt('/debate What are the limits of LLM context windows?')">Debate</button>
             <button onclick="setPrompt('/goal Build a zero-dependency LRU cache')">Goal Loop</button>
@@ -281,6 +282,19 @@
       <span class="nav-label">Settings</span>
     </button>
   </nav>
+
+  <!-- Mobile Artifact Viewer Modal -->
+  <div id="mobile-artifact-modal" class="mobile-modal-backdrop" style="display:none;" onclick="if(event.target===this)closeMobileArtifactViewer()">
+    <div class="mobile-modal-box">
+      <div class="mobile-modal-header">
+        <h3 id="mobile-modal-artifact-title" style="margin:0;font-size:15px;color:var(--text-primary);">Artifact Diagram</h3>
+        <button class="mobile-modal-close" onclick="closeMobileArtifactViewer()">✕</button>
+      </div>
+      <div class="mobile-modal-body" style="padding:0;height:70vh;">
+        <iframe id="mobile-artifact-iframe" style="width:100%;height:100%;border:none;border-radius:0 0 12px 12px;background:#ffffff;"></iframe>
+      </div>
+    </div>
+  </div>
 
   <script src="app.js"></script>
 </body>

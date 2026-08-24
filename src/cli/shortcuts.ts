@@ -296,6 +296,30 @@ export class ShortcutHandler {
       return { handled: true };
     }
 
+    // /arch [path] -> Generate interactive codebase architecture diagram artifact
+    if (trimmed === '/arch' || trimmed.startsWith('/arch ')) {
+      const { ArchitectureAnalyzer } = await import('../core/architectureAnalyzer.js');
+      const targetPath = trimmed.replace(/^\/arch/, '').trim() || configManager.get().workingDir || process.cwd();
+      console.log(chalk.bold.hex('#38bdf8')('\n🏗️  Analyzing Codebase & Generating Architecture Diagram...'));
+      const analysis = ArchitectureAnalyzer.analyze(targetPath);
+      console.log(chalk.cyan(`Project: ${chalk.bold(analysis.projectName)} (${analysis.projectType})`));
+      console.log(chalk.gray(`Found ${analysis.directories.length} subsystem directories across repository.`));
+
+      const archPrompt = `/arch Generate an extensive, hierarchical Mermaid architectural flowchart diagram for: "${analysis.projectName}".
+Here is the scanned repository topology:
+- Project: ${analysis.projectName} (${analysis.projectType})
+- Subsystems: ${analysis.directories.join(', ')}
+- Entry Points: ${analysis.entryPoints.join(', ')}
+
+You MUST output the complete architecture graph wrapped in an artifact tag:
+<antri_artifact id="arch_${Date.now().toString(36)}" type="graph" title="${analysis.projectName} Architecture">
+${analysis.mermaidDiagram}
+</antri_artifact>
+Explain the key architectural layers, dependency flow, and module boundaries clearly.`;
+      await this.agent.chat(archPrompt);
+      return { handled: true };
+    }
+
     // /imagine [code/topic] -> Generate architecture graph artifact
     if (trimmed === '/imagine' || trimmed.startsWith('/imagine ')) {
       let query = trimmed.replace(/^\/imagine/, '').trim();

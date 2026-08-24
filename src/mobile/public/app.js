@@ -236,13 +236,22 @@ async function submitMobilePrompt() {
                 contentEl.textContent = accumulated;
                 scrollMobileChat();
               }
+              if (data.cleanText) {
+                contentEl.textContent = data.cleanText;
+              }
+              if (data.artifacts && data.artifacts.length > 0) {
+                renderMobileArtifactCards(assistantMsgEl, data.artifacts);
+              }
             } catch (e) {}
           }
         }
       }
     } else {
       const data = await res.json();
-      contentEl.textContent = data.response || data.error || 'Response received.';
+      contentEl.textContent = data.cleanText || data.response || data.error || 'Response received.';
+      if (data.artifacts && data.artifacts.length > 0) {
+        renderMobileArtifactCards(assistantMsgEl, data.artifacts);
+      }
     }
 
     // Save interaction to local episodic memory
@@ -254,6 +263,36 @@ async function submitMobilePrompt() {
     sendBtn.disabled = false;
     sendBtn.textContent = 'Send';
   }
+}
+
+function renderMobileArtifactCards(msgEl, artifacts) {
+  artifacts.forEach((art) => {
+    const card = document.createElement('div');
+    card.className = 'mobile-artifact-embed';
+    card.style.cssText = 'margin-top:8px;background:var(--bg-card,#18181b);border:1px solid var(--border-color,#27272a);border-radius:8px;padding:8px 12px;display:flex;justify-content:space-between;align-items:center;';
+    card.innerHTML = `
+      <div style="font-size:13px;font-weight:600;color:var(--text-primary,#fff);">🌐 ${art.title}</div>
+      <button style="background:var(--primary,#6366f1);color:#fff;border:none;border-radius:4px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;" onclick="openMobileArtifactViewer('${art.id}', '${art.title}')">View Diagram</button>
+    `;
+    msgEl.appendChild(card);
+  });
+  scrollMobileChat();
+}
+
+function openMobileArtifactViewer(id, title) {
+  const modal = document.getElementById('mobile-artifact-modal');
+  const iframe = document.getElementById('mobile-artifact-iframe');
+  const titleEl = document.getElementById('mobile-modal-artifact-title');
+  if (titleEl) titleEl.textContent = title || 'Architecture Diagram';
+  if (iframe) iframe.src = `/api/artifact-file/${id}`;
+  if (modal) modal.style.display = 'flex';
+}
+
+function closeMobileArtifactViewer() {
+  const modal = document.getElementById('mobile-artifact-modal');
+  const iframe = document.getElementById('mobile-artifact-iframe');
+  if (iframe) iframe.src = '';
+  if (modal) modal.style.display = 'none';
 }
 
 function appendMobileMessage(role, text) {
