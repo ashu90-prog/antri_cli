@@ -169,7 +169,7 @@ async function showTab(tabName) {
   const targetPanel = document.getElementById(`tab-${tabName}`);
   if (targetPanel) targetPanel.classList.add('active');
 
-  const navIndex = ['chat', 'dialectic', 'goal', 'profiles', 'skills', 'memory', 'artifacts'].indexOf(tabName);
+  const navIndex = ['chat', 'dialectic', 'goal', 'profiles', 'skills', 'memory', 'artifacts', 'suggestions'].indexOf(tabName);
   const navButtons = document.querySelectorAll('.nav-item');
   if (navButtons[navIndex]) navButtons[navIndex].classList.add('active');
 
@@ -181,6 +181,8 @@ async function showTab(tabName) {
     await loadMemory();
   } else if (tabName === 'artifacts') {
     await loadArtifactsTab();
+  } else if (tabName === 'suggestions') {
+    loadSuggestionsTab();
   }
 }
 
@@ -1659,4 +1661,186 @@ async function submitDesktopLogout() {
   } catch (err) {
     console.error('Logout error:', err);
   }
+}
+
+// Suggestions & Creative Ideation Studio Engine
+const SUGGESTION_PRESETS = [
+  {
+    id: 'sug_1',
+    category: 'portfolio',
+    categoryName: 'Next.js Portfolio',
+    badge: 'Option 1 · Dark Cyberpunk / Aurora',
+    title: 'Aurora Glow Engineering Portfolio',
+    description: 'High-impact personal developer portfolio featuring glowing aurora glassmorphism cards, interactive skills matrix, and smooth navigation.',
+    features: [
+      'Next.js 14 App Router with TypeScript & Tailwind CSS',
+      'Glowing ambient aura gradients and smooth responsive layout',
+      'Featured Projects grid with live demo and GitHub source links',
+      'Interactive Contact Me section with instant feedback'
+    ],
+    prompt: 'Code me a complete Next.js 14 Developer Portfolio with an Aurora Glow Dark Theme, animated project cards, skills section, and contact form.'
+  },
+  {
+    id: 'sug_2',
+    category: 'portfolio',
+    categoryName: 'Next.js Portfolio',
+    badge: 'Option 2 · Bento Grid Minimalist',
+    title: 'Bento-Grid Silicon Valley Portfolio',
+    description: 'Ultra-clean, modern Linear/Apple style bento grid layout showcasing engineering milestones, telemetry metrics, and systems projects.',
+    features: [
+      'Modular Bento Grid architecture (Hero, Stat counters, Project tiles)',
+      'Clean typography stack with Tailwind CSS and Lucide React icons',
+      'Experience timeline with expandable achievement breakdowns',
+      'Instant responsive mobile menu and dark theme styling'
+    ],
+    prompt: 'Code me a complete Next.js Developer Portfolio using a modern Bento-Grid layout, Lucide React icons, experience timeline, and project showcase.'
+  },
+  {
+    id: 'sug_3',
+    category: 'saas',
+    categoryName: 'SaaS Web App',
+    badge: 'Option 3 · Modern SaaS Platform',
+    title: 'AI Analytics & Metric Intelligence Platform',
+    description: 'Full-featured SaaS web application featuring KPI metric counters, real-time activity feeds, data charts, and modular views.',
+    features: [
+      'Next.js 14 with React Server Components & client interactivity',
+      'Sidebar navigation with Overview, Analytics, and Settings',
+      'Live metric KPI stat cards with trend percentage indicators (+18.4%)',
+      'Responsive data table with filtering and pagination'
+    ],
+    prompt: 'Code me a full-stack Next.js SaaS Analytics Dashboard with KPI stat cards, sidebar navigation, activity feed, and responsive data tables.'
+  },
+  {
+    id: 'sug_4',
+    category: 'cli',
+    categoryName: 'CLI Utility',
+    badge: 'Option 4 · Autonomous CLI Tool',
+    title: 'Autonomous Code Review & Git Diff Inspector',
+    description: 'Production-grade Node.js/TypeScript CLI tool that inspects git diffs, analyzes code complexity, and generates audit reports.',
+    features: [
+      'Commander.js CLI argument parsing with colored Chalk output',
+      'Interactive Ora spinners and step-by-step progress logging',
+      'Modular architecture: src/index.ts, src/core/analyzer.ts, src/cli/ui.ts',
+      'Package.json with bin executable definition and build scripts'
+    ],
+    prompt: 'Build a production-grade TypeScript CLI tool for automated Git code review with Commander, Chalk, Ora, and modular architecture.'
+  },
+  {
+    id: 'sug_5',
+    category: 'backend',
+    categoryName: 'Microservices & APIs',
+    badge: 'Option 5 · Distributed Express API',
+    title: 'High-Throughput Authentication & Event Microservice',
+    description: 'Robust Node.js Express REST & SSE API with rate limiting, JWT token rotation, structured error envelopes, and middleware.',
+    features: [
+      'Express.js + TypeScript with clean Controller-Service-Repository pattern',
+      'Token Bucket rate limiting and constant-time cryptographic validation',
+      'Standard JSON response envelopes ({ success: true, data: {...} })',
+      'Health check endpoint and comprehensive error handling middleware'
+    ],
+    prompt: 'Code a modular Express.js TypeScript REST API microservice with JWT auth, rate limiting, and structured response envelopes.'
+  }
+];
+
+let activeSuggestionsFilter = 'all';
+
+function loadSuggestionsTab() {
+  renderSuggestionsGrid();
+}
+
+function filterSuggestions(cat) {
+  activeSuggestionsFilter = cat;
+  document.querySelectorAll('.cat-chip').forEach(el => el.classList.remove('active'));
+  const target = Array.from(document.querySelectorAll('.cat-chip')).find(el => {
+    if (cat === 'all') return el.textContent.includes('All');
+    if (cat === 'portfolio') return el.textContent.includes('Portfolio');
+    if (cat === 'saas') return el.textContent.includes('SaaS');
+    if (cat === 'cli') return el.textContent.includes('CLI');
+    if (cat === 'backend') return el.textContent.includes('Microservices');
+    return false;
+  });
+  if (target) target.classList.add('active');
+  renderSuggestionsGrid();
+}
+
+function renderSuggestionsGrid() {
+  const container = document.getElementById('suggestions-cards-grid');
+  if (!container) return;
+
+  const filtered = activeSuggestionsFilter === 'all'
+    ? SUGGESTION_PRESETS
+    : SUGGESTION_PRESETS.filter(s => s.category === activeSuggestionsFilter);
+
+  container.innerHTML = filtered.map((s, idx) => `
+    <div class="suggestion-card">
+      <div>
+        <div class="suggestion-card-header">
+          <span class="suggestion-badge">${s.badge}</span>
+          <span style="font-size:11px;color:var(--text-tertiary);">${s.categoryName}</span>
+        </div>
+        <h3 class="suggestion-title">${s.title}</h3>
+        <p class="suggestion-desc">${s.description}</p>
+        <div class="suggestion-features">
+          ${s.features.map(f => `<div class="suggestion-feature-item">${f}</div>`).join('')}
+        </div>
+      </div>
+      <div class="suggestion-card-actions">
+        <button class="btn-adopt-idea" onclick="adoptSuggestion(${idx})">🚀 Build This Idea</button>
+        <button class="btn-tweak-idea" onclick="tweakSuggestion(${idx})">✏️ Customize</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function adoptSuggestion(index) {
+  const filtered = activeSuggestionsFilter === 'all'
+    ? SUGGESTION_PRESETS
+    : SUGGESTION_PRESETS.filter(s => s.category === activeSuggestionsFilter);
+  const sug = filtered[index];
+  if (!sug) return;
+
+  showTab('chat');
+  const chatInput = document.getElementById('chat-input');
+  if (chatInput) {
+    chatInput.value = sug.prompt;
+    chatInput.focus();
+  }
+  showToast(`Loaded "${sug.title}" into Agent Studio.`);
+}
+
+function tweakSuggestion(index) {
+  const filtered = activeSuggestionsFilter === 'all'
+    ? SUGGESTION_PRESETS
+    : SUGGESTION_PRESETS.filter(s => s.category === activeSuggestionsFilter);
+  const sug = filtered[index];
+  if (!sug) return;
+
+  const customInput = document.getElementById('custom-idea-input');
+  if (customInput) {
+    customInput.value = `I want to build "${sug.title}".\nAdjustments / Custom Requirements:\n- `;
+    customInput.focus();
+    customInput.scrollIntoView({ behavior: 'smooth' });
+  }
+}
+
+function generateNewSuggestions() {
+  showToast('Brainstormed fresh creative blueprints!');
+  renderSuggestionsGrid();
+}
+
+function buildFromCustomIdea() {
+  const customInput = document.getElementById('custom-idea-input');
+  const val = (customInput?.value || '').trim();
+  if (!val) {
+    alert('Please enter your custom requirements or ideas first.');
+    return;
+  }
+
+  showTab('chat');
+  const chatInput = document.getElementById('chat-input');
+  if (chatInput) {
+    chatInput.value = val;
+    chatInput.focus();
+  }
+  showToast('Sent custom vision to Agent Studio.');
 }

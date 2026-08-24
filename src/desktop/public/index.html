@@ -15,7 +15,7 @@
   <header class="app-header">
     <div class="brand-zone">
       <span class="logo-mark">ANTRI</span>
-      <span class="version-tag">v1.57.20</span>
+      <span class="version-tag">v1.57.21</span>
     </div>
 
     <!-- Mode Toggle -->
@@ -96,6 +96,9 @@
       </button>
       <button class="nav-item" onclick="showTab('artifacts')">
         <span class="nav-label">Artifacts Hub</span>
+      </button>
+      <button class="nav-item" onclick="showTab('suggestions')">
+        <span class="nav-label">💡 Suggestions & Ideas</span>
       </button>
 
       <div class="sidebar-footer">
@@ -449,6 +452,48 @@
 
         <div id="artifacts-grouped-container" class="artifacts-container">
           <!-- Populated dynamically via JS -->
+        </div>
+      </section>
+
+      <!-- TAB 8: Suggestions & Ideation Studio -->
+      <section id="tab-suggestions" class="tab-panel">
+        <div class="panel-header">
+          <div class="panel-title-group">
+            <h2 class="panel-title">💡 Suggestions & Creative Ideation Studio</h2>
+            <p class="panel-subtitle">Explore 2-3 tailored architectural blueprints, design themes, and feature ideas. Select any idea or provide your own customized requirements!</p>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="action-btn" onclick="generateNewSuggestions()">✨ Brainstorm Ideas</button>
+          </div>
+        </div>
+
+        <div class="suggestions-layout">
+          <!-- Category Chips -->
+          <div class="suggestions-categories">
+            <button class="cat-chip active" onclick="filterSuggestions('all')">🌟 All Ideas</button>
+            <button class="cat-chip" onclick="filterSuggestions('portfolio')">💼 Next.js Portfolio</button>
+            <button class="cat-chip" onclick="filterSuggestions('saas')">⚡ Modern SaaS Web App</button>
+            <button class="cat-chip" onclick="filterSuggestions('cli')">🛠️ CLI Agent & Utilities</button>
+            <button class="cat-chip" onclick="filterSuggestions('backend')">🌐 Microservices & APIs</button>
+          </div>
+
+          <!-- Active Suggestion Cards Grid -->
+          <div id="suggestions-cards-grid" class="suggestions-grid">
+            <!-- Populated dynamically via JS -->
+          </div>
+
+          <!-- Custom Idea Builder Input Card -->
+          <div class="custom-idea-card">
+            <div class="custom-idea-header">
+              <h3>🎨 Custom Architecture & Personal Vision</h3>
+              <span class="badge" style="background:var(--primary-subtle);color:var(--primary);">Adaptive Customizer</span>
+            </div>
+            <p style="font-size:13px;color:var(--text-muted);margin:8px 0 12px 0;">Have your own idea or want to modify one of the suggestions above? Type your thoughts below and the agent will build it with maximum craftsmanship.</p>
+            <textarea id="custom-idea-input" class="custom-idea-textarea" placeholder="e.g., Build Option 1, but add an interactive GitHub commit heatmap, dark obsidian theme with glowing cyan accents, and an interactive project filter tabs..."></textarea>
+            <div class="custom-idea-actions">
+              <button class="action-btn" onclick="buildFromCustomIdea()">🚀 Build Custom Project in Studio</button>
+            </div>
+          </div>
         </div>
       </section>
 

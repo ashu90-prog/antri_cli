@@ -505,6 +505,18 @@ export class ToolExecutor {
   }
 
   public static materializeNextJsPortfolio(workingDir: string): string[] {
+    // If workingDir already contains an existing project package.json (e.g. antri_cli), place in ./portfolio subfolder
+    let targetDir = workingDir;
+    const rootPkg = path.join(workingDir, 'package.json');
+    if (fs.existsSync(rootPkg)) {
+      try {
+        const pkgContent = fs.readFileSync(rootPkg, 'utf-8');
+        if (pkgContent.includes('"antri_cli"') || pkgContent.includes('"name": "antri')) {
+          targetDir = path.join(workingDir, 'portfolio');
+        }
+      } catch (_) {}
+    }
+
     const files: Record<string, string> = {
       'package.json': JSON.stringify(
         {
@@ -887,13 +899,13 @@ export default function Home() {
 
     const written: string[] = [];
     for (const [relPath, content] of Object.entries(files)) {
-      const fullPath = path.resolve(workingDir, relPath);
+      const fullPath = path.resolve(targetDir, relPath);
       const dir = path.dirname(fullPath);
       if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
       }
       fs.writeFileSync(fullPath, content, 'utf-8');
-      written.push(relPath);
+      written.push(path.relative(workingDir, fullPath).replace(/\\/g, '/'));
     }
     return written;
   }
