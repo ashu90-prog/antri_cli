@@ -57,12 +57,9 @@ export class SkillManager {
 
     for (const [filename, content] of Object.entries(coreDefinitions)) {
       const targetPath = path.join(this.skillsDir, filename);
-      // If file doesn't exist, write default core skill
-      if (!fs.existsSync(targetPath)) {
-        try {
-          fs.writeFileSync(targetPath, content, 'utf-8');
-        } catch {}
-      }
+      try {
+        fs.writeFileSync(targetPath, content, 'utf-8');
+      } catch {}
     }
   }
 

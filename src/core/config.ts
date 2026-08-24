@@ -3,12 +3,13 @@ import path from 'path';
 import os from 'os';
 import dotenv from 'dotenv';
 import { AntriConfig, ProviderType, DebateDepth, AgentMode } from '../types.js';
+import { Updater } from './updater.js';
 
 // Load .env if present
 dotenv.config();
 
 export const DEFAULT_CONFIG: AntriConfig = {
-  version: '1.57.6',
+  version: Updater.CURRENT_VERSION,
   provider: 'deepseek',
   model: 'deepseek-v4-flash-(latest)',
   mode: 'vibe',
