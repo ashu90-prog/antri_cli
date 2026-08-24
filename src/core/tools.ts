@@ -443,9 +443,12 @@ export const AVAILABLE_TOOLS: ToolDefinition[] = [
       required: ['goal'],
     },
   },
+];
+
+export const ARTIFACT_TOOLS: ToolDefinition[] = [
   {
     name: 'create_artifact',
-    description: 'Create and save an interactive HTML application/plan, visual code architecture graph, or hierarchical visual mind map artifact (Claude-style Artifact). When creating a mindmap, "content" MUST contain a complete, deeply factual Mermaid mindmap tailored to the requested topic with 4 to 6 real domain pillars and 2 to 4 granular subtopics each. NEVER output placeholder words like "Key Branch", "Subtopic", "Detail", or "Pillar".',
+    description: 'Create and save an interactive visual plan or hierarchical Mermaid mind map artifact ONLY when explicitly requested via slash commands (/view, /artifacts, /mindmap, /imagine). NEVER use this for building real software, web apps, or CLI tools.',
     parameters: {
       type: 'object',
       properties: {
@@ -456,11 +459,11 @@ export const AVAILABLE_TOOLS: ToolDefinition[] = [
         type: {
           type: 'string',
           enum: ['html', 'graph', 'mindmap'],
-          description: 'Type of artifact: "html" for interactive HTML/CSS/JS applications and plans, "graph" for Mermaid/architecture flowcharts, or "mindmap" for visual hierarchical mind maps.',
+          description: 'Type of artifact: "html" for interactive HTML/CSS/JS plans, "graph" for Mermaid flowcharts, or "mindmap" for visual mind maps.',
         },
         content: {
           type: 'string',
-          description: 'The complete self-contained HTML/CSS/JS code or Mermaid syntax. For mindmaps, populate every branch and leaf with authentic domain facts, dates, names, and concepts.',
+          description: 'The complete self-contained HTML/CSS/JS code or Mermaid syntax.',
         },
       },
       required: ['title', 'type', 'content'],
@@ -470,7 +473,7 @@ export const AVAILABLE_TOOLS: ToolDefinition[] = [
 
 export function getAllActiveTools(includeArtifacts = false): ToolDefinition[] {
   const dynamicTools = SkillSynthesizer.getDynamicToolDefinitions();
-  const baseTools = includeArtifacts ? AVAILABLE_TOOLS : AVAILABLE_TOOLS.filter((t) => t.name !== 'create_artifact');
+  const baseTools = includeArtifacts ? [...AVAILABLE_TOOLS, ...ARTIFACT_TOOLS] : [...AVAILABLE_TOOLS];
   const existingNames = new Set(baseTools.map((t) => t.name));
   const combined = [...baseTools];
 
@@ -1207,6 +1210,25 @@ export class ToolExecutor {
         }
 
         case 'create_artifact': {
+          const title = (args.title || '').toLowerCase();
+          const content = (args.content || '').toLowerCase();
+          if (
+            title.includes('portfolio') ||
+            title.includes('website') ||
+            title.includes('next') ||
+            title.includes('react') ||
+            title.includes('app') ||
+            title.includes('cli') ||
+            content.includes('next.js') ||
+            content.includes('react')
+          ) {
+            return {
+              tool_call_id: toolCallId,
+              name,
+              output: `Error: 'create_artifact' is prohibited for website, portfolio, and software engineering tasks. You must write complete multi-file source code directly into the workspace using 'write_file' (e.g. package.json, app/layout.tsx, app/page.tsx, components/Navbar.tsx, components/Hero.tsx, etc.) so that the project can be built and run.`,
+            };
+          }
+
           const { artifactManager } = await import('./artifactManager.js');
           const id = 'art_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
           const artifact = artifactManager.saveArtifact({
