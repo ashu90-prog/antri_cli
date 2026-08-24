@@ -23,6 +23,8 @@ export const PROMPT_TOOLKIT_COMMANDS: SlashCommand[] = [
   { name: '/mindmap', description: 'Create an interactive visual mind map and concept tree artifact' },
   { name: '/view', description: 'Generate an interactive HTML application or plan artifact' },
   { name: '/artifacts', description: 'View all generated interactive HTML, graph, and mind map artifacts' },
+  { name: '/fix', description: 'Automatically diagnose and repair bugs or failing tests in current project' },
+  { name: '/selfheal', description: 'Run ANTRI health check, diagnose blocking bugs & auto-heal storage' },
   { name: '/profile', description: 'Switch or create user thinking profiles (profile_1, profile_2...)' },
   { name: '/notes', description: 'View active profile notes & adaptive thinking insights' },
   { name: '/update', description: 'Self-update ANTRI Code CLI to latest release without lockfile churn' },

@@ -8,7 +8,7 @@ import { AntriConfig, ProviderType, DebateDepth, AgentMode } from '../types.js';
 dotenv.config();
 
 export const DEFAULT_CONFIG: AntriConfig = {
-  version: '1.57.4',
+  version: '1.57.5',
   provider: 'deepseek',
   model: 'deepseek-v4-flash-(latest)',
   mode: 'vibe',
@@ -204,6 +204,69 @@ export class ConfigManager {
       }
     }
     this.saveGlobalConfig();
+  }
+
+  public hasActiveApiKey(targetProvider?: ProviderType): { configured: boolean; provider: ProviderType; envVar: string; key?: string } {
+    const provider = targetProvider || this.config.provider;
+    let key: string | undefined;
+    let envVar = 'API_KEY';
+
+    switch (provider) {
+      case 'deepseek':
+        key = this.config.apiKeys.deepseek || process.env.DEEPSEEK_API_KEY || process.env.ANTRI_API_KEY;
+        envVar = 'DEEPSEEK_API_KEY';
+        break;
+      case 'openai':
+        key = this.config.apiKeys.openai || process.env.OPENAI_API_KEY;
+        envVar = 'OPENAI_API_KEY';
+        break;
+      case 'gemini':
+        key = this.config.apiKeys.gemini || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+        envVar = 'GEMINI_API_KEY';
+        break;
+      case 'anthropic':
+        key = this.config.apiKeys.anthropic || process.env.ANTHROPIC_API_KEY;
+        envVar = 'ANTHROPIC_API_KEY';
+        break;
+      case 'nvidia-nim':
+        key = this.config.apiKeys.nvidia_nim || process.env.NVIDIA_API_KEY || process.env.NVIDIA_NIM_API_KEY;
+        envVar = 'NVIDIA_API_KEY';
+        break;
+      case 'cerebras':
+        key = this.config.apiKeys.cerebras || process.env.CEREBRAS_API_KEY;
+        envVar = 'CEREBRAS_API_KEY';
+        break;
+      case 'cohere':
+        key = this.config.apiKeys.cohere || process.env.COHERE_API_KEY;
+        envVar = 'COHERE_API_KEY';
+        break;
+      case 'vortex':
+        key = this.config.apiKeys.vortex || process.env.VORTEX_API_KEY;
+        envVar = 'VORTEX_API_KEY';
+        break;
+      case 'opencode':
+        key = this.config.apiKeys.opencode || process.env.OPENCODE_API_KEY;
+        envVar = 'OPENCODE_API_KEY';
+        break;
+      case 'openrouter':
+        key = this.config.apiKeys.openrouter || process.env.OPENROUTER_API_KEY;
+        envVar = 'OPENROUTER_API_KEY';
+        break;
+      case 'custom':
+        key = this.config.apiKeys.custom || process.env.CUSTOM_API_KEY;
+        envVar = 'CUSTOM_API_KEY';
+        break;
+      case 'ollama':
+        return { configured: true, provider, envVar: 'OLLAMA_BASE_URL', key: 'ollama' };
+      case 'mock':
+        return { configured: false, provider, envVar: 'OPENAI_API_KEY / GEMINI_API_KEY / DEEPSEEK_API_KEY', key: undefined };
+      default:
+        key = undefined;
+        envVar = 'API_KEY';
+    }
+
+    const configured = Boolean(key && typeof key === 'string' && key.trim().length > 0 && !key.startsWith('placeholder'));
+    return { configured, provider, envVar, key };
   }
 
   public saveGlobalConfig(): void {

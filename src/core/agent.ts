@@ -466,14 +466,8 @@ Autonomous Guidelines:
       }
       log.error(`Request failed: ${err.message}`);
       
-      const errorMsg = `\n${chalk.red.bold('❌ Request Failed:')} ${chalk.red(err.message)}\n\n` +
-        `${chalk.yellow.bold('💡 Troubleshooting & Quick Fixes:')}\n` +
-        `• ${chalk.cyan('/model')}    - Select a different verified model for active provider '${this.config.provider}'\n` +
-        `• ${chalk.cyan('/provider')} - Switch to another AI provider (e.g. cerebras, deepseek, gemini, openai, ollama)\n` +
-        `• ${chalk.cyan('/key')}      - Update or set your API key (e.g. /key ${this.config.provider} <your-api-key>)\n`;
-      
-      console.log(errorMsg);
-      return `Request failed: ${err.message}`;
+      const debugResult = await SelfDebugger.handleAntriError(err, this.config);
+      return debugResult.fallbackResponse;
     }
   }
 

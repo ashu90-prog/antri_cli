@@ -64,7 +64,13 @@ export async function startInteractiveSession(initialAgent?: AntriAgent): Promis
       }
       // Next iteration of loop will render the active prompt box at the new bottom!
     } catch (err: any) {
-      console.error(chalk.red(`\nError: ${err.message}\n`));
+      try {
+        const { SelfDebugger } = await import('../core/debugger.js');
+        const currentConfig = configManager.get();
+        await SelfDebugger.handleAntriError(err, currentConfig);
+      } catch {
+        console.error(chalk.red(`\nError: ${err.message}\n`));
+      }
     }
   }
 

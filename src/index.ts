@@ -215,6 +215,30 @@ program
     console.log(chalk.green('\n✅ Logged out successfully. Reverted to local session.\n'));
   });
 
+// Autonomous project bug fix command: antri fix [description]
+program
+  .command('fix [description...]')
+  .description('Automatically diagnose and repair bugs, failing tests, or syntax errors in the current project')
+  .action(async (descriptionArgs) => {
+    const description = descriptionArgs && descriptionArgs.length > 0 ? descriptionArgs.join(' ') : undefined;
+    const { ProjectBugFixer } = await import('./core/fixer.js');
+    const res = await ProjectBugFixer.runFix(description);
+    if (!res.success && res.reason !== 'verification_failed') {
+      process.exit(1);
+    }
+  });
+
+// ANTRI Health & Self-Healing Doctor command: antri doctor / antri selfheal
+program
+  .command('doctor')
+  .alias('selfheal')
+  .description('Run ANTRI system health checks, repair local storage, and diagnose blocking bugs')
+  .action(async () => {
+    const { SelfDebugger } = await import('./core/debugger.js');
+    const config = configManager.get();
+    await SelfDebugger.runSelfDoctor(config);
+  });
+
 // Self-update command: antri update
 program
   .command('update')

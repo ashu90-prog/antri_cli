@@ -116,6 +116,18 @@ const List<PromptCommand> _promptCommands = [
     color: Color(0xFF6366F1),
   ),
   PromptCommand(
+    name: '/fix',
+    description: 'Diagnose and fix project bugs & broken tests',
+    icon: Icons.build_outlined,
+    color: Color(0xFF10B981),
+  ),
+  PromptCommand(
+    name: '/selfheal',
+    description: 'Run ANTRI health checks & self-healing diagnostics',
+    icon: Icons.medical_services_outlined,
+    color: Color(0xFF8B5CF6),
+  ),
+  PromptCommand(
     name: '/clear',
     description: 'Clear current conversation messages',
     icon: Icons.delete_outline,

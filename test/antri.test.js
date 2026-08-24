@@ -71,7 +71,7 @@ test('ToolExecutor identifies privacy & security sensitive tools', () => {
 
 test('Updater reports correct package name and current version', () => {
   assert.strictEqual(Updater.PACKAGE_NAME, 'antri_cli');
-  assert.strictEqual(Updater.CURRENT_VERSION, '1.57.4');
+  assert.strictEqual(Updater.CURRENT_VERSION, '1.57.5');
 });
 
 test('GoalLoopEngine initializes with active configuration', () => {
@@ -797,6 +797,104 @@ test('extractEchoMessage extracts speech from echo/printf commands and ToolExecu
   assert.strictEqual(res.error, undefined);
   AuthManager.logout();
 });
+
+test('SelfDebugger diagnoses ANTRI blocking bugs accurately without crashing', async () => {
+  const { SelfDebugger } = await import('../dist/core/debugger.js');
+  const config = configManager.get();
+
+  // Test 401 API key diagnosis
+  const authDiag = SelfDebugger.diagnoseAntriError(new Error('401 Unauthorized: Invalid API key provided'), config);
+  assert.strictEqual(authDiag.isError, true);
+  assert.strictEqual(authDiag.component, 'provider');
+  assert.ok(authDiag.blockingBug.includes('Invalid or missing API key'));
+  assert.ok(authDiag.recommendedFix.includes('/key'));
+
+  // Test 429 Rate Limit diagnosis
+  const rateDiag = SelfDebugger.diagnoseAntriError(new Error('429 Too Many Requests - tokens per minute quota reached'), config);
+  assert.strictEqual(rateDiag.isError, true);
+  assert.strictEqual(rateDiag.component, 'provider');
+  assert.ok(rateDiag.blockingBug.includes('rate limit or quota'));
+
+  // Test 404 Model Not Found diagnosis
+  const modelDiag = SelfDebugger.diagnoseAntriError(new Error('404 The model `gpt-99` does not exist'), config);
+  assert.strictEqual(modelDiag.isError, true);
+  assert.strictEqual(modelDiag.component, 'provider');
+  assert.ok(modelDiag.blockingBug.includes('was not found or is unsupported'));
+
+  // Test Network failure diagnosis
+  const netDiag = SelfDebugger.diagnoseAntriError(new Error('fetch failed: ECONNREFUSED 127.0.0.1:11434'), config);
+  assert.strictEqual(netDiag.isError, true);
+  assert.strictEqual(netDiag.component, 'network');
+  assert.ok(netDiag.blockingBug.includes('Network connection failed'));
+
+  // Test JSON Corruption diagnosis
+  const jsonDiag = SelfDebugger.diagnoseAntriError(new Error('SyntaxError: Unexpected token in JSON at position 0'), config);
+  assert.strictEqual(jsonDiag.isError, true);
+  assert.strictEqual(jsonDiag.component, 'session');
+
+  // Test handleAntriError returns clean diagnosis & fallback without throwing
+  const handleRes = await SelfDebugger.handleAntriError(new Error('ECONNREFUSED test error'), config, true);
+  assert.strictEqual(handleRes.healed, false);
+  assert.ok(handleRes.fallbackResponse.includes('ANTRI Self-Debugger'));
+});
+
+test('SelfDebugger runSelfDoctor performs full health checks and auto-repairs storage', async () => {
+  const { SelfDebugger } = await import('../dist/core/debugger.js');
+  const config = configManager.get();
+  const res = await SelfDebugger.runSelfDoctor(config);
+  assert.ok(typeof res.healthy === 'boolean');
+  assert.ok(Array.isArray(res.issues));
+  assert.ok(typeof res.repairedCount === 'number');
+});
+
+test('ConfigManager hasActiveApiKey validates provider API key status correctly', () => {
+  const manager = new ConfigManager();
+  
+  // Ollama is local, always configured
+  const ollamaStatus = manager.hasActiveApiKey('ollama');
+  assert.strictEqual(ollamaStatus.configured, true);
+
+  // Mock provider is offline, not an active real API key
+  const mockStatus = manager.hasActiveApiKey('mock');
+  assert.strictEqual(mockStatus.configured, false);
+});
+
+test('ProjectBugFixer enforces Authentication Gate when user is not logged in', async () => {
+  const { ProjectBugFixer } = await import('../dist/core/fixer.js');
+  AuthManager.logout();
+  assert.strictEqual(AuthManager.isAuthenticated(), false);
+
+  const res = await ProjectBugFixer.runFix('fix test bug');
+  assert.strictEqual(res.success, false);
+  assert.strictEqual(res.reason, 'auth_required');
+});
+
+test('ProjectBugFixer enforces API Key Setup Gate when provider is unconfigured', async () => {
+  const { ProjectBugFixer } = await import('../dist/core/fixer.js');
+  await AuthManager.login('fix_tester@example.com');
+  
+  // Temporarily set provider to an unconfigured provider with no key
+  const origProvider = configManager.get().provider;
+  configManager.set('provider', 'cerebras');
+  delete process.env.CEREBRAS_API_KEY;
+  configManager.get().apiKeys.cerebras = undefined;
+
+  const res = await ProjectBugFixer.runFix('fix test bug');
+  assert.strictEqual(res.success, false);
+  assert.strictEqual(res.reason, 'api_key_required');
+
+  // Restore provider
+  configManager.set('provider', origProvider);
+  AuthManager.logout();
+});
+
+test('Prompt Toolkit commands include /fix and /selfheal', async () => {
+  const { PROMPT_TOOLKIT_COMMANDS } = await import('../dist/cli/promptToolkit.js');
+  const names = PROMPT_TOOLKIT_COMMANDS.map((c) => c.name);
+  assert.ok(names.includes('/fix'));
+  assert.ok(names.includes('/selfheal'));
+});
+
 
 
 

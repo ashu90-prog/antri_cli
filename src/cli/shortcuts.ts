@@ -240,6 +240,21 @@ export class ShortcutHandler {
       return { handled: true };
     }
 
+    // /fix [description] (Autonomous Project Bug Fixer)
+    if (trimmed === '/fix' || trimmed.startsWith('/fix ') || trimmed.startsWith('/fix:')) {
+      const userTarget = trimmed.replace(/^\/fix(:|\s*)/, '').trim();
+      const { ProjectBugFixer } = await import('../core/fixer.js');
+      await ProjectBugFixer.runFix(userTarget || undefined);
+      return { handled: true };
+    }
+
+    // /selfheal or /doctor or /heal (ANTRI Health Diagnostics & Self-Healing)
+    if (trimmed === '/selfheal' || trimmed === '/doctor' || trimmed === '/heal') {
+      const { SelfDebugger } = await import('../core/debugger.js');
+      await SelfDebugger.runSelfDoctor(config);
+      return { handled: true };
+    }
+
     // /goal or /loop
     if (trimmed === '/goal' || trimmed.startsWith('/goal ') || trimmed === '/loop' || trimmed.startsWith('/loop ')) {
       let objective = trimmed.replace(/^\/(goal|loop)/, '').trim();
@@ -783,6 +798,8 @@ You MUST output the HTML document enclosed in an artifact tag:
       ['/mindmap [topic]', 'Generate interactive visual mind map and concept tree artifact'],
       ['/view [plan]', 'Generate interactive HTML/JS application/plan artifact and launch view'],
       ['/artifacts', 'List all generated interactive HTML, graph, and mind map artifacts'],
+      ['/fix [desc]', 'Automatically diagnose and repair bugs in current project'],
+      ['/selfheal', 'Run ANTRI health check, diagnose blocking bugs & auto-heal storage'],
       ['/meta', 'View Meta-Optimization metrics, success rates & self-healing stats'],
       ['/skills', 'List built-in & dynamically synthesized custom skills'],
       ['/memory', 'View Persistent Memory & lifelong knowledge status'],
