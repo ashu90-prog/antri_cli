@@ -38,6 +38,16 @@ export class SelfDebugger {
     executeFn: (name: string, args: Record<string, any>, callId: string) => Promise<ToolResult>,
     maxRetries = 2
   ): Promise<DebugRepairResult> {
+    if (failedResult.output.includes('AUTHENTICATION REQUIRED') || failedResult.output.includes('You must be logged into')) {
+      return {
+        repaired: false,
+        attempts: 0,
+        rootCause: 'User is not logged in',
+        fixSummary: 'Authentication required: please log in with /login <email>',
+        repairedResult: failedResult,
+      };
+    }
+
     log.info(`🛠️ [Self-Debugger] Intercepted failure in tool '${toolCall.function.name}'. Starting root cause diagnosis...`);
 
     let currentArgs: any = {};

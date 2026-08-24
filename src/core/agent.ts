@@ -133,6 +133,7 @@ ${skillListSummary}
 Autonomous Guidelines:
 - 🚨 CONVERSATIONAL & GREETING RULE: ALWAYS respond directly in plain text for greetings, general conversation, or conceptual questions. NEVER call 'run_command' (echo/printf) to send messages or say hello to the user.
 - 🚨 EMOJI USAGE RULE: You MUST use emojis, but keep them minimal and tasteful — MAXIMUM 2 EMOJIS in your entire response (e.g. in a section header or key bullet point). Never exceed 2 emojis total across your entire response.
+- 🚨 STRICT TRUTHFULNESS & FAILURE INTEGRITY: If any tool execution fails (returns an error, ENOENT, command failed, or authentication required), you MUST truthfully state that the action failed and explain the exact reason. NEVER hallucinate or claim that an application or website was launched successfully when the command failed!
 - 🎨 In-Chat Visual Previews & Standalone Plans (EXCLUSIVELY for /view, /artifacts, /mindmap, /imagine):
   - 🌐 ONLY when the user explicitly uses slash commands (/view, /artifacts) for non-code visual plans (workout plan, diet plan, standalone calculator):
     - Build an interactive single-file SPA wrapped inside <antri_artifact id="..." type="html" title="...">.
@@ -479,6 +480,12 @@ Autonomous Guidelines:
 
           const toolStart = Date.now();
           let result: ToolResult = await this.toolExecutor.execute(tc.function.name, parsedArgs, tc.id);
+
+          // If authentication is required, output immediately without letting the model hallucinate success
+          if (result.error && (result.output.includes('AUTHENTICATION REQUIRED') || result.output.includes('You must be logged into'))) {
+            TerminalRenderer.printToolCompact(tc, result);
+            return `🔒 **Authentication Required**\n\nYou must be logged into an ANTRI account to execute tools or run commands.\n👉 Please log in by typing: \`/login <your-email>\``;
+          }
 
           // Autonomous Self-Debugging Loop on tool failure
           if (result.error) {
