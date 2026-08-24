@@ -19,53 +19,8 @@ export function isArtifactOrVisualPrompt(prompt: string): boolean {
   if (!prompt || typeof prompt !== 'string') return false;
   const p = prompt.trim().toLowerCase();
   
-  // Explicit coding / project keywords ALWAYS bypass artifact mode
-  if (
-    p.includes('next.js') ||
-    p.includes('nextjs') ||
-    p.includes('react') ||
-    p.includes('vue') ||
-    p.includes('svelte') ||
-    p.includes('express') ||
-    p.includes('fastapi') ||
-    p.includes('django') ||
-    p.includes('flutter') ||
-    p.includes('cli') ||
-    p.includes('tool like') ||
-    p.includes('tools like') ||
-    p.includes('package.json') ||
-    p.includes('portfolio') ||
-    p.includes('website') ||
-    p.includes('full stack') ||
-    p.includes('fullstack') ||
-    p.includes('backend') ||
-    p.includes('frontend') ||
-    p.includes('make a') ||
-    p.includes('build a') ||
-    p.includes('create a') ||
-    p.includes('code a') ||
-    p.includes('write code') ||
-    p.includes('develop')
-  ) {
-    return false;
-  }
-
-  // 1. Explicit visual slash commands
-  if (p.startsWith('/mindmap') || p.startsWith('/imagine') || p.startsWith('/view') || p.startsWith('/artifacts')) {
-    return true;
-  }
-  
-  // 2. Explicit mindmap queries
-  if (/\b(mindmap|mind map|concept tree|concept hierarchy|concept map)\b/i.test(p)) {
-    return true;
-  }
-  
-  // 3. Explicit architecture diagrams / flowcharts
-  if (/\b(architecture diagram|system flowchart|architecture graph|mermaid graph|system architecture chart)\b/i.test(p)) {
-    return true;
-  }
-  
-  return false;
+  // Artifacts and visual previews are EXCLUSIVELY enabled via explicit slash commands
+  return p.startsWith('/mindmap') || p.startsWith('/imagine') || p.startsWith('/view') || p.startsWith('/artifacts');
 }
 
 export class AntriAgent {
@@ -432,8 +387,8 @@ Autonomous Guidelines:
       const isVisual = isArtifactOrVisualPrompt(lastUserMsg);
 
       let activeTools: ToolDefinition[] = [];
-      if (this.config.autoExecuteTools && !isVisual) {
-        activeTools = getAllActiveTools().filter((t) => t.name !== 'create_artifact');
+      if (this.config.autoExecuteTools) {
+        activeTools = getAllActiveTools(isVisual);
       }
 
       fullResponse = await provider.sendMessageStream(

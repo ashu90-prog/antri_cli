@@ -468,10 +468,11 @@ export const AVAILABLE_TOOLS: ToolDefinition[] = [
   },
 ];
 
-export function getAllActiveTools(): ToolDefinition[] {
+export function getAllActiveTools(includeArtifacts = false): ToolDefinition[] {
   const dynamicTools = SkillSynthesizer.getDynamicToolDefinitions();
-  const existingNames = new Set(AVAILABLE_TOOLS.map((t) => t.name));
-  const combined = [...AVAILABLE_TOOLS];
+  const baseTools = includeArtifacts ? AVAILABLE_TOOLS : AVAILABLE_TOOLS.filter((t) => t.name !== 'create_artifact');
+  const existingNames = new Set(baseTools.map((t) => t.name));
+  const combined = [...baseTools];
 
   for (const dt of dynamicTools) {
     if (!existingNames.has(dt.name)) {

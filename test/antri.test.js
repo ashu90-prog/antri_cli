@@ -71,7 +71,7 @@ test('ToolExecutor identifies privacy & security sensitive tools', () => {
 
 test('Updater reports correct package name and current version', () => {
   assert.strictEqual(Updater.PACKAGE_NAME, 'antri_cli');
-  assert.strictEqual(Updater.CURRENT_VERSION, '1.57.13');
+  assert.strictEqual(Updater.CURRENT_VERSION, '1.57.14');
 });
 
 test('GoalLoopEngine initializes with active configuration', () => {
@@ -408,10 +408,15 @@ test('AuthManager generates unique partition IDs, logins, and logs out', async (
   assert.strictEqual(loggedOut, null);
 });
 
-test('SkillManager loads 12 core markdown skills, parses frontmatter and triggers', () => {
+test('SkillManager loads 13 core markdown skills including autonomous coder, parses frontmatter and triggers', () => {
   const manager = new SkillManager();
   const skills = manager.listSkills();
-  assert.ok(skills.length >= 12);
+  assert.ok(skills.length >= 13);
+
+  const autonomousCoder = manager.getSkill('autonomous_coder');
+  assert.ok(autonomousCoder);
+  assert.ok(autonomousCoder.triggers.includes('code'));
+  assert.strictEqual(autonomousCoder.isCore, true);
 
   const codeReviewer = manager.getSkill('code_reviewer');
   assert.ok(codeReviewer);
