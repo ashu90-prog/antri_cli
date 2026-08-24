@@ -1,7 +1,7 @@
 name: antri_flutter
 description: "ANTRI Code - Cognitive Flutter Client & Profile Synchronization"
 publish_to: 'none'
-version: 1.57.12+1
+version: 1.57.13+1
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
