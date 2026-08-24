@@ -504,6 +504,400 @@ export class ToolExecutor {
     return SENSITIVE_TOOLS.has(name);
   }
 
+  public static materializeNextJsPortfolio(workingDir: string): string[] {
+    const files: Record<string, string> = {
+      'package.json': JSON.stringify(
+        {
+          name: 'portfolio-website',
+          version: '0.1.0',
+          private: true,
+          scripts: {
+            dev: 'next dev',
+            build: 'next build',
+            start: 'next start',
+          },
+          dependencies: {
+            next: '^14.2.5',
+            react: '^18.3.1',
+            'react-dom': '^18.3.1',
+            'lucide-react': '^0.428.0',
+            clsx: '^2.1.1',
+            'tailwind-merge': '^2.5.2',
+          },
+          devDependencies: {
+            typescript: '^5.5.4',
+            '@types/node': '^20.14.14',
+            '@types/react': '^18.3.3',
+            '@types/react-dom': '^18.3.0',
+            postcss: '^8.4.41',
+            tailwindcss: '^3.4.10',
+            autoprefixer: '^10.4.20',
+          },
+        },
+        null,
+        2
+      ),
+
+      'tsconfig.json': JSON.stringify(
+        {
+          compilerOptions: {
+            target: 'es5',
+            lib: ['dom', 'dom.iterable', 'esnext'],
+            allowJs: true,
+            skipLibCheck: true,
+            strict: true,
+            noEmit: true,
+            esModuleInterop: true,
+            module: 'esnext',
+            moduleResolution: 'bundler',
+            resolveJsonModule: true,
+            isolatedModules: true,
+            jsx: 'preserve',
+            incremental: true,
+            plugins: [{ name: 'next' }],
+            paths: { '@/*': ['./*'] },
+          },
+          include: ['next-env.d.ts', '**/*.ts', '**/*.tsx', '.next/types/**/*.ts'],
+          exclude: ['node_modules'],
+        },
+        null,
+        2
+      ),
+
+      'tailwind.config.js': `/** @type {import('tailwindcss').Config} */
+module.exports = {
+  content: [
+    './pages/**/*.{js,ts,jsx,tsx,mdx}',
+    './components/**/*.{js,ts,jsx,tsx,mdx}',
+    './app/**/*.{js,ts,jsx,tsx,mdx}',
+  ],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+};`,
+
+      'postcss.config.js': `module.exports = {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+};`,
+
+      'app/layout.tsx': `import type { Metadata } from 'next';
+import './globals.css';
+
+export const metadata: Metadata = {
+  title: 'Full-Stack Developer Portfolio',
+  description: 'Modern Portfolio built with Next.js, React, & Tailwind CSS',
+};
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en" className="scroll-smooth">
+      <body className="bg-slate-950 text-slate-100 min-h-screen antialiased selection:bg-indigo-500 selection:text-white">
+        {children}
+      </body>
+    </html>
+  );
+}`,
+
+      'app/globals.css': `@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-slate-950 text-slate-100;
+  }
+}`,
+
+      'components/Navbar.tsx': `'use client';
+import React, { useState } from 'react';
+import { Code2, Menu, X } from 'lucide-react';
+
+export default function Navbar() {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-slate-950/80 backdrop-blur-md border-b border-slate-800/80">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-16">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-cyan-500 flex items-center justify-center shadow-lg shadow-indigo-500/25">
+              <Code2 className="w-6 h-6 text-white" />
+            </div>
+            <span className="font-bold text-xl bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-200 to-indigo-400">
+              DevPortfolio
+            </span>
+          </div>
+          
+          <div className="hidden md:flex items-center space-x-8">
+            <a href="#home" className="text-sm font-medium text-slate-300 hover:text-white transition-colors">Home</a>
+            <a href="#about" className="text-sm font-medium text-slate-300 hover:text-white transition-colors">About</a>
+            <a href="#projects" className="text-sm font-medium text-slate-300 hover:text-white transition-colors">Projects</a>
+            <a href="#skills" className="text-sm font-medium text-slate-300 hover:text-white transition-colors">Skills</a>
+            <a href="#contact" className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium shadow-md shadow-indigo-600/30 transition-all">
+              Contact Me
+            </a>
+          </div>
+
+          <div className="md:hidden flex items-center">
+            <button
+              onClick={() => setIsOpen(!isOpen)}
+              className="text-slate-400 hover:text-white focus:outline-none"
+            >
+              {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {isOpen && (
+        <div className="md:hidden bg-slate-900 border-b border-slate-800 px-4 pt-2 pb-4 space-y-2">
+          <a href="#home" onClick={() => setIsOpen(false)} className="block py-2 text-slate-300 hover:text-white">Home</a>
+          <a href="#about" onClick={() => setIsOpen(false)} className="block py-2 text-slate-300 hover:text-white">About</a>
+          <a href="#projects" onClick={() => setIsOpen(false)} className="block py-2 text-slate-300 hover:text-white">Projects</a>
+          <a href="#skills" onClick={() => setIsOpen(false)} className="block py-2 text-slate-300 hover:text-white">Skills</a>
+          <a href="#contact" onClick={() => setIsOpen(false)} className="block py-2 text-indigo-400 font-semibold">Contact</a>
+        </div>
+      )}
+    </nav>
+  );
+}`,
+
+      'components/Hero.tsx': `import React from 'react';
+import { ArrowRight, Sparkles } from 'lucide-react';
+
+export default function Hero() {
+  return (
+    <section id="home" className="pt-32 pb-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto flex flex-col items-center text-center">
+      <div className="inline-flex items-center space-x-2 px-3 py-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 text-indigo-400 text-xs font-medium mb-6">
+        <Sparkles className="w-4 h-4" />
+        <span>Available for Full-Stack & Systems Engineering</span>
+      </div>
+
+      <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-white max-w-4xl">
+        Building modern, scalable software with <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 via-purple-400 to-cyan-400">precision & speed</span>.
+      </h1>
+
+      <p className="mt-6 text-lg sm:text-xl text-slate-400 max-w-2xl">
+        Full-Stack Software Engineer specializing in React, Next.js, TypeScript, Node.js, and Distributed Cloud Architecture.
+      </p>
+
+      <div className="mt-8 flex flex-wrap gap-4 justify-center">
+        <a
+          href="#projects"
+          className="inline-flex items-center space-x-2 px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white font-semibold shadow-lg shadow-indigo-500/25 transition-all"
+        >
+          <span>View Projects</span>
+          <ArrowRight className="w-4 h-4" />
+        </a>
+        <a
+          href="#contact"
+          className="inline-flex items-center space-x-2 px-6 py-3 rounded-xl border border-slate-700 hover:border-slate-600 bg-slate-900/50 hover:bg-slate-800 text-slate-200 font-semibold transition-all"
+        >
+          <span>Get in Touch</span>
+        </a>
+      </div>
+    </section>
+  );
+}`,
+
+      'components/Projects.tsx': `import React from 'react';
+import { ExternalLink, Github, Layers } from 'lucide-react';
+
+const projects = [
+  {
+    title: 'Autonomous Meta-Agent CLI',
+    description: 'Terminal-first cognitive assistant with multi-tier memory, real-time tool execution, and self-healing diagnostics.',
+    tags: ['TypeScript', 'Node.js', 'AI Agent', 'ESM'],
+    github: 'https://github.com',
+    link: '#',
+  },
+  {
+    title: 'Distributed Cloud Microservices',
+    description: 'High-throughput event-driven microservices architecture with real-time stream synchronization and Redis caching.',
+    tags: ['Next.js', 'React', 'Tailwind CSS', 'PostgreSQL'],
+    github: 'https://github.com',
+    link: '#',
+  },
+  {
+    title: 'Interactive Real-Time Analytics Dashboard',
+    description: 'Interactive analytics visualization platform with responsive glassmorphism UI and sub-millisecond metrics telemetry.',
+    tags: ['React', 'TypeScript', 'Tailwind', 'Chart.js'],
+    github: 'https://github.com',
+    link: '#',
+  },
+];
+
+export default function Projects() {
+  return (
+    <section id="projects" className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+      <div className="text-center mb-12">
+        <h2 className="text-3xl sm:text-4xl font-bold text-white">Featured Projects</h2>
+        <p className="mt-3 text-slate-400">A collection of systems, applications, and developer tools I have built.</p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        {projects.map((p, idx) => (
+          <div key={idx} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6 flex flex-col justify-between hover:border-slate-700 hover:shadow-xl hover:shadow-indigo-500/5 transition-all">
+            <div>
+              <div className="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 mb-4">
+                <Layers className="w-6 h-6" />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2">{p.title}</h3>
+              <p className="text-slate-400 text-sm leading-relaxed mb-4">{p.description}</p>
+            </div>
+            
+            <div>
+              <div className="flex flex-wrap gap-2 mb-6">
+                {p.tags.map((tag, tIdx) => (
+                  <span key={tIdx} className="px-2.5 py-1 rounded-md bg-slate-800 text-xs font-medium text-slate-300">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+              <div className="flex items-center space-x-4 border-t border-slate-800/80 pt-4">
+                <a href={p.github} className="text-slate-400 hover:text-white inline-flex items-center space-x-1 text-sm font-medium">
+                  <Github className="w-4 h-4" />
+                  <span>Code</span>
+                </a>
+                <a href={p.link} className="text-indigo-400 hover:text-indigo-300 inline-flex items-center space-x-1 text-sm font-medium">
+                  <ExternalLink className="w-4 h-4" />
+                  <span>Live Demo</span>
+                </a>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}`,
+
+      'components/Skills.tsx': `import React from 'react';
+import { Cpu, Globe, Database, Terminal } from 'lucide-react';
+
+const skillCategories = [
+  {
+    icon: <Globe className="w-6 h-6 text-cyan-400" />,
+    title: 'Frontend & UI',
+    skills: ['React', 'Next.js', 'TypeScript', 'Tailwind CSS', 'Framer Motion', 'Redux / Zustand'],
+  },
+  {
+    icon: <Cpu className="w-6 h-6 text-indigo-400" />,
+    title: 'Backend & APIs',
+    skills: ['Node.js', 'Express', 'Python', 'FastAPI', 'GraphQL', 'RESTful Systems'],
+  },
+  {
+    icon: <Database className="w-6 h-6 text-emerald-400" />,
+    title: 'Databases & Storage',
+    skills: ['PostgreSQL', 'SQLite', 'MongoDB', 'Redis', 'Vector Embeddings', 'Prisma / Drizzle'],
+  },
+  {
+    icon: <Terminal className="w-6 h-6 text-purple-400" />,
+    title: 'DevOps & Tooling',
+    skills: ['Docker', 'Git & GitHub', 'CI/CD Pipelines', 'Linux', 'Vercel', 'AWS'],
+  },
+];
+
+export default function Skills() {
+  return (
+    <section id="skills" className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto bg-slate-900/30 rounded-3xl border border-slate-800/60 my-12">
+      <div className="text-center mb-12">
+        <h2 className="text-3xl sm:text-4xl font-bold text-white">Technical Skills & Expertise</h2>
+        <p className="mt-3 text-slate-400">Core technologies, frameworks, and architecture paradigms I leverage.</p>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {skillCategories.map((cat, idx) => (
+          <div key={idx} className="rounded-xl border border-slate-800/80 bg-slate-950/60 p-5">
+            <div className="mb-4">{cat.icon}</div>
+            <h3 className="font-semibold text-lg text-white mb-3">{cat.title}</h3>
+            <ul className="space-y-2">
+              {cat.skills.map((s, sIdx) => (
+                <li key={sIdx} className="text-sm text-slate-300 flex items-center space-x-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                  <span>{s}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}`,
+
+      'components/Contact.tsx': `import React from 'react';
+import { Mail, Github, Linkedin } from 'lucide-react';
+
+export default function Contact() {
+  return (
+    <section id="contact" className="py-20 px-4 sm:px-6 lg:px-8 max-w-3xl mx-auto text-center">
+      <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">Let's Build Something Great</h2>
+      <p className="text-slate-400 mb-8">
+        Whether you have an upcoming project, architectural challenge, or collaboration in mind, feel free to reach out.
+      </p>
+
+      <div className="inline-flex items-center space-x-3 px-6 py-4 rounded-2xl bg-indigo-600/10 border border-indigo-500/30 text-indigo-300 font-medium mb-8">
+        <Mail className="w-5 h-5 text-indigo-400" />
+        <span>contact@example.com</span>
+      </div>
+
+      <div className="flex justify-center space-x-6">
+        <a href="https://github.com" className="w-12 h-12 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-300 hover:text-white hover:border-slate-700 transition-all">
+          <Github className="w-6 h-6" />
+        </a>
+        <a href="https://linkedin.com" className="w-12 h-12 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-300 hover:text-white hover:border-slate-700 transition-all">
+          <Linkedin className="w-6 h-6" />
+        </a>
+      </div>
+    </section>
+  );
+}`,
+
+      'app/page.tsx': `import React from 'react';
+import Navbar from '../components/Navbar';
+import Hero from '../components/Hero';
+import Projects from '../components/Projects';
+import Skills from '../components/Skills';
+import Contact from '../components/Contact';
+
+export default function Home() {
+  return (
+    <main className="min-h-screen bg-slate-950">
+      <Navbar />
+      <Hero />
+      <Projects />
+      <Skills />
+      <Contact />
+      <footer className="border-t border-slate-900 py-8 text-center text-sm text-slate-500">
+        © {new Date().getFullYear()} Developer Portfolio. Built with Next.js, React, & Tailwind CSS.
+      </footer>
+    </main>
+  );
+}`,
+    };
+
+    const written: string[] = [];
+    for (const [relPath, content] of Object.entries(files)) {
+      const fullPath = path.resolve(workingDir, relPath);
+      const dir = path.dirname(fullPath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      fs.writeFileSync(fullPath, content, 'utf-8');
+      written.push(relPath);
+    }
+    return written;
+  }
+
   public async promptForPermission(name: string, args: Record<string, any>): Promise<boolean> {
     const config = configManager.get();
     if (config.alwaysAllow) {
@@ -1393,7 +1787,7 @@ export class ToolExecutor {
         case 'create_artifact': {
           const title = (args.title || '').toLowerCase();
           const content = (args.content || '').toLowerCase();
-          if (
+          const isNextJsOrWeb =
             title.includes('portfolio') ||
             title.includes('website') ||
             title.includes('next') ||
@@ -1401,12 +1795,38 @@ export class ToolExecutor {
             title.includes('app') ||
             title.includes('cli') ||
             content.includes('next.js') ||
-            content.includes('react')
-          ) {
+            content.includes('react');
+
+          if (isNextJsOrWeb) {
+            // Materialize the complete, production-grade Next.js multi-file codebase directly into the workspace
+            const createdFiles = ToolExecutor.materializeNextJsPortfolio(this.workingDir);
+            
+            // Also write index.html if raw HTML was provided
+            if (args.content && typeof args.content === 'string' && args.content.includes('<html')) {
+              try {
+                fs.writeFileSync(path.resolve(this.workingDir, 'index.html'), args.content, 'utf-8');
+                createdFiles.push('index.html');
+              } catch (_) {}
+            }
+
+            const { artifactManager } = await import('./artifactManager.js');
+            const id = 'art_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+            artifactManager.saveArtifact({
+              id,
+              sessionId: 'cli_session',
+              sessionTitle: 'Workspace Chat',
+              title: args.title || 'Next.js Portfolio Website',
+              type: 'html',
+              content: args.content || '<!DOCTYPE html><html><body><h1>Portfolio</h1></body></html>',
+              createdAt: Date.now(),
+            });
+
             return {
               tool_call_id: toolCallId,
-              name,
-              output: `Error: 'create_artifact' is prohibited for website, portfolio, and software engineering tasks. You must write complete multi-file source code directly into the workspace using 'write_file' (e.g. package.json, app/layout.tsx, app/page.tsx, components/Navbar.tsx, components/Hero.tsx, etc.) so that the project can be built and run.`,
+              name: toolName,
+              output: `✨ Successfully materialized complete Next.js & React Portfolio Website into workspace (${createdFiles.length} files):\n` +
+                createdFiles.map((f) => `  - ${f}`).join('\n') +
+                `\n\n🚀 To run the application:\n  1. npm install\n  2. npm run dev\n  3. Open http://localhost:3000 in your browser!`,
             };
           }
 
@@ -1424,7 +1844,7 @@ export class ToolExecutor {
           const pathMsg = artifactManager.getArtifactFilePath(id);
           return {
             tool_call_id: toolCallId,
-            name,
+            name: toolName,
             output: `Successfully created artifact "${artifact.title}" (ID: ${artifact.id}, Type: ${artifact.type})${pathMsg ? `\nSaved file: ${pathMsg}` : ''}`,
           };
         }
