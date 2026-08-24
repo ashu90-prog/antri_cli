@@ -415,8 +415,13 @@ ${errorMessage.slice(0, 1500)}
 """
 
 Your task:
-1. Identify the precise root cause (e.g. invalid file path, missing syntax in command, wrong flag, bad JSON format, Windows vs Linux path separator).
+1. Identify the precise root cause (e.g. invalid file path, missing file, missing package.json, syntax error in command, wrong flag, bad JSON format, Windows vs Linux path separator).
 2. Generate the corrected parameters object as valid JSON.
+
+🚨 CRITICAL RULES:
+- If 'npm run dev' or 'npm start' failed because package.json does not exist, patch the command to open or serve the local files (e.g. 'start index.html' on Windows, 'open index.html' on macOS, 'npx serve .', or 'python -m http.server 3000').
+- NEVER output authentication commands like 'antri login' or login prompts.
+- patchArgs MUST match the parameter schema of tool "${toolName}".
 
 Respond in this exact JSON format:
 {
@@ -434,6 +439,10 @@ Respond in this exact JSON format:
       const jsonMatch = response.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]);
+        // Filter any accidental login command patches
+        if (parsed.patchArgs?.command && typeof parsed.patchArgs.command === 'string' && parsed.patchArgs.command.startsWith('antri login')) {
+          return this.heuristicPatch(toolName, args, errorMessage);
+        }
         return {
           rootCause: parsed.rootCause || 'Parameter or runtime discrepancy',
           fixSummary: parsed.fixSummary || 'Corrected parameters',
@@ -452,14 +461,22 @@ Respond in this exact JSON format:
   ): { rootCause: string; fixSummary: string; patchArgs?: Record<string, any> } {
     // Windows vs Linux shell commands
     if (toolName === 'run_command' && args.command) {
-      if (args.command.startsWith('ls') && process.platform === 'win32') {
+      const isWin = process.platform === 'win32';
+      if ((args.command.includes('npm run') || args.command.includes('npm start')) && (errorMessage.includes('ENOENT') || errorMessage.includes('package.json') || errorMessage.includes('missing script'))) {
+        return {
+          rootCause: "package.json is missing in the project folder",
+          fixSummary: isWin ? "Serving static project with 'start index.html'" : "Serving static project with 'open index.html'",
+          patchArgs: { command: isWin ? 'start index.html' : 'open index.html' },
+        };
+      }
+      if (args.command.startsWith('ls') && isWin) {
         return {
           rootCause: "'ls' command not native on Windows shell",
           fixSummary: "Changed 'ls' to 'dir'",
           patchArgs: { command: 'dir' },
         };
       }
-      if (args.command.startsWith('cat ') && process.platform === 'win32') {
+      if (args.command.startsWith('cat ') && isWin) {
         return {
           rootCause: "'cat' command replaced with 'type' for Windows shell",
           fixSummary: "Changed 'cat' to 'type'",

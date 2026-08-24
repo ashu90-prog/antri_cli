@@ -1129,18 +1129,37 @@ export class ToolExecutor {
               output: echoMessage,
             };
           }
-          const { stdout, stderr } = await execPromise(args.command, {
-            cwd: this.workingDir,
-            timeout: 30000,
-            maxBuffer: 1024 * 1024,
-          });
-          const output = (stdout || '') + (stderr ? `\n[STDERR]: ${stderr}` : '');
-          const cleanOutput = output.trim() || '(command finished with no output)';
-          return {
-            tool_call_id: toolCallId,
-            name,
-            output: cleanOutput,
-          };
+
+          if (cmd.startsWith('antri login') || cmd.startsWith('antri register')) {
+            return {
+              tool_call_id: toolCallId,
+              name,
+              output: 'Notice: Authentication commands must be executed interactively in the terminal by the user.',
+            };
+          }
+
+          try {
+            const { stdout, stderr } = await execPromise(args.command, {
+              cwd: this.workingDir,
+              timeout: 30000,
+              maxBuffer: 1024 * 1024,
+            });
+            const output = (stdout || '') + (stderr ? `\n[STDERR]: ${stderr}` : '');
+            const cleanOutput = output.trim() || '(command finished with no output)';
+            return {
+              tool_call_id: toolCallId,
+              name,
+              output: cleanOutput,
+            };
+          } catch (execErr: any) {
+            const errOutput = (execErr.stdout || '') + (execErr.stderr ? `\n${execErr.stderr}` : '') || execErr.message || 'Execution error';
+            return {
+              tool_call_id: toolCallId,
+              name,
+              output: `Command failed (exit code ${execErr.code || 1}): ${errOutput.trim()}`,
+              error: true,
+            };
+          }
         }
 
         case 'run_silent_debate': {
