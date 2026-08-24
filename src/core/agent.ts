@@ -9,7 +9,7 @@ import { FilePickerService } from '../cli/dialogs/filePicker.js';
 import { CitationEngine } from './citations.js';
 import { memoryManager } from '../memory/manager.js';
 import { profileManager } from '../profiles/profileManager.js';
-import { skillManager } from '../skills/skillManager.js';
+import { skillManager, SkillHarness } from '../skills/skillManager.js';
 import { SelfDebugger } from './debugger.js';
 import { metaOptimizer } from './metaOptimizer.js';
 import { sessionManager } from './sessionManager.js';
@@ -204,15 +204,13 @@ ${visualArtifactSection}
       await memoryManager.learn(notedInsight, 'lesson_learned', this.config.workingDir);
     }
 
-    // 2. Check for Relevant or Triggered Markdown Skills (.md)
+    // 2. Check for Relevant or Triggered Markdown Skills (.md) via Dedicated Skill Harness
     let skillContext = '';
     const relevantSkills = skillManager.findRelevantSkills(userPrompt);
     if (relevantSkills.length > 0) {
       const skillNames = relevantSkills.map((s) => chalk.bold.cyan(s.name)).join(', ');
       console.log(chalk.hex('#f59e0b')(`⚡ Activated Skill(s): ${skillNames}`));
-      skillContext = `\n\n--- ⚡ ACTIVATED SPECIALIST SKILL INSTRUCTIONS ---\n` +
-        relevantSkills.map((s) => `### Skill: ${s.name} (${s.category})\n${s.instructions}`).join('\n\n') +
-        `\n---------------------------------------------------`;
+      skillContext = SkillHarness.formatSkillExecutionDirectives(relevantSkills);
     }
 
     // 3. Autonomous Self-Recall into Persistent Memory Hierarchy with fast timeout guard

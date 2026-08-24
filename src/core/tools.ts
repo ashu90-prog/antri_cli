@@ -598,20 +598,88 @@ export class ToolExecutor {
         };
       }
 
+      // Normalize Tool Name and Aliases
+      let toolName = name.toLowerCase().trim();
+      const toolArgs = { ...args };
+
+      // 1. File Writing / Creation Aliases:
+      if (['create_file', 'new_file', 'save_file', 'make_file', 'create_filesystem', 'createfile', 'writefile'].includes(toolName)) {
+        toolName = 'write_file';
+        if (!toolArgs.filePath && (toolArgs.filename || toolArgs.path || toolArgs.file_path || toolArgs.name)) {
+          toolArgs.filePath = toolArgs.filename || toolArgs.path || toolArgs.file_path || toolArgs.name;
+        }
+      }
+
+      // 2. Directory Creation Aliases:
+      if (['mkdir', 'make_dir', 'create_dir', 'make_directory', 'new_folder', 'create_folder', 'createdirectory'].includes(toolName)) {
+        toolName = 'create_directory';
+        if (!toolArgs.dirPath && (toolArgs.path || toolArgs.dir || toolArgs.folder || toolArgs.directory)) {
+          toolArgs.dirPath = toolArgs.path || toolArgs.dir || toolArgs.folder || toolArgs.directory;
+        }
+      }
+
+      // 3. File Reading Aliases:
+      if (['read', 'cat', 'view_file', 'show_file', 'get_file', 'readfile', 'open_file'].includes(toolName)) {
+        toolName = 'read_file';
+        if (!toolArgs.filePath && (toolArgs.filename || toolArgs.path || toolArgs.file_path || toolArgs.name)) {
+          toolArgs.filePath = toolArgs.filename || toolArgs.path || toolArgs.file_path || toolArgs.name;
+        }
+      }
+
+      // 4. File Editing Aliases:
+      if (['edit', 'modify_file', 'update_file', 'replace_file', 'editfile', 'patch_file'].includes(toolName)) {
+        toolName = 'edit_file';
+        if (!toolArgs.filePath && (toolArgs.filename || toolArgs.path || toolArgs.file_path || toolArgs.name)) {
+          toolArgs.filePath = toolArgs.filename || toolArgs.path || toolArgs.file_path || toolArgs.name;
+        }
+      }
+
+      // 5. Command Execution Aliases:
+      if (['exec', 'execute_command', 'shell', 'terminal', 'bash', 'cmd', 'run', 'runcommand', 'execute'].includes(toolName)) {
+        toolName = 'run_command';
+        if (!toolArgs.command && (toolArgs.cmd || toolArgs.script || toolArgs.input)) {
+          toolArgs.command = toolArgs.cmd || toolArgs.script || toolArgs.input;
+        }
+      }
+
+      // 6. Search / Finding Aliases:
+      if (['search_files', 'find_file', 'find', 'list_files', 'file_search', 'glob'].includes(toolName)) {
+        toolName = 'find_files';
+        if (!toolArgs.pattern && (toolArgs.query || toolArgs.name || toolArgs.glob)) {
+          toolArgs.pattern = toolArgs.query || toolArgs.name || toolArgs.glob;
+        }
+      }
+
+      // 7. Grep / Code Search Aliases:
+      if (['grep', 'search_code', 'code_search', 'search_text', 'grepsearch'].includes(toolName)) {
+        toolName = 'grep_search';
+        if (!toolArgs.query && (toolArgs.pattern || toolArgs.text || toolArgs.search)) {
+          toolArgs.query = toolArgs.pattern || toolArgs.text || toolArgs.search;
+        }
+      }
+
+      // 8. Delete File Aliases:
+      if (['delete', 'remove_file', 'rm', 'unlink', 'deletefile'].includes(toolName)) {
+        toolName = 'delete_file';
+        if (!toolArgs.filePath && (toolArgs.filename || toolArgs.path || toolArgs.file_path || toolArgs.name)) {
+          toolArgs.filePath = toolArgs.filename || toolArgs.path || toolArgs.file_path || toolArgs.name;
+        }
+      }
+
       // Check permission for sensitive tools
-      const allowed = await this.promptForPermission(name, args);
+      const allowed = await this.promptForPermission(toolName, toolArgs);
       if (!allowed) {
         return {
           tool_call_id: toolCallId,
-          name,
-          output: `Tool execution cancelled: User denied permission to execute sensitive tool '${name}'.`,
+          name: toolName,
+          output: `Tool execution cancelled: User denied permission to execute sensitive tool '${toolName}'.`,
           error: true,
         };
       }
 
-      switch (name) {
+      switch (toolName) {
         case 'execute_python': {
-          const res = await SandboxEngine.executePython(args.code, this.workingDir);
+          const res = await SandboxEngine.executePython(toolArgs.code, this.workingDir);
           const output = (res.stdout || '') + (res.stderr ? `\n[STDERR]: ${res.stderr}` : '');
           return {
             tool_call_id: toolCallId,
@@ -690,7 +758,16 @@ export class ToolExecutor {
         }
 
         case 'read_file': {
-          let resolvedPath = args.file_path;
+          const filePath = toolArgs.filePath || toolArgs.file_path || toolArgs.filename || toolArgs.path || toolArgs.name;
+          if (!filePath) {
+            return {
+              tool_call_id: toolCallId,
+              name: toolName,
+              output: 'Error: Missing filePath argument.',
+              error: true,
+            };
+          }
+          let resolvedPath = filePath;
           if (resolvedPath.startsWith('~')) {
             resolvedPath = path.join(os.homedir(), resolvedPath.slice(1));
           } else {
@@ -699,8 +776,8 @@ export class ToolExecutor {
 
           if (!fs.existsSync(resolvedPath)) {
             // Check if file exists relative to cwd or home
-            const cwdAlt = path.resolve(process.cwd(), args.file_path);
-            const homeAlt = path.resolve(os.homedir(), args.file_path);
+            const cwdAlt = path.resolve(process.cwd(), filePath);
+            const homeAlt = path.resolve(os.homedir(), filePath);
             if (fs.existsSync(cwdAlt)) {
               resolvedPath = cwdAlt;
             } else if (fs.existsSync(homeAlt)) {
@@ -708,8 +785,8 @@ export class ToolExecutor {
             } else {
               return {
                 tool_call_id: toolCallId,
-                name,
-                output: `Error: File not found: ${args.file_path} (resolved as: ${resolvedPath})`,
+                name: toolName,
+                output: `Error: File not found: ${filePath} (resolved as: ${resolvedPath})`,
                 error: true,
               };
             }
@@ -719,8 +796,8 @@ export class ToolExecutor {
             const content = fs.readFileSync(resolvedPath, 'utf-8');
             const lines = content.split('\n');
             const totalLines = lines.length;
-            const startLine = Math.max(1, args.start_line || 1);
-            const maxLines = args.max_lines || 2000;
+            const startLine = Math.max(1, toolArgs.start_line || toolArgs.startLine || 1);
+            const maxLines = toolArgs.max_lines || toolArgs.maxLines || 2000;
             const startIndex = startLine - 1;
             const endIndex = Math.min(totalLines, startIndex + maxLines);
 
@@ -729,42 +806,52 @@ export class ToolExecutor {
 
             return {
               tool_call_id: toolCallId,
-              name,
-              output: `[File: ${args.file_path} (${totalLines} lines total, showing lines ${startLine}-${endIndex})]\n` + slice.join('\n') + truncatedNotice,
+              name: toolName,
+              output: `[File: ${filePath} (${totalLines} lines total, showing lines ${startLine}-${endIndex})]\n` + slice.join('\n') + truncatedNotice,
             };
           } catch (readErr: any) {
             return {
               tool_call_id: toolCallId,
-              name,
-              output: `Error reading file ${args.file_path}: ${readErr.message}`,
+              name: toolName,
+              output: `Error reading file ${filePath}: ${readErr.message}`,
               error: true,
             };
           }
         }
 
         case 'write_file': {
-          const targetPath = path.resolve(this.workingDir, args.file_path);
+          const filePath = toolArgs.filePath || toolArgs.file_path || toolArgs.filename || toolArgs.path || toolArgs.name;
+          const content = toolArgs.content !== undefined ? toolArgs.content : toolArgs.code || toolArgs.text || '';
+          if (!filePath) {
+            return {
+              tool_call_id: toolCallId,
+              name: toolName,
+              output: 'Error: Missing filePath argument for write_file.',
+              error: true,
+            };
+          }
+          const targetPath = path.resolve(this.workingDir, filePath);
           const dir = path.dirname(targetPath);
           if (!fs.existsSync(dir)) {
             fs.mkdirSync(dir, { recursive: true });
           }
-          fs.writeFileSync(targetPath, args.content, 'utf-8');
+          fs.writeFileSync(targetPath, content, 'utf-8');
 
-          if (args.file_path.endsWith('.html') || (args.content && typeof args.content === 'string' && args.content.includes('<html'))) {
+          if (filePath.endsWith('.html') || (typeof content === 'string' && content.includes('<html'))) {
             try {
               const { artifactManager } = await import('./artifactManager.js');
               const { sessionManager } = await import('./sessionManager.js');
               const activeSession = sessionManager.getActiveSession();
-              const baseName = path.basename(args.file_path, '.html').replace(/[_-]/g, ' ');
+              const baseName = path.basename(filePath, '.html').replace(/[_-]/g, ' ');
               const title = baseName.charAt(0).toUpperCase() + baseName.slice(1);
-              const id = 'art_' + path.basename(args.file_path, '.html').replace(/[^a-zA-Z0-9_]/g, '_');
+              const id = 'art_' + path.basename(filePath, '.html').replace(/[^a-zA-Z0-9_]/g, '_');
               artifactManager.saveArtifact({
                 id,
                 sessionId: activeSession?.id || 'workspace_files',
                 sessionTitle: activeSession?.title || 'Workspace & Generated Files',
                 title: title,
                 type: 'html',
-                content: args.content,
+                content: content,
                 createdAt: Date.now(),
               });
             } catch (_) {}
@@ -772,13 +859,22 @@ export class ToolExecutor {
 
           return {
             tool_call_id: toolCallId,
-            name,
-            output: `Successfully wrote ${args.content.length} characters to ${args.file_path}`,
+            name: toolName,
+            output: `Successfully wrote ${content.length} characters to ${filePath}`,
           };
         }
 
         case 'edit_file': {
-          let resolvedPath = args.file_path;
+          const filePath = toolArgs.filePath || toolArgs.file_path || toolArgs.filename || toolArgs.path || toolArgs.name;
+          if (!filePath) {
+            return {
+              tool_call_id: toolCallId,
+              name: toolName,
+              output: 'Error: Missing filePath argument for edit_file.',
+              error: true,
+            };
+          }
+          let resolvedPath = filePath;
           if (resolvedPath.startsWith('~')) {
             resolvedPath = path.join(os.homedir(), resolvedPath.slice(1));
           } else {
@@ -788,22 +884,31 @@ export class ToolExecutor {
           if (!fs.existsSync(resolvedPath)) {
             return {
               tool_call_id: toolCallId,
-              name,
-              output: `Error: File not found for editing: ${args.file_path}`,
+              name: toolName,
+              output: `Error: File not found for editing: ${filePath}`,
               error: true,
             };
           }
 
-          const targetContent = args.target_content;
-          const replacementContent = args.replacement_content;
-          const allowMultiple = !!args.allow_multiple;
+          const targetContent = toolArgs.targetContent || toolArgs.target_content || toolArgs.search || toolArgs.target;
+          const replacementContent = toolArgs.replacementContent !== undefined ? toolArgs.replacementContent : (toolArgs.replacement_content !== undefined ? toolArgs.replacement_content : (toolArgs.replace !== undefined ? toolArgs.replace : toolArgs.replacement || ''));
+          const allowMultiple = !!(toolArgs.allowMultiple || toolArgs.allow_multiple);
+
+          if (!targetContent) {
+            return {
+              tool_call_id: toolCallId,
+              name: toolName,
+              output: 'Error: Missing targetContent argument for edit_file.',
+              error: true,
+            };
+          }
 
           const fileContent = fs.readFileSync(resolvedPath, 'utf-8');
           if (!fileContent.includes(targetContent)) {
             return {
               tool_call_id: toolCallId,
-              name,
-              output: `Error: target_content not found in ${args.file_path}. Please inspect the file with read_file first to ensure exact character and whitespace match.`,
+              name: toolName,
+              output: `Error: target_content not found in ${filePath}. Please inspect the file with read_file first to ensure exact character and whitespace match.`,
               error: true,
             };
           }
@@ -812,8 +917,8 @@ export class ToolExecutor {
           if (count > 1 && !allowMultiple) {
             return {
               tool_call_id: toolCallId,
-              name,
-              output: `Error: target_content appears ${count} times in ${args.file_path}. Provide more surrounding context to match a unique block or set allow_multiple: true.`,
+              name: toolName,
+              output: `Error: target_content appears ${count} times in ${filePath}. Provide more surrounding context to match a unique block or set allow_multiple: true.`,
               error: true,
             };
           }
@@ -825,28 +930,46 @@ export class ToolExecutor {
           fs.writeFileSync(resolvedPath, newContent, 'utf-8');
           return {
             tool_call_id: toolCallId,
-            name,
-            output: `Successfully edited ${args.file_path} (replaced ${count} occurrence${count > 1 ? 's' : ''}).`,
+            name: toolName,
+            output: `Successfully edited ${filePath} (replaced ${count} occurrence${count > 1 ? 's' : ''}).`,
           };
         }
 
         case 'create_directory': {
-          const targetPath = path.resolve(this.workingDir, args.dir_path);
+          const dirPath = toolArgs.dirPath || toolArgs.dir_path || toolArgs.path || toolArgs.dir || toolArgs.folder || toolArgs.directory;
+          if (!dirPath) {
+            return {
+              tool_call_id: toolCallId,
+              name: toolName,
+              output: 'Error: Missing dirPath argument for create_directory.',
+              error: true,
+            };
+          }
+          const targetPath = path.resolve(this.workingDir, dirPath);
           fs.mkdirSync(targetPath, { recursive: true });
           return {
             tool_call_id: toolCallId,
-            name,
-            output: `Successfully created directory: ${args.dir_path}`,
+            name: toolName,
+            output: `Successfully created directory: ${dirPath}`,
           };
         }
 
         case 'delete_file': {
-          const targetPath = path.resolve(this.workingDir, args.file_path);
+          const filePath = toolArgs.filePath || toolArgs.file_path || toolArgs.filename || toolArgs.path || toolArgs.name;
+          if (!filePath) {
+            return {
+              tool_call_id: toolCallId,
+              name: toolName,
+              output: 'Error: Missing filePath argument for delete_file.',
+              error: true,
+            };
+          }
+          const targetPath = path.resolve(this.workingDir, filePath);
           if (!fs.existsSync(targetPath)) {
             return {
               tool_call_id: toolCallId,
-              name,
-              output: `Error: File or directory not found to delete: ${args.file_path}`,
+              name: toolName,
+              output: `Error: File or directory not found to delete: ${filePath}`,
               error: true,
             };
           }
@@ -855,32 +978,33 @@ export class ToolExecutor {
             fs.rmSync(targetPath, { recursive: true, force: true });
             return {
               tool_call_id: toolCallId,
-              name,
-              output: `Successfully deleted directory: ${args.file_path}`,
+              name: toolName,
+              output: `Successfully deleted directory: ${filePath}`,
             };
           } else {
             fs.unlinkSync(targetPath);
             return {
               tool_call_id: toolCallId,
-              name,
-              output: `Successfully deleted file: ${args.file_path}`,
+              name: toolName,
+              output: `Successfully deleted file: ${filePath}`,
             };
           }
         }
 
         case 'find_files': {
-          const rootDir = path.resolve(this.workingDir, args.dir_path || '.');
+          const dirPath = toolArgs.dirPath || toolArgs.dir_path || toolArgs.path || '.';
+          const rootDir = path.resolve(this.workingDir, dirPath);
           if (!fs.existsSync(rootDir)) {
             return {
               tool_call_id: toolCallId,
-              name,
-              output: `Error: Directory not found: ${args.dir_path}`,
+              name: toolName,
+              output: `Error: Directory not found: ${dirPath}`,
               error: true,
             };
           }
 
-          const pattern = args.pattern.toLowerCase();
-          const maxResults = args.max_results || 50;
+          const pattern = (toolArgs.pattern || toolArgs.query || toolArgs.name || '').toLowerCase();
+          const maxResults = toolArgs.max_results || toolArgs.maxResults || 50;
           const matches: string[] = [];
 
           function scanDir(dir: string) {
@@ -897,23 +1021,23 @@ export class ToolExecutor {
                 entry.name.startsWith('.') ||
                 entry.name === 'node_modules' ||
                 entry.name === 'dist' ||
-                entry.name === 'build'
+                entry.name === 'build' ||
+                entry.name === '.git'
               ) {
                 continue;
               }
               const full = path.join(dir, entry.name);
               const rel = path.relative(rootDir, full).replace(/\\/g, '/');
-
+              const entryNameLower = entry.name.toLowerCase();
               if (entry.isDirectory()) {
                 scanDir(full);
-              } else {
-                if (
-                  rel.toLowerCase().includes(pattern) ||
-                  entry.name.toLowerCase().includes(pattern) ||
-                  (pattern.startsWith('*.') && entry.name.toLowerCase().endsWith(pattern.slice(1)))
-                ) {
-                  matches.push(rel);
-                }
+              } else if (
+                rel.toLowerCase().includes(pattern) ||
+                entryNameLower.includes(pattern) ||
+                (pattern.startsWith('*.') && entryNameLower.endsWith(pattern.slice(1))) ||
+                (pattern.startsWith('*') && entryNameLower.endsWith(pattern.slice(1)))
+              ) {
+                matches.push(rel);
               }
             }
           }
@@ -921,39 +1045,41 @@ export class ToolExecutor {
           scanDir(rootDir);
           return {
             tool_call_id: toolCallId,
-            name,
+            name: toolName,
             output:
               matches.length > 0
                 ? `Found ${matches.length} matching file(s):\n${matches.join('\n')}`
-                : `No files found matching '${args.pattern}'`,
+                : `No files found matching '${pattern}'`,
           };
         }
 
         case 'grep_search': {
-          const rootDir = path.resolve(this.workingDir, args.dir_path || '.');
+          const dirPath = toolArgs.dirPath || toolArgs.dir_path || toolArgs.path || '.';
+          const rootDir = path.resolve(this.workingDir, dirPath);
           if (!fs.existsSync(rootDir)) {
             return {
               tool_call_id: toolCallId,
-              name,
-              output: `Error: Directory not found: ${args.dir_path}`,
+              name: toolName,
+              output: `Error: Directory not found: ${dirPath}`,
               error: true,
             };
           }
 
-          const isRegex = !!args.is_regex;
-          const caseSensitive = !!args.case_sensitive;
-          const maxResults = args.max_results || 50;
+          const query = toolArgs.query || toolArgs.pattern || toolArgs.text || toolArgs.search || '';
+          const isRegex = !!(toolArgs.is_regex || toolArgs.isRegex);
+          const caseSensitive = !!(toolArgs.case_sensitive || toolArgs.caseSensitive);
+          const maxResults = toolArgs.max_results || toolArgs.maxResults || 50;
           const matches: string[] = [];
 
           let regex: RegExp;
           try {
             regex = isRegex
-              ? new RegExp(args.query, caseSensitive ? 'g' : 'gi')
-              : new RegExp(args.query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), caseSensitive ? 'g' : 'gi');
+              ? new RegExp(query, caseSensitive ? 'g' : 'gi')
+              : new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), caseSensitive ? 'g' : 'gi');
           } catch (reErr: any) {
             return {
               tool_call_id: toolCallId,
-              name,
+              name: toolName,
               output: `Invalid regular expression: ${reErr.message}`,
               error: true,
             };
@@ -1000,16 +1126,25 @@ export class ToolExecutor {
           searchFiles(rootDir);
           return {
             tool_call_id: toolCallId,
-            name,
+            name: toolName,
             output:
               matches.length > 0
                 ? `Found ${matches.length} match(es):\n${matches.join('\n')}`
-                : `No matches found for '${args.query}'`,
+                : `No matches found for '${query}'`,
           };
         }
 
         case 'file_info': {
-          let resolvedPath = args.file_path;
+          const filePath = toolArgs.filePath || toolArgs.file_path || toolArgs.filename || toolArgs.path || toolArgs.name;
+          if (!filePath) {
+            return {
+              tool_call_id: toolCallId,
+              name: toolName,
+              output: 'Error: Missing filePath argument for file_info.',
+              error: true,
+            };
+          }
+          let resolvedPath = filePath;
           if (resolvedPath.startsWith('~')) {
             resolvedPath = path.join(os.homedir(), resolvedPath.slice(1));
           } else {
@@ -1019,8 +1154,8 @@ export class ToolExecutor {
           if (!fs.existsSync(resolvedPath)) {
             return {
               tool_call_id: toolCallId,
-              name,
-              output: `Error: File not found: ${args.file_path}`,
+              name: toolName,
+              output: `Error: File not found: ${filePath}`,
               error: true,
             };
           }
@@ -1033,19 +1168,65 @@ export class ToolExecutor {
               lineCount = content.split('\n').length;
             } catch {}
           }
+
           const info = [
-            `Path: ${args.file_path}`,
+            `Path: ${filePath}`,
             `Type: ${isDir ? 'Directory' : 'File'}`,
             `Size: ${(stat.size / 1024).toFixed(2)} KB (${stat.size} bytes)`,
-            `Lines: ${isDir ? 'N/A' : lineCount}`,
-            `Created: ${stat.birthtime.toLocaleString()}`,
-            `Modified: ${stat.mtime.toLocaleString()}`,
-          ];
+            !isDir ? `Lines: ${lineCount}` : '',
+            `Created: ${stat.birthtime.toISOString()}`,
+            `Modified: ${stat.mtime.toISOString()}`,
+          ].filter(Boolean);
+
           return {
             tool_call_id: toolCallId,
-            name,
+            name: toolName,
             output: info.join('\n'),
           };
+        }
+
+        case 'run_command': {
+          const rawCmd = toolArgs.command || toolArgs.cmd || toolArgs.script || toolArgs.input || '';
+          const cmd = rawCmd.trim();
+          const echoMessage = extractEchoMessage(cmd);
+          if (echoMessage !== null) {
+            return {
+              tool_call_id: toolCallId,
+              name: toolName,
+              output: echoMessage,
+            };
+          }
+
+          if (cmd.startsWith('antri login') || cmd.startsWith('antri register')) {
+            return {
+              tool_call_id: toolCallId,
+              name: toolName,
+              output: 'Notice: Authentication commands must be executed interactively in the terminal by the user.',
+            };
+          }
+
+          try {
+            const { stdout, stderr } = await execPromise(cmd, {
+              cwd: this.workingDir,
+              timeout: 30000,
+              maxBuffer: 1024 * 1024,
+            });
+            const output = (stdout || '') + (stderr ? `\n[STDERR]: ${stderr}` : '');
+            const cleanOutput = output.trim() || '(command finished with no output)';
+            return {
+              tool_call_id: toolCallId,
+              name: toolName,
+              output: cleanOutput,
+            };
+          } catch (execErr: any) {
+            const errOutput = (execErr.stdout || '') + (execErr.stderr ? `\n${execErr.stderr}` : '') || execErr.message || 'Execution error';
+            return {
+              tool_call_id: toolCallId,
+              name: toolName,
+              output: `Command failed (exit code ${execErr.code || 1}): ${errOutput.trim()}`,
+              error: true,
+            };
+          }
         }
 
         case 'git_diff': {

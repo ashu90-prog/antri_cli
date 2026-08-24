@@ -734,4 +734,32 @@ You are a Software Craftsmanship and Clean Code Specialist. You modernize legacy
   }
 }
 
+export class SkillHarness {
+  /**
+   * Formats activated skills into high-potency, directive instructions with tool execution rules
+   */
+  public static formatSkillExecutionDirectives(skills: MarkdownSkill[]): string {
+    if (!skills || skills.length === 0) return '';
+
+    const blocks = skills
+      .map((skill, index) => {
+        return `### ⚡ SPECIALIST SKILL [${index + 1}/${skills.length}]: ${skill.name.toUpperCase()} (${skill.category})\n` +
+          `Role: ${skill.description}\n\n` +
+          `${skill.instructions}`;
+      })
+      .join('\n\n---\n\n');
+
+    return `\n\n══════════════════════════════════════════════════════════════════════\n` +
+      `⚡ ACTIVATED SPECIALIST SKILL DIRECTIVES (MANDATORY EXECUTION HARNESS)\n` +
+      `══════════════════════════════════════════════════════════════════════\n` +
+      `${blocks}\n` +
+      `══════════════════════════════════════════════════════════════════════\n` +
+      `🔧 SKILL TOOL HARNESS RULES:\n` +
+      `1. When coding or building, execute 'write_file' to write REAL multi-file repositories directly to workspace disk.\n` +
+      `2. For Next.js / React projects: write 'package.json', 'app/layout.tsx', 'app/page.tsx', and modular components.\n` +
+      `3. Zero placeholder comments. Write 100% complete, working implementations.\n` +
+      `══════════════════════════════════════════════════════════════════════`;
+  }
+}
+
 export const skillManager = new SkillManager();
