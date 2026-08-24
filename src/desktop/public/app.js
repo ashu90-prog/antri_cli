@@ -652,34 +652,56 @@ async function submitPrompt() {
       }
     }
 
-    if (accumulated && accumulated.includes('<antri_artifact')) {
-      const artMatch = accumulated.match(/<antri_artifact\s+id="([^"]+)"\s+type="([^"]+)"\s+title="([^"]+)">([\s\S]*?)<\/antri_artifact>/i);
-      const cleanText = accumulated.replace(/<antri_artifact[\s\S]*?<\/antri_artifact>/gi, '').trim();
-      contentEl.textContent = cleanText;
-
-      if (artMatch) {
-        const artId = artMatch[1];
-        const artType = artMatch[2].toLowerCase();
-        const artTitle = artMatch[3];
-        const isMindmap = artType === 'mindmap';
-        const isGraph = artType === 'graph';
-        const artIcon = isMindmap ? '🧠' : isGraph ? '📊' : '🌐';
-        const artSubtitle = isMindmap ? 'Interactive Mind Map' : isGraph ? 'Code Architecture Graph' : 'Interactive Multi-Page HTML App';
-
-        const embed = document.createElement('div');
-        embed.className = 'chat-artifact-embed';
-        embed.innerHTML = `
-          <div style="display:flex;align-items:center;gap:10px;">
-            <span style="font-size:22px;">${artIcon}</span>
-            <div>
-              <div style="font-weight:700;font-size:13.5px;color:var(--text-primary);">${escapeHtml(artTitle)}</div>
-              <div style="font-size:11.5px;color:var(--text-muted);">${artSubtitle}</div>
-            </div>
-          </div>
-          <button class="chat-artifact-btn" onclick="openArtifactViewer('${artId}', '${escapeHtml(artTitle)}', '${artType}')">👁️ View Artifact</button>
-        `;
-        assistantMsgEl.appendChild(embed);
+    function parseArtifactHelper(text) {
+      if (!text) return null;
+      const xmlMatch = text.match(/<antri_artifact\s+id="([^"]+)"\s+type="([^"]+)"\s+title="([^"]+)">([\s\S]*?)<\/antri_artifact>/i);
+      if (xmlMatch) {
+        return {
+          id: xmlMatch[1],
+          type: xmlMatch[2].toLowerCase(),
+          title: xmlMatch[3],
+          cleanText: text.replace(/<antri_artifact[\s\S]*?<\/antri_artifact>/gi, '').trim(),
+        };
       }
+      if (text.includes('"create_artifact"')) {
+        try {
+          const jsonMatch = text.match(/\{[\s\S]*"name"\s*:\s*"create_artifact"[\s\S]*\}/);
+          if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0]);
+            const params = parsed.parameters || parsed.args || parsed;
+            return {
+              id: 'art_' + Date.now().toString(36),
+              type: (params.type || 'mindmap').toLowerCase(),
+              title: params.title || 'Generated Artifact',
+              cleanText: text.replace(jsonMatch[0], '').trim(),
+            };
+          }
+        } catch (_) {}
+      }
+      return null;
+    }
+
+    const artData = parseArtifactHelper(accumulated);
+    if (artData) {
+      contentEl.textContent = artData.cleanText;
+      const isMindmap = artData.type === 'mindmap';
+      const isGraph = artData.type === 'graph';
+      const artIcon = isMindmap ? '🧠' : isGraph ? '📊' : '🌐';
+      const artSubtitle = isMindmap ? 'Interactive Mind Map' : isGraph ? 'Code Architecture Graph' : 'Interactive Multi-Page HTML App';
+
+      const embed = document.createElement('div');
+      embed.className = 'chat-artifact-embed';
+      embed.innerHTML = `
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="font-size:22px;">${artIcon}</span>
+          <div>
+            <div style="font-weight:700;font-size:13.5px;color:var(--text-primary);">${escapeHtml(artData.title)}</div>
+            <div style="font-size:11.5px;color:var(--text-muted);">${artSubtitle}</div>
+          </div>
+        </div>
+        <button class="chat-artifact-btn" onclick="openArtifactViewer('${artData.id}', '${escapeHtml(artData.title)}', '${artData.type}')">👁️ View Artifact</button>
+      `;
+      assistantMsgEl.appendChild(embed);
     }
   } catch (err) {
     contentEl.textContent = `Error: ${err.message}`;
@@ -717,35 +739,58 @@ function appendMessage(role, text) {
   const content = document.createElement('div');
   content.className = 'msg-content';
 
-  if (role === 'assistant' && text && text.includes('<antri_artifact')) {
-    const artMatch = text.match(/<antri_artifact\s+id="([^"]+)"\s+type="([^"]+)"\s+title="([^"]+)">([\s\S]*?)<\/antri_artifact>/i);
-    const cleanText = text.replace(/<antri_artifact[\s\S]*?<\/antri_artifact>/gi, '').trim();
-    content.textContent = cleanText;
+  function parseArtifactHelper(text) {
+    if (!text) return null;
+    const xmlMatch = text.match(/<antri_artifact\s+id="([^"]+)"\s+type="([^"]+)"\s+title="([^"]+)">([\s\S]*?)<\/antri_artifact>/i);
+    if (xmlMatch) {
+      return {
+        id: xmlMatch[1],
+        type: xmlMatch[2].toLowerCase(),
+        title: xmlMatch[3],
+        cleanText: text.replace(/<antri_artifact[\s\S]*?<\/antri_artifact>/gi, '').trim(),
+      };
+    }
+    if (text.includes('"create_artifact"')) {
+      try {
+        const jsonMatch = text.match(/\{[\s\S]*"name"\s*:\s*"create_artifact"[\s\S]*\}/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]);
+          const params = parsed.parameters || parsed.args || parsed;
+          return {
+            id: 'art_' + Date.now().toString(36),
+            type: (params.type || 'mindmap').toLowerCase(),
+            title: params.title || 'Generated Artifact',
+            cleanText: text.replace(jsonMatch[0], '').trim(),
+          };
+        }
+      } catch (_) {}
+    }
+    return null;
+  }
+
+  const artData = role === 'assistant' ? parseArtifactHelper(text) : null;
+  if (artData) {
+    content.textContent = artData.cleanText;
     row.appendChild(content);
 
-    if (artMatch) {
-      const artId = artMatch[1];
-      const artType = artMatch[2].toLowerCase();
-      const artTitle = artMatch[3];
-      const isMindmap = artType === 'mindmap';
-      const isGraph = artType === 'graph';
-      const artIcon = isMindmap ? '🧠' : isGraph ? '📊' : '🌐';
-      const artSubtitle = isMindmap ? 'Interactive Mind Map' : isGraph ? 'Code Architecture Graph' : 'Interactive HTML Plan';
+    const isMindmap = artData.type === 'mindmap';
+    const isGraph = artData.type === 'graph';
+    const artIcon = isMindmap ? '🧠' : isGraph ? '📊' : '🌐';
+    const artSubtitle = isMindmap ? 'Interactive Mind Map' : isGraph ? 'Code Architecture Graph' : 'Interactive HTML Plan';
 
-      const embed = document.createElement('div');
-      embed.className = 'chat-artifact-embed';
-      embed.innerHTML = `
-        <div style="display:flex;align-items:center;gap:10px;">
-          <span style="font-size:22px;">${artIcon}</span>
-          <div>
-            <div style="font-weight:700;font-size:13.5px;color:var(--text-primary);">${escapeHtml(artTitle)}</div>
-            <div style="font-size:11.5px;color:var(--text-muted);">${artSubtitle}</div>
-          </div>
+    const embed = document.createElement('div');
+    embed.className = 'chat-artifact-embed';
+    embed.innerHTML = `
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span style="font-size:22px;">${artIcon}</span>
+        <div>
+          <div style="font-weight:700;font-size:13.5px;color:var(--text-primary);">${escapeHtml(artData.title)}</div>
+          <div style="font-size:11.5px;color:var(--text-muted);">${artSubtitle}</div>
         </div>
-        <button class="chat-artifact-btn" onclick="openArtifactViewer('${artId}', '${escapeHtml(artTitle)}', '${artType}')">👁️ View Artifact</button>
-      `;
-      row.appendChild(embed);
-    }
+      </div>
+      <button class="chat-artifact-btn" onclick="openArtifactViewer('${artData.id}', '${escapeHtml(artData.title)}', '${artData.type}')">👁️ View Artifact</button>
+    `;
+    row.appendChild(embed);
   } else {
     content.textContent = text;
     row.appendChild(content);

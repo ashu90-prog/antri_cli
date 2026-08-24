@@ -1,6 +1,6 @@
 import ora, { Ora } from 'ora';
 import chalk from 'chalk';
-import { AntriConfig, ChatMessage, ToolCall, ToolResult } from '../types.js';
+import { AntriConfig, ChatMessage, ToolCall, ToolResult, ToolDefinition } from '../types.js';
 import { createProvider } from '../providers/index.js';
 import { ConversationHistory } from './history.js';
 import { getAllActiveTools, ToolExecutor } from './tools.js';
@@ -14,6 +14,25 @@ import { SelfDebugger } from './debugger.js';
 import { metaOptimizer } from './metaOptimizer.js';
 import { sessionManager } from './sessionManager.js';
 import { log } from '../utils/logger.js';
+
+export function isArtifactOrVisualPrompt(prompt: string): boolean {
+  if (!prompt || typeof prompt !== 'string') return false;
+  const p = prompt.trim().toLowerCase();
+  
+  if (p.startsWith('/mindmap') || p.startsWith('/imagine') || p.startsWith('/view') || p.startsWith('/artifacts')) {
+    return true;
+  }
+  if (/\b(mindmap|mind map|concept tree|concept hierarchy|concept map)\b/i.test(p)) {
+    return true;
+  }
+  if (/\b(architecture diagram|flowchart|architecture graph|visual diagram|visualize architecture)\b/i.test(p)) {
+    return true;
+  }
+  if (/^(create|generate|build|make|design)\s+(an?\s+)?(interactive\s+)?(html|spa|workout plan|diet plan|dashboard|calculator|tracker|mindmap|mind map)/i.test(p)) {
+    return true;
+  }
+  return false;
+}
 
 export class AntriAgent {
   private config: AntriConfig;
@@ -230,18 +249,21 @@ Autonomous Guidelines:
         `\n---------------------------------------------------`;
     }
 
-    // 3. Autonomous Self-Recall into Persistent Memory Hierarchy
+    // 3. Autonomous Self-Recall into Persistent Memory Hierarchy with fast timeout guard
     const geminiKey = this.config.apiKeys.gemini || process.env.GEMINI_API_KEY;
-    const { contextText, recalled } = await memoryManager.selfRecall(
-      userPrompt,
-      this.config.workingDir,
-      geminiKey
-    );
-
-    if (recalled.hasMemories && (recalled.semanticInsights.length > 0 || recalled.workspaceConventions.length > 0)) {
-      const matchCount = recalled.semanticInsights.length + recalled.workspaceConventions.length;
-      console.log(chalk.hex('#818cf8')(`🧠 Recalled ${matchCount} relevant memory item(s) from persistent store`));
-    }
+    let contextText = '';
+    try {
+      const recallPromise = memoryManager.selfRecall(userPrompt, this.config.workingDir, geminiKey);
+      const timeoutPromise = new Promise<{ contextText: string; recalled: any }>((res) =>
+        setTimeout(() => res({ contextText: '', recalled: { hasMemories: false, semanticInsights: [], workspaceConventions: [] } }), 400)
+      );
+      const { contextText: recalledText, recalled } = await Promise.race([recallPromise, timeoutPromise]);
+      contextText = recalledText;
+      if (recalled && recalled.hasMemories && (recalled.semanticInsights?.length > 0 || recalled.workspaceConventions?.length > 0)) {
+        const matchCount = (recalled.semanticInsights?.length || 0) + (recalled.workspaceConventions?.length || 0);
+        console.log(chalk.hex('#818cf8')(`🧠 Recalled ${matchCount} relevant memory item(s) from persistent store`));
+      }
+    } catch {}
 
     // 4. Resolve any @file attachments in userPrompt
     const { enhancedPrompt, attachedFiles } = FilePickerService.extractAndReadAttachments(
@@ -266,11 +288,30 @@ Autonomous Guidelines:
     // 5b. Parse and persist any interactive Claude-style artifacts (<antri_artifact>...</antri_artifact>)
     const { artifactManager } = await import('./artifactManager.js');
     const activeSession = sessionManager.getActiveSession();
-    artifactManager.parseAndStoreArtifacts(
+    const parsed = artifactManager.parseAndStoreArtifacts(
       response,
       activeSession?.id || 'cli_session',
       activeSession?.title || 'CLI Session'
     );
+
+    if (parsed.artifacts && parsed.artifacts.length > 0) {
+      const os = await import('os');
+      const path = await import('path');
+      for (const art of parsed.artifacts) {
+        const isMindmap = art.type === 'mindmap';
+        const isGraph = art.type === 'graph';
+        const icon = isMindmap ? '🧠' : isGraph ? '📊' : '🌐';
+        const typeLabel = isMindmap ? 'Interactive Markmap Mind Map' : isGraph ? 'Code Architecture Graph' : 'Interactive Multi-Page SPA';
+        const filePath = artifactManager.getArtifactFilePath(art.id) || path.join(os.homedir(), '.antri', 'artifacts', `${art.id}.html`);
+        const fileUri = `file:///${filePath.replace(/\\/g, '/')}`;
+
+        console.log(chalk.bold.hex('#c084fc')(`\n┌─ ${icon} ${typeLabel}: ${art.title} ─────────────────┐`));
+        console.log(`  ${chalk.bold.white('• ID:')}          ${chalk.cyan(art.id)}`);
+        console.log(`  ${chalk.bold.white('• Live View:')}   ${chalk.green(fileUri)}`);
+        console.log(`  ${chalk.bold.white('• Desktop:')}     ${chalk.hex('#818cf8')('Launch Desktop Control Plane with: antri --desktop')}`);
+        console.log(chalk.bold.hex('#c084fc')(`└────────────────────────────────────────────────────────────┘\n`));
+      }
+    }
 
     // 6. Record interaction into persistent episodic memory & meta-optimizer
     memoryManager.recordInteraction(userPrompt, response);
@@ -317,7 +358,13 @@ Autonomous Guidelines:
     const pendingToolCalls: ToolCall[] = [];
 
     try {
-      const activeTools = this.config.autoExecuteTools ? getAllActiveTools() : [];
+      const lastUserMsg = messagesWithSystem[messagesWithSystem.length - 1]?.content || '';
+      const isVisual = isArtifactOrVisualPrompt(lastUserMsg);
+
+      let activeTools: ToolDefinition[] = [];
+      if (this.config.autoExecuteTools && !isVisual) {
+        activeTools = getAllActiveTools().filter((t) => t.name !== 'create_artifact');
+      }
 
       fullResponse = await provider.sendMessageStream(
         messagesWithSystem,
@@ -338,8 +385,7 @@ Autonomous Guidelines:
           },
           onToolCall: (toolCall: ToolCall) => {
             if (spinner) {
-              spinner.stop();
-              spinner = null;
+              spinner.text = chalk.hex('#38bdf8')(`⚙️ Executing tool: ${toolCall.function.name}...`);
             }
             pendingToolCalls.push(toolCall);
             if (onToolCall) {

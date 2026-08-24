@@ -722,20 +722,21 @@ ${artifact.content.trim()}
   }
 
   /**
-   * Parses `<antri_artifact id="..." type="..." title="...">...</antri_artifact>`
-   * blocks from text, saves them to store, and replaces them with a clean Markdown badge.
+   * Parses `<antri_artifact ...>`, JSON create_artifact, and raw Mermaid mindmaps
+   * blocks from text, saves them to store, and replaces them with clean Markdown badges.
    */
   public parseAndStoreArtifacts(
     rawText: string,
     sessionId: string = 'session_' + Date.now(),
     sessionTitle: string = 'Chat Session'
   ): { cleanText: string; artifacts: Artifact[] } {
-    const regex = /<antri_artifact\s+id="([^"]+)"\s+type="([^"]+)"\s+title="([^"]+)">([\s\S]*?)<\/antri_artifact>/gi;
     const artifacts: Artifact[] = [];
     let cleanText = rawText;
 
+    // 1. Match <antri_artifact id="..." type="..." title="...">...</antri_artifact>
+    const xmlRegex = /<antri_artifact\s+id="([^"]+)"\s+type="([^"]+)"\s+title="([^"]+)">([\s\S]*?)<\/antri_artifact>/gi;
     let match: RegExpExecArray | null;
-    while ((match = regex.exec(rawText)) !== null) {
+    while ((match = xmlRegex.exec(rawText)) !== null) {
       const id = match[1].trim();
       const type = (match[2].trim().toLowerCase() as ArtifactType) || 'html';
       const title = match[3].trim();
@@ -757,6 +758,66 @@ ${artifact.content.trim()}
       const typeLabel = type === 'mindmap' ? '🧠 Interactive Mind Map' : type === 'graph' ? '📊 Code Architecture Graph' : '🌐 Interactive HTML Artifact';
       const badge = `\n\n> 🎨 **[Artifact Created: ${title}]**\n> Type: \`${typeLabel}\` · ID: \`${id}\`\n> Click **"View Artifact"** in the interface to launch.\n\n`;
       cleanText = cleanText.replace(match[0], badge);
+    }
+
+    // 2. Match JSON format: {"name": "create_artifact", "parameters": { ... }}
+    if (artifacts.length === 0 && rawText.includes('"create_artifact"')) {
+      try {
+        const jsonMatch = rawText.match(/\{[\s\S]*"name"\s*:\s*"create_artifact"[\s\S]*\}/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]);
+          const params = parsed.parameters || parsed.args || parsed;
+          const type = (params.type || 'mindmap').toLowerCase() as ArtifactType;
+          const title = params.title || 'Generated Artifact';
+          const content = params.content || '';
+          const id = `art_${Date.now().toString(36)}`;
+
+          if (content.trim()) {
+            const artifact: Artifact = {
+              id,
+              sessionId,
+              sessionTitle,
+              title,
+              type,
+              content,
+              createdAt: Date.now(),
+            };
+            this.saveArtifact(artifact);
+            artifacts.push(artifact);
+
+            const typeLabel = type === 'mindmap' ? '🧠 Interactive Mind Map' : type === 'graph' ? '📊 Code Architecture Graph' : '🌐 Interactive HTML Artifact';
+            const badge = `\n\n> 🎨 **[Artifact Created: ${title}]**\n> Type: \`${typeLabel}\` · ID: \`${id}\`\n> Click **"View Artifact"** in the interface to launch.\n\n`;
+            cleanText = cleanText.replace(jsonMatch[0], badge);
+          }
+        }
+      } catch (_) {}
+    }
+
+    // 3. Match raw Mermaid mindmap blocks: ```mermaid\nmindmap...``` or mindmap\n  root((...))
+    if (artifacts.length === 0 && (rawText.includes('mindmap\n') || rawText.includes('mindmap\r\n'))) {
+      const mindmapMatch = rawText.match(/(?:```(?:mermaid)?\s*)?(mindmap\s+[\s\S]*?)(?:```|$)/i);
+      if (mindmapMatch && mindmapMatch[1].trim().length > 20) {
+        const content = mindmapMatch[1].trim();
+        const rootMatch = content.match(/root\(\(?([^)]+)\)?\)/i);
+        const title = rootMatch ? `${rootMatch[1].trim()} Mind Map` : 'Interactive Mind Map';
+        const id = `mindmap_${Date.now().toString(36)}`;
+
+        const artifact: Artifact = {
+          id,
+          sessionId,
+          sessionTitle,
+          title,
+          type: 'mindmap',
+          content,
+          createdAt: Date.now(),
+        };
+
+        this.saveArtifact(artifact);
+        artifacts.push(artifact);
+
+        const badge = `\n\n> 🎨 **[Artifact Created: ${title}]**\n> Type: \`🧠 Interactive Mind Map\` · ID: \`${id}\`\n> Click **"View Artifact"** in the interface to launch.\n\n`;
+        cleanText = cleanText.replace(mindmapMatch[0], badge);
+      }
     }
 
     return { cleanText, artifacts };
