@@ -445,13 +445,13 @@ export const AVAILABLE_TOOLS: ToolDefinition[] = [
   },
   {
     name: 'create_artifact',
-    description: 'Create and save an interactive HTML application/plan, visual code architecture graph, or hierarchical visual mind map artifact (Claude-style Artifact).',
+    description: 'Create and save an interactive HTML application/plan, visual code architecture graph, or hierarchical visual mind map artifact (Claude-style Artifact). When creating a mindmap, "content" MUST contain a complete, deeply factual Mermaid mindmap tailored to the requested topic with 4 to 6 real domain pillars and 2 to 4 granular subtopics each. NEVER output placeholder words like "Key Branch", "Subtopic", "Detail", or "Pillar".',
     parameters: {
       type: 'object',
       properties: {
         title: {
           type: 'string',
-          description: 'Descriptive title of the artifact (e.g., "2-Day Football Stretching Plan", "Payment Microservice Flowchart", "System Design Mind Map").',
+          description: 'Descriptive title of the artifact.',
         },
         type: {
           type: 'string',
@@ -460,7 +460,7 @@ export const AVAILABLE_TOOLS: ToolDefinition[] = [
         },
         content: {
           type: 'string',
-          description: 'The complete self-contained HTML/CSS/JS code or Mermaid diagram / mindmap syntax.',
+          description: 'The complete self-contained HTML/CSS/JS code or Mermaid syntax. For mindmaps, populate every branch and leaf with authentic domain facts, dates, names, and concepts.',
         },
       },
       required: ['title', 'type', 'content'],

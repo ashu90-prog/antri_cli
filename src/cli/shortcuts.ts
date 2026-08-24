@@ -332,22 +332,13 @@ graph TD
 
       if (query.trim()) {
         const mindmapPrompt = `Create a rich, comprehensive, deeply detailed, and well-structured visual mind map and concept tree for: "${query.trim()}".
-Break the topic down hierarchically into 4 to 6 REAL domain pillars/milestones with 2 to 4 granular, factual sub-concepts each (DO NOT use placeholder words like 'Pillar 1' or 'Subtopic A').
-You MUST output the Mermaid mindmap enclosed in an artifact tag:
+Break the topic down hierarchically into 4 to 6 REAL domain pillars with 2 to 4 granular, factual sub-concepts each.
+You MUST output the complete Mermaid mindmap enclosed in an artifact tag:
 <antri_artifact id="mindmap_${Date.now().toString(36)}" type="mindmap" title="${query.trim().slice(0, 40)} Mind Map">
 mindmap
   root((${query.trim().slice(0, 30)}))
-    Primary Concept 1
-      Factual Subtopic A
-      Factual Subtopic B
-    Primary Concept 2
-      Factual Subtopic C
-      Factual Subtopic D
-    Primary Concept 3
-      Factual Subtopic E
-    Primary Concept 4
-      Factual Subtopic F
-</antri_artifact>`;
+</antri_artifact>
+🚨 CRITICAL RULE: Fill ALL branches and sub-nodes with authentic domain facts, key milestones, names, dates, and principles specific to "${query.trim()}". Do NOT use generic placeholder words.`;
         await this.agent.chat(mindmapPrompt);
       }
       return { handled: true };

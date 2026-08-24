@@ -8,7 +8,7 @@ const execPromise = util.promisify(exec);
 
 export class Updater {
   public static readonly PACKAGE_NAME = 'antri_cli';
-  public static readonly CURRENT_VERSION = '1.57.7';
+  public static readonly CURRENT_VERSION = '1.57.8';
 
   /**
    * Fetches latest release version directly from registry.npmjs.org (cache-free)

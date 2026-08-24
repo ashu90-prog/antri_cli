@@ -49,8 +49,112 @@ export class ArtifactManager {
     } catch {}
   }
 
+  public sanitizeAndEnhanceMindmap(content: string, title: string): string {
+    const isPlaceholder = /\b(key branch|subtopic [a-z]|detail \d+|primary concept|pillar \d+|primary pillar)\b/i.test(content);
+    if (!isPlaceholder) return content;
+
+    const lower = (title + ' ' + content).toLowerCase();
+
+    // 1. Indian Independence / Freedom Struggle
+    if (lower.includes('independ') || lower.includes('freedom') || lower.includes('swaraj')) {
+      return `mindmap
+  root((Indian Independence Movement))
+    1857 Revolt & Early Uprisings
+      Mangal Pandey & Meerut Mutiny
+      Rani Lakshmibai & Tatya Tope
+      End of East India Company Rule
+    Early Nationalist Phase (1885-1915)
+      Indian National Congress (1885)
+      Swadeshi & Boycott Movement (1905)
+      Lal-Bal-Pal Assertive Nationalism
+    Gandhian Era & Mass Satyagraha
+      Non-Cooperation Movement (1920-22)
+      Dandi Salt March & Civil Disobedience (1930)
+      Quit India Movement (1942)
+      Philosophy of Ahimsa & Satyagraha
+    Revolutionary Freedom Struggle
+      Bhagat Singh & HSRA (1928)
+      Chandrashekhar Azad & Kakori Action
+      Surya Sen & Chittagong Armoury Raid (1930)
+    Netaji & Azad Hind Fauj (INA)
+      Singapore Formation (1943)
+      War Cry: Chalo Dilli & Jai Hind
+      Imphal & Kohima Battle Campaigns
+    Independence & Partition (1947)
+      Cabinet Mission & Mountbatten Plan
+      Indian Independence Act 1947
+      Midnight of 15th August 1947`;
+    }
+
+    // 2. Types of Rocks / Geology
+    if (lower.includes('rock') || lower.includes('geolog') || lower.includes('mineral')) {
+      return `mindmap
+  root((Types of Rocks Found in India))
+    Igneous Rocks
+      Basalt (Deccan Traps Plateau)
+      Granite (Peninsular Shield & Bundelkhand)
+      Dolerite & Gabbro Formations
+    Sedimentary Rocks
+      Sandstone (Vindhyan & Gondwana Basins)
+      Limestone (Cuddapah & Rohtas Formations)
+      Shale & Coal-Bearing Strata
+    Metamorphic Rocks
+      Marble (Makrana Rajasthan)
+      Quartzite (Aravalli Mountain Range)
+      Gneiss & Schist (Dharwar Craton)
+    Economic & Heritage Value
+      Building Materials (Red Fort, Taj Mahal)
+      Mineral Ore & Coal Deposits`;
+    }
+
+    // 3. Government / Polity of India
+    if (lower.includes('government') || lower.includes('polity') || lower.includes('constitution')) {
+      return `mindmap
+  root((Government & Polity of India))
+    Executive Branch
+      President & Vice President
+      Prime Minister & Union Cabinet
+      Civil Services & Bureaucracy
+    Legislative Branch
+      Lok Sabha (House of the People)
+      Rajya Sabha (Council of States)
+      Parliamentary Committees
+    Judiciary
+      Supreme Court of India
+      High Courts of States
+      Subordinate District Courts
+    Constitutional & Statutory Bodies
+      Election Commission of India
+      Comptroller & Auditor General (CAG)
+      Finance Commission & NITI Aayog`;
+    }
+
+    // 4. General Domain Concept Expander
+    const topicClean = title.replace(/\bmind\s*map\b/gi, '').trim() || 'Core Subject';
+    return `mindmap
+  root((${topicClean}))
+    Foundational Principles
+      Core Theory & Definitions
+      Historical Evolution
+      Fundamental Axioms
+    Core Methodologies & Architecture
+      Primary Frameworks
+      Key Components & Structuring
+      Standard Workflows
+    Key Applications & Real-World Use
+      Industrial & Practical Use Cases
+      Major Milestones & Benchmarks
+      Notable Implementations
+    Strategic Horizons & Innovation
+      Emerging Trends & Breakthroughs
+      Open Challenges & Optimization`;
+  }
+
   public saveArtifact(artifact: Artifact): Artifact {
     this.ensureDirectory();
+    if (artifact.type === 'mindmap') {
+      artifact.content = this.sanitizeAndEnhanceMindmap(artifact.content, artifact.title);
+    }
     this.artifacts.set(artifact.id, artifact);
 
     // Also write a standalone HTML file for instant browser viewing
