@@ -745,6 +745,27 @@ export class ToolExecutor {
             fs.mkdirSync(dir, { recursive: true });
           }
           fs.writeFileSync(targetPath, args.content, 'utf-8');
+
+          if (args.file_path.endsWith('.html') || (args.content && typeof args.content === 'string' && args.content.includes('<html'))) {
+            try {
+              const { artifactManager } = await import('./artifactManager.js');
+              const { sessionManager } = await import('./sessionManager.js');
+              const activeSession = sessionManager.getActiveSession();
+              const baseName = path.basename(args.file_path, '.html').replace(/[_-]/g, ' ');
+              const title = baseName.charAt(0).toUpperCase() + baseName.slice(1);
+              const id = 'art_' + path.basename(args.file_path, '.html').replace(/[^a-zA-Z0-9_]/g, '_');
+              artifactManager.saveArtifact({
+                id,
+                sessionId: activeSession?.id || 'workspace_files',
+                sessionTitle: activeSession?.title || 'Workspace & Generated Files',
+                title: title,
+                type: 'html',
+                content: args.content,
+                createdAt: Date.now(),
+              });
+            } catch (_) {}
+          }
+
           return {
             tool_call_id: toolCallId,
             name,

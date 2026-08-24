@@ -866,6 +866,34 @@ export class ArtifactManager {
   }
 
   public getAllArtifacts(): Artifact[] {
+    // Auto-discover any unindexed .html artifacts in baseDir
+    try {
+      if (fs.existsSync(this.baseDir)) {
+        const files = fs.readdirSync(this.baseDir);
+        for (const file of files) {
+          if (file.endsWith('.html') && !file.startsWith('.')) {
+            const id = path.basename(file, '.html');
+            if (!this.artifacts.has(id)) {
+              const fullPath = path.join(this.baseDir, file);
+              const content = fs.readFileSync(fullPath, 'utf-8');
+              const titleMatch = content.match(/<title>([^<]+)<\/title>/i);
+              const title = titleMatch ? titleMatch[1].trim() : id.replace(/[_-]/g, ' ');
+              const stat = fs.statSync(fullPath);
+              this.artifacts.set(id, {
+                id,
+                sessionId: 'workspace_files',
+                sessionTitle: 'Workspace & Generated Files',
+                title,
+                type: content.includes('markmap') || content.includes('mindmap') ? 'mindmap' : 'html',
+                content,
+                createdAt: stat.birthtimeMs || Date.now(),
+              });
+            }
+          }
+        }
+      }
+    } catch (_) {}
+
     return Array.from(this.artifacts.values()).sort((a, b) => b.createdAt - a.createdAt);
   }
 

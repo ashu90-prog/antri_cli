@@ -801,9 +801,21 @@ async function loadArtifactsTab() {
       return;
     }
 
-    data.grouped.forEach((grp) => {
+    const totalCount = data.artifacts ? data.artifacts.length : 0;
+    const toolbar = document.createElement('div');
+    toolbar.className = 'artifacts-toolbar';
+    toolbar.innerHTML = `
+      <div style="font-size:13px;color:var(--text-muted);font-weight:600;">
+        Showing <span style="color:var(--text-primary);font-weight:700;">${totalCount}</span> artifact${totalCount === 1 ? '' : 's'} across <span style="color:var(--text-primary);font-weight:700;">${data.grouped.length}</span> chat session${data.grouped.length === 1 ? '' : 's'}
+      </div>
+      <button class="artifacts-toggle-all-btn" id="artifactsToggleAllBtn" onclick="toggleAllArtifactGroups()">📁 Collapse All</button>
+    `;
+    container.appendChild(toolbar);
+
+    data.grouped.forEach((grp, idx) => {
       const groupEl = document.createElement('div');
       groupEl.className = 'artifact-session-group';
+      groupEl.id = `artifact-group-${idx}`;
 
       let cardsHtml = '';
       grp.artifacts.forEach((art) => {
@@ -825,7 +837,7 @@ async function loadArtifactsTab() {
               <div style="font-size:12px;color:var(--text-muted);">ID: ${art.id}</div>
             </div>
             <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">
-              <button class="chat-artifact-btn" onclick="openArtifactViewer('${art.id}', '${escapeHtml(art.title)}', '${art.type}')">👁️ View Artifact</button>
+              <button class="chat-artifact-btn" onclick="openArtifactViewer('${encodeURIComponent(art.id)}', '${escapeHtml(art.title)}', '${art.type}')">👁️ View Artifact</button>
               <button style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px;" title="Delete Artifact" onclick="deleteArtifactDesktop('${art.id}')">🗑️</button>
             </div>
           </div>
@@ -833,8 +845,9 @@ async function loadArtifactsTab() {
       });
 
       groupEl.innerHTML = `
-        <div class="artifact-session-header">
+        <div class="artifact-session-header" onclick="toggleArtifactGroup('${groupEl.id}')">
           <div class="artifact-session-title">
+            <span class="artifact-collapse-chevron">▼</span>
             <span>📁</span>
             <span>${escapeHtml(grp.sessionTitle || 'Chat Session')}</span>
           </div>
@@ -848,6 +861,31 @@ async function loadArtifactsTab() {
     });
   } catch (err) {
     console.error('Failed to load artifacts tab:', err);
+  }
+}
+
+function toggleArtifactGroup(groupId) {
+  const el = document.getElementById(groupId);
+  if (el) {
+    el.classList.toggle('collapsed');
+  }
+}
+
+function toggleAllArtifactGroups() {
+  const groups = document.querySelectorAll('.artifact-session-group');
+  const btn = document.getElementById('artifactsToggleAllBtn');
+  const anyOpen = Array.from(groups).some((g) => !g.classList.contains('collapsed'));
+
+  groups.forEach((g) => {
+    if (anyOpen) {
+      g.classList.add('collapsed');
+    } else {
+      g.classList.remove('collapsed');
+    }
+  });
+
+  if (btn) {
+    btn.textContent = anyOpen ? '📂 Expand All' : '📁 Collapse All';
   }
 }
 

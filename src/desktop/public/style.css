@@ -1434,11 +1434,38 @@ body.antri-app {
   gap: 1.5rem;
 }
 
+.artifacts-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.25rem;
+  gap: 1rem;
+}
+
+.artifacts-toggle-all-btn {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-main);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  padding: 6px 14px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.artifacts-toggle-all-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--accent-primary);
+}
+
 .artifact-session-group {
   background: var(--bg-card);
   border: 1px solid var(--border-main);
   border-radius: var(--radius-md);
   padding: 1.25rem;
+  transition: all 0.2s ease;
 }
 
 .artifact-session-header {
@@ -1448,6 +1475,39 @@ body.antri-app {
   margin-bottom: 1rem;
   padding-bottom: 0.75rem;
   border-bottom: 1px solid var(--border-main);
+  cursor: pointer;
+  user-select: none;
+  transition: opacity 0.15s;
+}
+
+.artifact-session-header:hover {
+  opacity: 0.85;
+}
+
+.artifact-session-group.collapsed {
+  padding: 0.85rem 1.25rem;
+}
+
+.artifact-session-group.collapsed .artifact-session-header {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.artifact-session-group.collapsed .artifacts-grid {
+  display: none;
+}
+
+.artifact-collapse-chevron {
+  display: inline-block;
+  transition: transform 0.2s ease;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-right: 6px;
+}
+
+.artifact-session-group.collapsed .artifact-collapse-chevron {
+  transform: rotate(-90deg);
 }
 
 .artifact-session-title {
@@ -1456,7 +1516,7 @@ body.antri-app {
   color: var(--text-primary);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .artifacts-grid {
