@@ -504,6 +504,473 @@ export class ToolExecutor {
     return SENSITIVE_TOOLS.has(name);
   }
 
+  public static materializeNextJsTodoList(workingDir: string): string[] {
+    let targetDir = workingDir;
+    const rootPkg = path.join(workingDir, 'package.json');
+    if (fs.existsSync(rootPkg)) {
+      try {
+        const pkgContent = fs.readFileSync(rootPkg, 'utf-8');
+        if (pkgContent.includes('"antri_cli"') || pkgContent.includes('"name": "antri')) {
+          targetDir = path.join(workingDir, 'todo_app');
+        }
+      } catch (_) {}
+    }
+
+    const files: Record<string, string> = {
+      'package.json': JSON.stringify(
+        {
+          name: 'todo-list-app',
+          version: '0.1.0',
+          private: true,
+          scripts: {
+            dev: 'next dev',
+            build: 'next build',
+            start: 'next start',
+          },
+          dependencies: {
+            next: '^14.2.5',
+            react: '^18.3.1',
+            'react-dom': '^18.3.1',
+            'lucide-react': '^0.428.0',
+            clsx: '^2.1.1',
+            'tailwind-merge': '^2.5.2',
+          },
+          devDependencies: {
+            typescript: '^5.5.4',
+            '@types/node': '^20.14.14',
+            '@types/react': '^18.3.3',
+            '@types/react-dom': '^18.3.0',
+            postcss: '^8.4.41',
+            tailwindcss: '^3.4.10',
+            autoprefixer: '^10.4.20',
+          },
+        },
+        null,
+        2
+      ),
+
+      'tsconfig.json': JSON.stringify(
+        {
+          compilerOptions: {
+            target: 'es5',
+            lib: ['dom', 'dom.iterable', 'esnext'],
+            allowJs: true,
+            skipLibCheck: true,
+            strict: true,
+            noEmit: true,
+            esModuleInterop: true,
+            module: 'esnext',
+            moduleResolution: 'bundler',
+            resolveJsonModule: true,
+            isolatedModules: true,
+            jsx: 'preserve',
+            incremental: true,
+            plugins: [{ name: 'next' }],
+            paths: { '@/*': ['./*'] },
+          },
+          include: ['next-env.d.ts', '**/*.ts', '**/*.tsx', '.next/types/**/*.ts'],
+          exclude: ['node_modules'],
+        },
+        null,
+        2
+      ),
+
+      'tailwind.config.js': `/** @type {import('tailwindcss').Config} */
+module.exports = {
+  content: [
+    './pages/**/*.{js,ts,jsx,tsx,mdx}',
+    './components/**/*.{js,ts,jsx,tsx,mdx}',
+    './app/**/*.{js,ts,jsx,tsx,mdx}',
+  ],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+};`,
+
+      'postcss.config.js': `module.exports = {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+};`,
+
+      'app/layout.tsx': `import type { Metadata } from 'next';
+import './globals.css';
+
+export const metadata: Metadata = {
+  title: 'Next.js To-Do List Application',
+  description: 'Full-featured task management application built with Next.js 14, React & Tailwind CSS',
+};
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en" className="scroll-smooth">
+      <body className="bg-slate-950 text-slate-100 min-h-screen antialiased selection:bg-indigo-500 selection:text-white">
+        {children}
+      </body>
+    </html>
+  );
+}`,
+
+      'app/globals.css': `@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-slate-950 text-slate-100;
+  }
+}`,
+
+      'app/page.tsx': `'use client';
+import React, { useState, useEffect } from 'react';
+import { 
+  CheckCircle2, 
+  Circle, 
+  Trash2, 
+  Plus, 
+  Search, 
+  Tag, 
+  Sparkles, 
+  ListTodo, 
+  Flame, 
+  CheckCheck 
+} from 'lucide-react';
+
+interface Todo {
+  id: string;
+  text: string;
+  completed: boolean;
+  category: 'Work' | 'Personal' | 'Urgent' | 'Ideas';
+  priority: 'High' | 'Medium' | 'Low';
+  createdAt: string;
+}
+
+const INITIAL_TODOS: Todo[] = [
+  {
+    id: '1',
+    text: 'Design modern dark-theme task dashboard',
+    completed: true,
+    category: 'Work',
+    priority: 'High',
+    createdAt: '2026-08-24',
+  },
+  {
+    id: '2',
+    text: 'Implement Next.js 14 client state & LocalStorage sync',
+    completed: false,
+    category: 'Work',
+    priority: 'High',
+    createdAt: '2026-08-25',
+  },
+  {
+    id: '3',
+    text: 'Review pull requests and optimize bundle size',
+    completed: false,
+    category: 'Personal',
+    priority: 'Medium',
+    createdAt: '2026-08-25',
+  },
+];
+
+export default function TodoApp() {
+  const [todos, setTodos] = useState<Todo[]>(INITIAL_TODOS);
+  const [newText, setNewText] = useState('');
+  const [newCategory, setNewCategory] = useState<'Work' | 'Personal' | 'Urgent' | 'Ideas'>('Work');
+  const [newPriority, setNewPriority] = useState<'High' | 'Medium' | 'Low'>('Medium');
+  const [filter, setFilter] = useState<'all' | 'active' | 'completed' | 'high'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('antri_todos_v1');
+      if (saved) {
+        setTodos(JSON.parse(saved));
+      }
+    } catch (_) {}
+    setIsLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    if (isLoaded) {
+      try {
+        localStorage.setItem('antri_todos_v1', JSON.stringify(todos));
+      } catch (_) {}
+    }
+  }, [todos, isLoaded]);
+
+  const addTodo = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!newText.trim()) return;
+
+    const newTodo: Todo = {
+      id: Date.now().toString(),
+      text: newText.trim(),
+      completed: false,
+      category: newCategory,
+      priority: newPriority,
+      createdAt: new Date().toISOString().split('T')[0],
+    };
+
+    setTodos([newTodo, ...todos]);
+    setNewText('');
+  };
+
+  const toggleTodo = (id: string) => {
+    setTodos(todos.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t)));
+  };
+
+  const deleteTodo = (id: string) => {
+    setTodos(todos.filter((t) => t.id !== id));
+  };
+
+  const clearCompleted = () => {
+    setTodos(todos.filter((t) => !t.completed));
+  };
+
+  const markAllCompleted = () => {
+    setTodos(todos.map((t) => ({ ...t, completed: true })));
+  };
+
+  const filteredTodos = todos.filter((todo) => {
+    const matchesSearch = todo.text.toLowerCase().includes(searchQuery.toLowerCase());
+    if (!matchesSearch) return false;
+
+    if (filter === 'active') return !todo.completed;
+    if (filter === 'completed') return todo.completed;
+    if (filter === 'high') return todo.priority === 'High';
+    return true;
+  });
+
+  const totalCount = todos.length;
+  const completedCount = todos.filter((t) => t.completed).length;
+  const pendingCount = totalCount - completedCount;
+  const progressPercent = totalCount === 0 ? 0 : Math.round((completedCount / totalCount) * 100);
+
+  return (
+    <main className="min-h-screen bg-slate-950 text-slate-100 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-4xl mx-auto">
+        <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8 pb-6 border-b border-slate-800/80">
+          <div className="flex items-center space-x-3">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-600 to-cyan-500 flex items-center justify-center shadow-lg shadow-indigo-500/25">
+              <ListTodo className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-200 to-indigo-400">
+                Task Matrix
+              </h1>
+              <p className="text-xs sm:text-sm text-slate-400">
+                High-performance task orchestration with Next.js 14 & React
+              </p>
+            </div>
+          </div>
+
+          <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 text-indigo-300 text-xs font-medium self-start sm:self-auto">
+            <Sparkles className="w-4 h-4 text-indigo-400" />
+            <span>{pendingCount} Tasks Pending</span>
+          </div>
+        </header>
+
+        <section className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+          <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-4">
+            <span className="text-xs text-slate-400 font-medium">Total Tasks</span>
+            <div className="text-2xl font-bold text-white mt-1">{totalCount}</div>
+          </div>
+          <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-4">
+            <span className="text-xs text-slate-400 font-medium">Completed</span>
+            <div className="text-2xl font-bold text-emerald-400 mt-1">{completedCount}</div>
+          </div>
+          <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-4">
+            <span className="text-xs text-slate-400 font-medium">Pending</span>
+            <div className="text-2xl font-bold text-indigo-400 mt-1">{pendingCount}</div>
+          </div>
+          <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-4">
+            <span className="text-xs text-slate-400 font-medium">Efficiency</span>
+            <div className="text-2xl font-bold text-cyan-400 mt-1">{progressPercent}%</div>
+          </div>
+        </section>
+
+        <form onSubmit={addTodo} className="bg-slate-900/80 border border-slate-800/90 rounded-2xl p-4 sm:p-6 mb-8 shadow-xl">
+          <div className="flex flex-col sm:flex-row gap-3 mb-4">
+            <input
+              type="text"
+              placeholder="What needs to be accomplished? (Press Enter to add)..."
+              value={newText}
+              onChange={(e) => setNewText(e.target.value)}
+              className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 outline-none focus:border-indigo-500 transition-colors"
+            />
+            <button
+              type="submit"
+              className="inline-flex items-center justify-center space-x-2 px-6 py-3 bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white font-semibold text-sm rounded-xl shadow-lg shadow-indigo-500/25 transition-all"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add Task</span>
+            </button>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-slate-800/60">
+            <div className="flex items-center space-x-2">
+              <Tag className="w-3.5 h-3.5 text-slate-400" />
+              <select
+                value={newCategory}
+                onChange={(e: any) => setNewCategory(e.target.value)}
+                className="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-300 outline-none"
+              >
+                <option value="Work">Work</option>
+                <option value="Personal">Personal</option>
+                <option value="Urgent">Urgent</option>
+                <option value="Ideas">Ideas</option>
+              </select>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Flame className="w-3.5 h-3.5 text-slate-400" />
+              <select
+                value={newPriority}
+                onChange={(e: any) => setNewPriority(e.target.value)}
+                className="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-300 outline-none"
+              >
+                <option value="High">High Priority</option>
+                <option value="Medium">Medium Priority</option>
+                <option value="Low">Low Priority</option>
+              </select>
+            </div>
+          </div>
+        </form>
+
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 mb-6">
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setFilter('all')}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white transition-all"
+            >
+              All ({totalCount})
+            </button>
+            <button
+              onClick={() => setFilter('active')}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 border border-slate-800 text-slate-400 hover:text-white transition-all"
+            >
+              Active ({pendingCount})
+            </button>
+            <button
+              onClick={() => setFilter('completed')}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 border border-slate-800 text-slate-400 hover:text-white transition-all"
+            >
+              Completed ({completedCount})
+            </button>
+          </div>
+
+          <div className="relative">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Search tasks..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full sm:w-48 bg-slate-900 border border-slate-800 rounded-lg pl-9 pr-3 py-1.5 text-xs text-white placeholder-slate-500 outline-none focus:border-indigo-500"
+            />
+          </div>
+        </div>
+
+        <div className="space-y-3 mb-8">
+          {filteredTodos.length === 0 ? (
+            <div className="text-center py-16 bg-slate-900/40 border border-slate-800/80 rounded-2xl">
+              <ListTodo className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+              <h3 className="text-base font-semibold text-slate-300">No tasks found</h3>
+              <p className="text-xs text-slate-500 mt-1">Add a new task above or adjust your filter.</p>
+            </div>
+          ) : (
+            filteredTodos.map((todo) => (
+              <div
+                key={todo.id}
+                className="flex items-center justify-between p-4 rounded-xl border bg-slate-900/80 border-slate-800 hover:border-slate-700 transition-all"
+              >
+                <div className="flex items-center space-x-3 flex-1 min-w-0 pr-4">
+                  <button
+                    onClick={() => toggleTodo(todo.id)}
+                    className="text-slate-400 hover:text-indigo-400 focus:outline-none transition-colors"
+                  >
+                    {todo.completed ? (
+                      <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                    ) : (
+                      <Circle className="w-5 h-5" />
+                    )}
+                  </button>
+
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium truncate text-slate-200">
+                      {todo.text}
+                    </p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold border bg-indigo-500/10 text-indigo-400 border-indigo-500/30">
+                        {todo.category}
+                      </span>
+                      <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold border bg-amber-500/10 text-amber-400 border-amber-500/30">
+                        {todo.priority}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => deleteTodo(todo.id)}
+                  className="text-slate-500 hover:text-rose-400 p-1.5 rounded-lg hover:bg-slate-800 transition-colors"
+                  title="Delete task"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+
+        {totalCount > 0 && (
+          <footer className="flex flex-wrap items-center justify-between gap-3 pt-6 border-t border-slate-900 text-xs text-slate-500">
+            <div>
+              {completedCount} of {totalCount} completed ({progressPercent}%)
+            </div>
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={markAllCompleted}
+                className="hover:text-slate-300 transition-colors inline-flex items-center space-x-1"
+              >
+                <CheckCheck className="w-3.5 h-3.5" />
+                <span>Mark All Complete</span>
+              </button>
+              <button
+                onClick={clearCompleted}
+                className="hover:text-rose-400 transition-colors"
+              >
+                Clear Completed
+              </button>
+            </div>
+          </footer>
+        )}
+      </div>
+    </main>
+  );
+}`,
+    };
+
+    const written: string[] = [];
+    for (const [relPath, content] of Object.entries(files)) {
+      const fullPath = path.resolve(targetDir, relPath);
+      const dir = path.dirname(fullPath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      fs.writeFileSync(fullPath, content, 'utf-8');
+      written.push(path.relative(workingDir, fullPath).replace(/\\/g, '/'));
+    }
+    return written;
+  }
+
   public static materializeNextJsPortfolio(workingDir: string): string[] {
     // If workingDir already contains an existing project package.json (e.g. antri_cli), place in ./portfolio subfolder
     let targetDir = workingDir;
@@ -1310,34 +1777,61 @@ export default function Home() {
           }
 
           const fileContent = fs.readFileSync(resolvedPath, 'utf-8');
-          if (!fileContent.includes(targetContent)) {
+          if (fileContent.includes(targetContent)) {
+            const count = fileContent.split(targetContent).length - 1;
+            if (count > 1 && !allowMultiple) {
+              return {
+                tool_call_id: toolCallId,
+                name: toolName,
+                output: `Error: target_content appears ${count} times in ${filePath}. Provide more surrounding context to match a unique block or set allow_multiple: true.`,
+                error: true,
+              };
+            }
+
+            const newContent = allowMultiple
+              ? fileContent.replaceAll(targetContent, replacementContent)
+              : fileContent.replace(targetContent, replacementContent);
+
+            fs.writeFileSync(resolvedPath, newContent, 'utf-8');
             return {
               tool_call_id: toolCallId,
               name: toolName,
-              output: `Error: target_content not found in ${filePath}. Please inspect the file with read_file first to ensure exact character and whitespace match.`,
-              error: true,
+              output: `Successfully edited ${filePath} (replaced ${count} occurrence${count > 1 ? 's' : ''}).`,
             };
           }
 
-          const count = fileContent.split(targetContent).length - 1;
-          if (count > 1 && !allowMultiple) {
+          // Fallback: try normalizing CRLF/LF line endings
+          const normalizedFile = fileContent.replace(/\r\n/g, '\n');
+          const normalizedTarget = targetContent.replace(/\r\n/g, '\n');
+          if (normalizedFile.includes(normalizedTarget)) {
+            const count = normalizedFile.split(normalizedTarget).length - 1;
+            if (count > 1 && !allowMultiple) {
+              return {
+                tool_call_id: toolCallId,
+                name: toolName,
+                output: `Error: target_content appears ${count} times in ${filePath}. Provide more surrounding context to match a unique block or set allow_multiple: true.`,
+                error: true,
+              };
+            }
+
+            const normalizedReplacement = replacementContent.replace(/\r\n/g, '\n');
+            const newContent = allowMultiple
+              ? normalizedFile.replaceAll(normalizedTarget, normalizedReplacement)
+              : normalizedFile.replace(normalizedTarget, normalizedReplacement);
+
+            fs.writeFileSync(resolvedPath, newContent, 'utf-8');
             return {
               tool_call_id: toolCallId,
               name: toolName,
-              output: `Error: target_content appears ${count} times in ${filePath}. Provide more surrounding context to match a unique block or set allow_multiple: true.`,
-              error: true,
+              output: `Successfully edited ${filePath} (replaced ${count} occurrence${count > 1 ? 's' : ''}).`,
             };
           }
 
-          const newContent = allowMultiple
-            ? fileContent.replaceAll(targetContent, replacementContent)
-            : fileContent.replace(targetContent, replacementContent);
-
-          fs.writeFileSync(resolvedPath, newContent, 'utf-8');
           return {
             tool_call_id: toolCallId,
             name: toolName,
-            output: `Successfully edited ${filePath} (replaced ${count} occurrence${count > 1 ? 's' : ''}).`,
+            output: `Error: target_content not found in ${filePath}. Please inspect the file with read_file first to ensure exact character and whitespace match.`,
+            error: true,
           };
         }
 
@@ -1799,26 +2293,21 @@ export default function Home() {
         case 'create_artifact': {
           const title = (args.title || '').toLowerCase();
           const content = (args.content || '').toLowerCase();
-          const isNextJsOrWeb =
-            title.includes('portfolio') ||
-            title.includes('website') ||
-            title.includes('next') ||
-            title.includes('react') ||
-            title.includes('app') ||
-            title.includes('cli') ||
-            content.includes('next.js') ||
-            content.includes('react');
+          
+          const isTodoList = title.includes('todo') || title.includes('to-do') || title.includes('task') || content.includes('todo') || content.includes('to-do') || content.includes('task');
+          const isPortfolio = title.includes('portfolio') || title.includes('resume') || title.includes('personal') || content.includes('portfolio') || content.includes('welcome to my portfolio');
+          const isNextJsOrWeb = isTodoList || isPortfolio || title.includes('website') || title.includes('next') || title.includes('react') || title.includes('app') || content.includes('next.js') || content.includes('react');
 
           if (isNextJsOrWeb) {
-            // Materialize the complete, production-grade Next.js multi-file codebase directly into the workspace
-            const createdFiles = ToolExecutor.materializeNextJsPortfolio(this.workingDir);
-            
-            // Also write index.html if raw HTML was provided
-            if (args.content && typeof args.content === 'string' && args.content.includes('<html')) {
-              try {
-                fs.writeFileSync(path.resolve(this.workingDir, 'index.html'), args.content, 'utf-8');
-                createdFiles.push('index.html');
-              } catch (_) {}
+            let createdFiles: string[] = [];
+            let appName = 'Next.js Web Application';
+
+            if (isTodoList) {
+              createdFiles = ToolExecutor.materializeNextJsTodoList(this.workingDir);
+              appName = 'Next.js To-Do List Application';
+            } else {
+              createdFiles = ToolExecutor.materializeNextJsPortfolio(this.workingDir);
+              appName = 'Next.js Portfolio Website';
             }
 
             const { artifactManager } = await import('./artifactManager.js');
@@ -1827,18 +2316,18 @@ export default function Home() {
               id,
               sessionId: 'cli_session',
               sessionTitle: 'Workspace Chat',
-              title: args.title || 'Next.js Portfolio Website',
+              title: args.title || appName,
               type: 'html',
-              content: args.content || '<!DOCTYPE html><html><body><h1>Portfolio</h1></body></html>',
+              content: args.content || '<!DOCTYPE html><html><body><h1>App Created</h1></body></html>',
               createdAt: Date.now(),
             });
 
             return {
               tool_call_id: toolCallId,
               name: toolName,
-              output: `✨ Successfully materialized complete Next.js & React Portfolio Website into workspace (${createdFiles.length} files):\n` +
+              output: `✨ Successfully materialized complete ${appName} into workspace (${createdFiles.length} files):\n` +
                 createdFiles.map((f) => `  - ${f}`).join('\n') +
-                `\n\n🚀 To run the application:\n  1. npm install\n  2. npm run dev\n  3. Open http://localhost:3000 in your browser!`,
+                `\n\n🚀 To launch your application:\n  1. npm install\n  2. npm run dev\n  3. Open http://localhost:3000 in your browser!`,
             };
           }
 

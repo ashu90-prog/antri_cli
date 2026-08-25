@@ -380,23 +380,42 @@ mindmap
       }
 
       if (query.trim()) {
-        const viewPrompt = `Generate a complete, self-contained, highly interactive, and aesthetically stunning MULTI-PAGE Single-Page Application (SPA) for: "${query.trim()}".
-Requirements:
-1. Multi-Page Architecture: Provide at least 3 to 10 distinct switchable pages/tabs (e.g., Overview, Day 1..Day 7, Interactive Stopwatch/Timer, Macro/Metrics Tracker) with a horizontal scrolling tab bar and bottom previous/next stepper buttons.
-2. Aesthetic CSS: Prioritize clean, bright, and elegant LIGHT COLOR PALETTES (background: radial-gradient(circle at 15% 15%, rgba(99, 102, 241, 0.08) 0%, transparent 40%), radial-gradient(circle at 85% 85%, rgba(236, 72, 153, 0.08) 0%, transparent 40%), #f8fafc;), frosted white glass cards (rgba(255,255,255,0.9) with backdrop-filter: blur(16px)), crisp high-contrast dark text (#0f172a), glowing gradient badges (#4f46e5, #0284c7, #10b981, #e11d48). If dark theme is used, use multi-color POSTER MESH GRADIENTS with ambient radiant auras (never flat solid black).
-3. Rich JS Interactivity: Working countdown stopwatch/timer with start/pause/reset and quick presets (+15s, +30s, +60s), dynamic checkable checklists that automatically update completion percentage and progress bars in real time, and interactive calculation sliders.
+        const viewPrompt = `Generate a complete, self-contained, highly interactive, and aesthetically stunning Single-Page Application (SPA) / Interactive Artifact for: "${query.trim()}".
+
+🚨 MANDATORY DESIGN & CODE QUALITY REQUIREMENTS:
+1. 🧠 DESIGN & ARCHITECTURE THINKING FIRST (Never rush to short code):
+   - Take all the time needed to build a comprehensive, multi-section, highly polished application (300+ to 600+ lines of complete HTML/CSS/JS).
+   - Craft a distinct aesthetic theme: Deep Obsidian Glassmorphism, Radiant Neon Mesh, or Modern Silicon Valley Bento.
+2. 🎨 ANIMATED CSS & VISUAL AESTHETICS:
+   - Include Tailwind CSS CDN: <script src="https://cdn.tailwindcss.com"></script>
+   - Include Google Fonts: Inter, Plus Jakarta Sans, Fira Code
+   - Include Lucide Icons CDN: <script src="https://unpkg.com/lucide@latest"></script>
+   - Include Chart.js: <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+   - Include Canvas-Confetti: <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+   - Custom Keyframe Animations: @keyframes float, @keyframes pulseGlow, @keyframes shimmer, @keyframes gradientMove.
+   - Glassmorphic card styling (backdrop-filter: blur(16px); background: rgba(15,23,42,0.8); border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 20px 50px rgba(0,0,0,0.4);).
+3. ⚡ COMPREHENSIVE REACTIVE JAVASCRIPT:
+   - 100+ lines of robust, modular, strict-mode ES6+ JavaScript.
+   - Complete reactive state management (state object + render loop).
+   - Sound Synthesizer: Synthesize tactile UI audio feedback (clicks, beeps, success chimes) using Web Audio API (new (window.AudioContext || window.webkitAudioContext)()).
+   - Interactive features: 3-6 distinct tabbed views/pages, real-time controls/sliders with live metric calculations, Chart.js graphs with dynamic updates, confetti triggers on goals, local storage caching, search/filter, and modal dialogs.
+   - 🚨 ZERO PLACEHOLDER RULE: Every single button, slider, and toggle must be 100% functional.
+
 You MUST output the HTML document enclosed in an artifact tag:
 <antri_artifact id="art_${Date.now().toString(36)}" type="html" title="${query.trim().slice(0, 40)}">
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <style>/* aesthetic aurora glassmorphism css */</style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${query.trim()}</title>
+  <!-- fonts, tailwind, lucide, chartjs, confetti, custom keyframe css -->
 </head>
-<body>
-  <!-- sticky header, scrolling tabs, page views, stopwatch/timer, dynamic checklists, footer stepper -->
-  <script>/* complete interactive js */</script>
+<body class="bg-slate-950 text-slate-100 min-h-screen">
+  <!-- header, navigation tabs, interactive main panels, metric cards, charts, modals -->
+  <script>
+    // Audio synthesizer, reactive state, event handlers, Chart.js init, confetti triggers
+  </script>
 </body>
 </html>
 </antri_artifact>`;

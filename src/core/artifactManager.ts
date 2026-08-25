@@ -168,13 +168,96 @@ export class ArtifactManager {
     return artifact;
   }
 
+  public enhanceHtmlArtifact(content: string, title: string): string {
+    let html = (content || '').trim();
+
+    // If it is a snippet or doesn't have standard HTML doctype/head
+    if (!html.toLowerCase().includes('<!doctype html>') && !html.toLowerCase().includes('<html')) {
+      return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${title}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
+                  radial-gradient(circle at 90% 80%, rgba(236, 72, 153, 0.15) 0%, transparent 50%),
+                  #0b0f19;
+      color: #f8fafc;
+      min-height: 100vh;
+      margin: 0;
+      padding: 0;
+    }
+  </style>
+</head>
+<body class="p-6 md:p-10 antialiased selection:bg-indigo-500 selection:text-white">
+  <div class="max-w-6xl mx-auto">
+    ${html}
+  </div>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      if (window.lucide) {
+        window.lucide.createIcons();
+      }
+    });
+  </script>
+</body>
+</html>`;
+    }
+
+    // If it is a full HTML page, ensure it has Tailwind, Lucide, and modern fonts injected if missing
+    const hasTailwind = /tailwindcss|tailwind\.com/i.test(html);
+    const hasLucide = /lucide/i.test(html);
+    const hasFonts = /fonts\.googleapis\.com/i.test(html);
+    const hasViewport = /name=["']viewport["']/i.test(html);
+
+    let injectedHead = '';
+    if (!hasViewport) {
+      injectedHead += '\n  <meta name="viewport" content="width=device-width, initial-scale=1.0">';
+    }
+    if (!hasFonts) {
+      injectedHead += '\n  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">';
+    }
+    if (!hasTailwind) {
+      injectedHead += '\n  <script src="https://cdn.tailwindcss.com"></script>';
+    }
+    if (!hasLucide) {
+      injectedHead += '\n  <script src="https://unpkg.com/lucide@latest"></script>';
+    }
+
+    if (injectedHead) {
+      if (html.includes('<head>')) {
+        html = html.replace('<head>', '<head>' + injectedHead);
+      } else if (html.includes('<head ')) {
+        html = html.replace(/<head[^>]*>/, (m) => m + injectedHead);
+      }
+    }
+
+    // Ensure Lucide initializes if icons are used
+    if (!html.includes('lucide.createIcons()') && (html.includes('data-lucide') || html.includes('i data-lucide') || html.includes('lucide-'))) {
+      const initScript = '\n<script>document.addEventListener("DOMContentLoaded", () => { if (window.lucide) window.lucide.createIcons(); });</script>';
+      if (html.includes('</body>')) {
+        html = html.replace('</body>', initScript + '\n</body>');
+      } else {
+        html += initScript;
+      }
+    }
+
+    return html;
+  }
+
   public getArtifactHtml(artifact: Artifact): string {
     if (artifact.type === 'html') {
-      let content = artifact.content.trim();
-      if (!content.toLowerCase().includes('<!doctype html>') && !content.toLowerCase().includes('<html')) {
-        content = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${artifact.title}</title><style>body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;background:#0f172a;color:#f8fafc;padding:16px;}</style></head><body>${content}</body></html>`;
-      }
-      return content;
+      return this.enhanceHtmlArtifact(artifact.content, artifact.title);
     }
 
     if (artifact.type === 'mindmap') {

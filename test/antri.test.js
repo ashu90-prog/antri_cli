@@ -71,7 +71,7 @@ test('ToolExecutor identifies privacy & security sensitive tools', () => {
 
 test('Updater reports correct package name and current version', () => {
   assert.strictEqual(Updater.PACKAGE_NAME, 'antri_cli');
-  assert.strictEqual(Updater.CURRENT_VERSION, '1.57.22');
+  assert.strictEqual(Updater.CURRENT_VERSION, '1.57.25');
 });
 
 test('GoalLoopEngine initializes with active configuration', () => {
@@ -408,10 +408,15 @@ test('AuthManager generates unique partition IDs, logins, and logs out', async (
   assert.strictEqual(loggedOut, null);
 });
 
-test('SkillManager loads 13 core markdown skills including autonomous coder, parses frontmatter and triggers', () => {
+test('SkillManager loads 14 core markdown skills including autonomous coder and artifact maker, parses frontmatter and triggers', () => {
   const manager = new SkillManager();
   const skills = manager.listSkills();
-  assert.ok(skills.length >= 13);
+  assert.ok(skills.length >= 14);
+
+  const artifactMaker = manager.getSkill('artifact_maker');
+  assert.ok(artifactMaker);
+  assert.ok(artifactMaker.triggers.includes('artifact'));
+  assert.strictEqual(artifactMaker.isCore, true);
 
   const autonomousCoder = manager.getSkill('autonomous_coder');
   assert.ok(autonomousCoder);
@@ -909,6 +914,51 @@ test('ArchitectureAnalyzer scans codebase and generates Mermaid flowchart', asyn
   assert.ok(Array.isArray(analysis.directories));
   assert.ok(analysis.mermaidDiagram.includes('graph TD'));
 });
+
+test('ArtifactManager enhances HTML artifacts with Tailwind CDN, Google Fonts, and Lucide icons', async () => {
+  const { ArtifactManager } = await import('../dist/core/artifactManager.js');
+  const manager = new ArtifactManager();
+  
+  // Test snippet enhancement
+  const snippet = '<div class="card"><h1>Interactive Calculator</h1><button onclick="calculate()">Calc</button></div>';
+  const enhancedSnippet = manager.enhanceHtmlArtifact(snippet, 'Calculator');
+  assert.ok(enhancedSnippet.includes('<!DOCTYPE html>'));
+  assert.ok(enhancedSnippet.includes('tailwindcss.com'));
+  assert.ok(enhancedSnippet.includes('fonts.googleapis.com'));
+  assert.ok(enhancedSnippet.includes('lucide'));
+
+  // Test full HTML enhancement
+  const fullHtml = '<!DOCTYPE html><html><head><title>Test</title></head><body><div data-lucide="activity"></div></body></html>';
+  const enhancedFull = manager.enhanceHtmlArtifact(fullHtml, 'Test App');
+  assert.ok(enhancedFull.includes('tailwindcss.com'));
+  assert.ok(enhancedFull.includes('fonts.googleapis.com'));
+  assert.ok(enhancedFull.includes('lucide'));
+});
+
+test('ToolExecutor.materializeNextJsTodoList materializes complete Next.js 14 task app', async () => {
+  const { ToolExecutor } = await import('../dist/core/tools.js');
+  const tempDir = path.join(os.tmpdir(), 'antri_test_todo_' + Date.now().toString(36));
+  fs.mkdirSync(tempDir, { recursive: true });
+
+  const files = ToolExecutor.materializeNextJsTodoList(tempDir);
+  assert.ok(files.length >= 6);
+  assert.ok(files.includes('package.json'));
+  assert.ok(files.includes('app/page.tsx'));
+  assert.ok(files.includes('app/layout.tsx'));
+  assert.ok(files.includes('app/globals.css'));
+
+  const pkg = JSON.parse(fs.readFileSync(path.join(tempDir, 'package.json'), 'utf-8'));
+  assert.strictEqual(pkg.name, 'todo-list-app');
+  assert.ok(pkg.dependencies.next);
+  assert.ok(pkg.dependencies.react);
+
+  const pageContent = fs.readFileSync(path.join(tempDir, 'app/page.tsx'), 'utf-8');
+  assert.ok(pageContent.includes('TodoApp'));
+  assert.ok(pageContent.includes('Task Matrix'));
+
+  fs.rmSync(tempDir, { recursive: true, force: true });
+});
+
 
 
 
