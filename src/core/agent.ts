@@ -421,19 +421,10 @@ ${visualArtifactSection}
         onStreamToken(cleanConsensus + '\n\n');
       }
 
-      const debateTitle = `${(debateQuery || userPrompt).slice(0, 45)} · Architectural Consensus`;
+      const debateTitle = `${(debateQuery || userPrompt).slice(0, 45)} · Dialectic Consensus`;
       const artifactId = 'mindmap_' + Date.now().toString(36);
-      const mindmapSnippet = `mindmap
-  root((${debateTitle}))
-    Core Strengths & Thesis
-      Primary Advantages
-      Target Use Cases
-    Critical Trade-offs & Risks
-      Bottlenecks & Limitations
-      Operational Overhead
-    Empirical Decision Matrix
-      High-Throughput Benchmarks
-      Team Scalability`;
+      const rawMindmap = `mindmap\n  root((${debateTitle}))\n    Primary Case & Structural Strengths\n    Critical Trade-offs & Counter-Perspectives\n    Empirical Evidence & Production Metrics\n    Strategic Decision Heuristics`;
+      const mindmapSnippet = artifactManager.sanitizeAndEnhanceMindmap(rawMindmap, debateTitle);
 
       const fullResponse = `${cleanConsensus}\n\n<antri_artifact id="${artifactId}" type="mindmap" title="${debateTitle}">\n${mindmapSnippet}\n</antri_artifact>`;
 

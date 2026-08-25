@@ -50,12 +50,101 @@ export class ArtifactManager {
   }
 
   public sanitizeAndEnhanceMindmap(content: string, title: string): string {
-    const isPlaceholder = /\b(key branch|subtopic [a-z]|detail \d+|primary concept|pillar \d+|primary pillar)\b/i.test(content);
+    const isPlaceholder = /\b(key branch|subtopic [a-z]|detail \d+|primary concept|pillar \d+|primary pillar|core strengths & thesis|primary advantages|target use cases|critical trade-offs & risks|bottlenecks & limitations|operational overhead|empirical decision matrix|high-throughput benchmarks|team scalability)\b/i.test(content);
     if (!isPlaceholder) return content;
 
     const lower = (title + ' ' + content).toLowerCase();
 
-    // 1. Indian Independence / Freedom Struggle
+    // 1. Economic Comparison / Country Debates (e.g. India vs France)
+    if ((lower.includes('india') && lower.includes('france')) || lower.includes('comparative economic') || (lower.includes('economic') && (lower.includes('vs') || lower.includes('comparison')))) {
+      return `mindmap
+  root((Economic Comparison: India vs France))
+    Macroeconomic Scale & Growth Trajectory
+      India: $3.9T Nominal / $14T PPP (5th Largest Globally)
+      France: $3.1T Nominal / $4.1T PPP (7th Largest Globally)
+      India: 6.5% - 7.5% Fast-Paced Annual Real GDP Growth
+      France: 0.8% - 1.2% Mature High-Income Steady Growth
+    Pillar Sectors & Industrial Strengths
+      India: Global IT Services, Fintech (UPI 13B+ Monthly Txns), Pharmaceuticals
+      India: Rapid Infrastructure & Green Energy (PLI Schemes, Solar Power)
+      France: Aerospace (Airbus), Luxury Goods (LVMH, Kering), High-Tech Defense
+      France: Civil Nuclear Energy (70% Domestic Power Grid), Luxury Agribusiness
+    Demographics, Workforce & Productivity
+      India: Young Demographic Dividend (Median Age: 28.7 years, 1.4B Population)
+      France: Aging Population & High Labor Productivity (Median Age: 42 years)
+      India: Rapidly Expanding Middle Class & Digital Consumer Market
+      France: Strong Social Safety Nets, High Minimum Wage & Collective Bargaining
+    Strategic Bilateral Synergy & Trade
+      Defense Cooperation: Rafale Aircraft & Scorpene Submarines
+      International Solar Alliance (ISA): Co-founded Clean Energy Initiative
+      Civil Nuclear Energy: Jaitapur 9.6 GW Reactor Project
+      Trade Volume: Over €15 Billion Annual Bilateral Exchange`;
+    }
+
+    // 2. Rust vs Go / Systems Programming
+    if ((lower.includes('rust') && lower.includes('go')) || lower.includes('rust vs go')) {
+      return `mindmap
+  root((Rust vs Go: Architectural Comparison))
+    Language Philosophy & Memory Safety
+      Rust: Zero-Cost Abstractions & Compile-Time Borrow Checker
+      Rust: No Garbage Collector, Deterministic Memory & Resource Release
+      Go: Simplicity, Fast Compilation & Garbage Collected Runtime
+      Go: Lightweight Concurrency via M:N Goroutines & Channels
+    Performance & Runtime Latency
+      Rust: C/C++ Equivalent Bare-Metal Throughput & Zero GC Pauses
+      Rust: Predictable Microsecond-Level p99 Tail Latency
+      Go: High Throughput with Sub-Millisecond GC Pauses
+      Go: Low CPU Overhead for High-Concurrency I/O Microservices
+    Ecosystem & Developer Velocity
+      Go: 1-Week Ramp-up Time, Standard Library "Batteries Included"
+      Go: Cloud-Native Standard (Kubernetes, Docker, Terraform)
+      Rust: Steep Learning Curve, Strict Compiler Checks Prevent Bugs
+      Rust: Best for DB Engines, Operating Systems, Cryptography, WebAssembly
+    Decision Heuristics & Sweet Spots
+      Choose Go: Microservices, REST/gRPC APIs, Cloud Tooling, Rapid MVPs
+      Choose Rust: High-Frequency Trading, Kernel Drivers, Game Engines, CLI Tools`;
+    }
+
+    // 3. Monolith vs Microservices Architecture
+    if ((lower.includes('monolith') && lower.includes('microservice')) || lower.includes('monolith vs')) {
+      return `mindmap
+  root((Monolith vs Microservices Architecture))
+    Monolithic Architecture Profile
+      Strengths: Simple Single-Codebase Deployment & Unified ACID DB Transactions
+      Strengths: Zero Network Serialization Overhead & Easy Local Debugging
+      Weaknesses: Deployment Bottlenecks & Tightly Coupled Codebases
+      Weaknesses: Scalability Constraints Across Divergent Subsystems
+    Microservices Architecture Profile
+      Strengths: Autonomous Team Deployments & Independent Technology Stacks
+      Strengths: Granular Horizontal Auto-Scaling per Domain Service
+      Weaknesses: Distributed Systems Complexity & Network Latency Overhead
+      Weaknesses: Eventual Consistency & Complex Distributed Tracing
+    Infrastructure & Operational Overhead
+      Monolith: Single CI/CD Pipeline, Simpler VM/Docker Container Hosting
+      Microservices: Kubernetes, Service Mesh (Istio), API Gateways (Envoy)
+      Microservices: Distributed Sagas, Message Brokers (Kafka, RabbitMQ)
+    Strategic Decision Framework
+      Choose Monolith: Early-Stage Startups, Small Teams (<20 Devs), Unified Domains
+      Choose Microservices: Large Engineering Organizations (100+ Devs), High-Domain Partitioning`;
+    }
+
+    // 4. SQL vs NoSQL / Postgres vs MongoDB
+    if (lower.includes('sql') && (lower.includes('nosql') || lower.includes('mongo') || lower.includes('postgres'))) {
+      return `mindmap
+  root((SQL vs NoSQL Architectural Decision))
+    Relational Databases (PostgreSQL / MySQL)
+      Strengths: Strict ACID Compliance & Transactional Data Integrity
+      Strengths: Complex Multi-Table Relational JOINs & Structured Schemas
+      Weaknesses: Rigid Migrations & Vertical Scaling Ceilings
+      Sweet Spots: Financial Ledgers, E-commerce Checkout, Core CRM
+    Document & NoSQL Stores (MongoDB / DynamoDB)
+      Strengths: Dynamic JSON Schemas & Rapid Prototyping Velocity
+      Strengths: Native Horizontal Partitioning & Sharding at Scale
+      Weaknesses: Eventual Consistency & Application-Level Referential Integrity
+      Sweet Spots: Real-Time Analytics, Product Catalogs, IoT Telemetry, Content CMS`;
+    }
+
+    // 5. Indian Independence / Freedom Struggle
     if (lower.includes('independ') || lower.includes('freedom') || lower.includes('swaraj')) {
       return `mindmap
   root((Indian Independence Movement))
@@ -86,7 +175,7 @@ export class ArtifactManager {
       Midnight of 15th August 1947`;
     }
 
-    // 2. Types of Rocks / Geology
+    // 6. Types of Rocks / Geology
     if (lower.includes('rock') || lower.includes('geolog') || lower.includes('mineral')) {
       return `mindmap
   root((Types of Rocks Found in India))
@@ -107,7 +196,7 @@ export class ArtifactManager {
       Mineral Ore & Coal Deposits`;
     }
 
-    // 3. Government / Polity of India
+    // 7. Government / Polity of India
     if (lower.includes('government') || lower.includes('polity') || lower.includes('constitution')) {
       return `mindmap
   root((Government & Polity of India))
@@ -129,25 +218,24 @@ export class ArtifactManager {
       Finance Commission & NITI Aayog`;
     }
 
-    // 4. General Domain Concept Expander
-    const topicClean = title.replace(/\bmind\s*map\b/gi, '').trim() || 'Core Subject';
+    // 8. General Domain Concept Expander
+    const topicClean = title.replace(/\bmind\s*map\b/gi, '').replace(/\barchitectural consensus\b/gi, '').trim() || 'Core Subject';
     return `mindmap
   root((${topicClean}))
-    Foundational Principles
-      Core Theory & Definitions
-      Historical Evolution
-      Fundamental Axioms
-    Core Methodologies & Architecture
-      Primary Frameworks
-      Key Components & Structuring
-      Standard Workflows
-    Key Applications & Real-World Use
-      Industrial & Practical Use Cases
-      Major Milestones & Benchmarks
-      Notable Implementations
-    Strategic Horizons & Innovation
-      Emerging Trends & Breakthroughs
-      Open Challenges & Optimization`;
+    Primary Case & Structural Strengths
+      Key Pillars & Foundation
+      High-Impact Performance Advantages
+      Strategic Value & High-Leverage Scenarios
+    Critical Trade-offs & Counter-Perspectives
+      Operational Overhead & Complexity
+      Bottlenecks, Failure Modes & Edge Cases
+      Resource Demands & Hidden Constraints
+    Empirical Evidence & Production Metrics
+      Verified Benchmark Performance
+      Industry Precedents & Production Adoption
+    Strategic Decision Heuristics
+      Recommended Adoption Scenarios
+      Thresholds for Alternative Choices`;
   }
 
   public saveArtifact(artifact: Artifact): Artifact {

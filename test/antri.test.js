@@ -72,7 +72,7 @@ test('ToolExecutor identifies privacy & security sensitive tools', () => {
 
 test('Updater reports correct package name and current version', () => {
   assert.strictEqual(Updater.PACKAGE_NAME, 'antri_cli');
-  assert.strictEqual(Updater.CURRENT_VERSION, '1.57.28');
+  assert.strictEqual(Updater.CURRENT_VERSION, '1.57.29');
 });
 
 test('GoalLoopEngine initializes with active configuration', () => {
@@ -975,6 +975,28 @@ test('isGoalOrPlanQuery and isDebateOrTradeoffQuery accurately classify multi-da
   assert.strictEqual(isDebateOrTradeoffQuery('pros and cons of PostgreSQL vs MongoDB'), true);
   assert.strictEqual(isDebateOrTradeoffQuery('/debate which database to choose'), true);
   assert.strictEqual(isDebateOrTradeoffQuery('write a hello world function'), false);
+});
+
+test('ArtifactManager.sanitizeAndEnhanceMindmap enhances economic and tech debate topics with rich domain data', async () => {
+  const { ArtifactManager } = await import('../dist/core/artifactManager.js');
+  const manager = new ArtifactManager();
+
+  // Test 1: India vs France Economic Comparison
+  const rawIndiaFrance = `mindmap\n  root((Comparative Economic Analysis: India vs France))\n    Primary Concept\n      Subtopic A`;
+  const enhancedEcon = manager.sanitizeAndEnhanceMindmap(rawIndiaFrance, 'Economic Comparison: India vs France');
+  assert.ok(enhancedEcon.includes('Economic Comparison: India vs France'));
+  assert.ok(enhancedEcon.includes('Nominal / $14T PPP'));
+  assert.ok(enhancedEcon.includes('Airbus'));
+  assert.ok(enhancedEcon.includes('Rafale Aircraft'));
+  assert.strictEqual(enhancedEcon.includes('Subtopic A'), false);
+
+  // Test 2: Rust vs Go Architecture Comparison
+  const rawRustGo = `mindmap\n  root((Rust vs Go: Architecture Comparison))\n    Core Strengths & Thesis\n      Primary Advantages`;
+  const enhancedRustGo = manager.sanitizeAndEnhanceMindmap(rawRustGo, 'Rust vs Go Architectural Consensus');
+  assert.ok(enhancedRustGo.includes('Rust vs Go'));
+  assert.ok(enhancedRustGo.includes('Borrow Checker'));
+  assert.ok(enhancedRustGo.includes('Goroutines & Channels'));
+  assert.strictEqual(enhancedRustGo.includes('Primary Advantages'), false);
 });
 
 

@@ -29,14 +29,15 @@ export class DialecticEngine {
     // ==========================================
     // STAGE 1: The Proposer (Thesis)
     // ==========================================
-    this.renderPersonaBanner('💡 The Proposer (Thesis)', '#34d399', 'Generating primary hypothesis and architectural solution...');
-    const thesisPrompt = `You are The Proposer in a dialectic consensus engine.
-User Query: "${query}"
+    this.renderPersonaBanner('💡 The Proposer (Thesis)', '#34d399', 'Generating primary hypothesis and strategic argument...');
+    const thesisPrompt = `You are The Proposer & Chief Strategist in a multi-perspective dialectic consensus engine.
+User Query / Debate Topic: "${query}"
 
 Your task:
-1. Provide a comprehensive, creative, and well-structured initial solution, code implementation, or hypothesis.
-2. Outline key architectural decisions and assumptions.
-3. Be clear, precise, and practical.`;
+1. Provide a comprehensive, authoritative, and fact-grounded initial case, architectural proposal, or comparative hypothesis.
+2. Clearly articulate key strengths, distinct advantages (pros), and strategic value.
+3. Use real domain data, accurate metrics, structural principles, and empirical facts.
+4. Do NOT write toy boilerplate script files unless explicitly requested to write software. Focus deeply on domain substance, comparison factors, and mechanics.`;
 
     const thesisContent = await this.runPersona('proposer', thesisPrompt, []);
     stages.push({
@@ -48,9 +49,9 @@ Your task:
     // ==========================================
     // STAGE 2: The Adversary / Critic (Antithesis)
     // ==========================================
-    this.renderPersonaBanner('⚔️ The Adversary / Critic (Antithesis)', '#f87171', 'Stress-testing thesis for vulnerabilities, flaws, and edge cases...');
-    const antithesisPrompt = `You are The Adversary and Security/Logic Critic in a dialectic consensus engine.
-User Query: "${query}"
+    this.renderPersonaBanner('⚔️ The Adversary / Critic (Antithesis)', '#f87171', 'Stress-testing thesis for vulnerabilities, flaws, and trade-offs...');
+    const antithesisPrompt = `You are The Adversary, Chief Security/Economics Critic, and Logic Inquisitor in a dialectic consensus engine.
+User Query / Debate Topic: "${query}"
 
 Proposer's Thesis:
 """
@@ -58,10 +59,10 @@ ${thesisContent}
 """
 
 Your task:
-1. Ruthlessly challenge the Proposer's assumptions and solution.
-2. Hunt for edge cases, performance bottlenecks, concurrency/race conditions, security vulnerabilities, or API misuse.
-3. Identify potential real-world failure points.
-4. Be rigorous, objective, and constructive.`;
+1. Ruthlessly challenge the Proposer's assumptions, blind spots, and proposed direction.
+2. Detail critical vulnerabilities, disadvantages (cons), operational bottlenecks, scalability failure points, hidden costs, or superior alternative paradigms.
+3. Ground your critique in hard realities, real-world case studies, counter-metrics, and edge cases.
+4. Be rigorous, objective, and analytically sharp.`;
 
     const antithesisContent = await this.runPersona('adversary', antithesisPrompt, []);
     stages.push({
@@ -79,7 +80,7 @@ Your task:
     if (depth === 'deep' || depth === 'rigorous') {
       this.renderPersonaBanner('🔬 The Researcher / Verifier', '#38bdf8', 'Autonomously deploying Level 2 web & workspace tools to verify contested claims...');
       const researchPrompt = `You are The Researcher and Empirical Verifier.
-User Query: "${query}"
+User Query / Debate Topic: "${query}"
 
 Thesis:
 """
@@ -92,9 +93,9 @@ ${antithesisContent}
 """
 
 Your task:
-1. Fact-check disputed claims between Thesis and Antithesis.
+1. Fact-check disputed claims between Thesis and Antithesis using empirical data and verifiable benchmarks.
 2. Use tools (web_search, scrape_url, run_command, read_file) if needed to verify documentation, library versions, or empirical behaviors.
-3. Deliver a concise verification report summarizing what holds true and what is debunked.`;
+3. Deliver a concise verification report summarizing what holds true and what is debunked with concrete facts.`;
 
       verificationContent = await this.runPersonaWithTools('researcher', researchPrompt);
       stages.push({
@@ -110,7 +111,7 @@ Your task:
     if (depth === 'rigorous') {
       this.renderPersonaBanner('💡 The Proposer (Refined Thesis - Round 2)', '#34d399', 'Refining solution against adversarial critiques and empirical data...');
       const round2ProposerPrompt = `You are The Proposer incorporating feedback.
-User Query: "${query}"
+User Query / Debate Topic: "${query}"
 Criticisms:
 """
 ${antithesisContent}
@@ -121,7 +122,7 @@ ${verificationContent}
 """
 
 Your task:
-Provide an updated, hardened revision of the solution addressing all valid points while defending key design choices.`;
+Provide an updated, hardened revision of the argument addressing all valid points while defending key strengths.`;
 
       revisedThesisContent = await this.runPersona('proposer', round2ProposerPrompt, []);
       stages.push({
@@ -135,15 +136,15 @@ Provide an updated, hardened revision of the solution addressing all valid point
     // FINAL STAGE: The Judge / Synthesizer (Synthesis)
     // ==========================================
     this.renderPersonaBanner('⚖️ The Judge / Synthesizer (Final Consensus)', '#c084fc', 'Merging valid counterpoints, resolving contradictions, delivering final consensus...');
-    const judgePrompt = `You are The Judge and Master Synthesizer.
-User Query: "${query}"
+    const judgePrompt = `You are The Supreme Judge and Master Synthesizer in a dialectic consensus engine.
+User Query / Debate Topic: "${query}"
 
-1. Original Thesis:
+1. Thesis (Primary Argument & Strengths):
 """
 ${thesisContent}
 """
 
-2. Adversarial Critique:
+2. Antithesis (Adversarial Critique & Disadvantages):
 """
 ${antithesisContent}
 """
@@ -152,9 +153,18 @@ ${verificationContent ? `3. Empirical Verification:\n"""\n${verificationContent}
 ${revisedThesisContent ? `4. Revised Hardened Proposal:\n"""\n${revisedThesisContent}\n"""\n` : ''}
 
 Your task:
-1. Deliver the authoritative, battle-tested FINAL SOLUTION and consensus answer.
-2. Clearly explain which criticisms were integrated, which were resolved, and why the final design is robust.
-3. Provide production-ready, clean code and architecture.`;
+Deliver the definitive, high-impact, battle-tested EXECUTIVE CONSENSUS and comparative synthesis.
+Structure your response into clear, comprehensive markdown sections:
+1. 🏆 **Executive Verdict & Core Takeaways**: Definitive summary and overarching outcome of the analysis.
+2. 📊 **Side-by-Side Factor Comparison Matrix**: Comparative markdown table evaluating key dimensions (e.g. Performance, Scalability, Cost / Economic Output, Reliability, Labor / Talent, Maturity, Trade-offs).
+3. ⚡ **Core Strengths & Advantages (Pros)**: Deep domain breakdown of where each side excels.
+4. ⚠️ **Critical Vulnerabilities & Limitations (Cons)**: Objective analysis of drawbacks, bottlenecks, failure modes, and trade-offs.
+5. 🔬 **Empirical Reality & Real-World Precedents**: Verified metrics, official statistics, benchmark figures, or industry case studies.
+6. 🎯 **Strategic Decision Framework**: Clear, actionable heuristics for when to choose or invest in each path.
+
+CRITICAL INSTRUCTIONS:
+- Do NOT output generic boilerplate code (such as mock pandas/sklearn toy models) unless explicitly requested to write software. Provide deep, authentic, substantive domain intelligence.
+- Keep emojis tasteful and minimal — maximum 2 emojis in your entire response.`;
 
     const synthesisContent = await this.runPersona('judge', judgePrompt, []);
     stages.push({
@@ -346,13 +356,14 @@ Your task:
 
     try {
       // 1. Proposer (Thesis)
-      const thesisPrompt = `You are The Proposer in a dialectic consensus engine.
-User Query: "${query}"
+      const thesisPrompt = `You are The Proposer & Chief Strategist in a multi-perspective dialectic consensus engine.
+User Query / Debate Topic: "${query}"
 
 Your task:
-1. Provide a comprehensive, creative, and well-structured initial solution, code implementation, or hypothesis.
-2. Outline key architectural decisions and assumptions.
-3. Be clear, precise, and practical.`;
+1. Provide a comprehensive, authoritative, and fact-grounded initial case, architectural proposal, or comparative hypothesis.
+2. Clearly articulate key strengths, distinct advantages (pros), and strategic value.
+3. Use real domain data, accurate metrics, structural principles, and empirical facts.
+4. Do NOT write toy boilerplate script files (e.g. mock pandas/sklearn LinearRegression) unless the user explicitly requested code. Focus deeply on domain substance, comparison factors, and mechanics.`;
 
       const thesisContent = await provider.sendMessageStream(
         [{ role: 'user', content: thesisPrompt }],
@@ -361,8 +372,8 @@ Your task:
       );
 
       // 2. Adversary (Antithesis)
-      const antithesisPrompt = `You are The Adversary and Security/Logic Critic in a dialectic consensus engine.
-User Query: "${query}"
+      const antithesisPrompt = `You are The Adversary, Chief Security/Economics Critic, and Logic Inquisitor in a dialectic consensus engine.
+User Query / Debate Topic: "${query}"
 
 Proposer's Thesis:
 """
@@ -370,9 +381,10 @@ ${thesisContent}
 """
 
 Your task:
-1. Challenge the Proposer's assumptions and solution.
-2. Hunt for edge cases, performance bottlenecks, race conditions, security vulnerabilities, or API misuse.
-3. Identify real-world failure points.`;
+1. Ruthlessly challenge the Proposer's assumptions, blind spots, and proposed direction.
+2. Detail critical vulnerabilities, disadvantages (cons), operational bottlenecks, scalability failure points, hidden costs, or superior alternative paradigms.
+3. Ground your critique in hard realities, real-world case studies, counter-metrics, and edge cases.
+4. Be rigorous, objective, and analytically sharp.`;
 
       const antithesisContent = await provider.sendMessageStream(
         [{ role: 'user', content: antithesisPrompt }],
@@ -384,7 +396,7 @@ Your task:
       let verificationContent = '';
       if (depth === 'deep' || depth === 'rigorous') {
         const researchPrompt = `You are The Researcher and Empirical Verifier.
-User Query: "${query}"
+User Query / Debate Topic: "${query}"
 
 Thesis:
 """
@@ -397,7 +409,9 @@ ${antithesisContent}
 """
 
 Your task:
-Fact-check disputed claims between Thesis and Antithesis. Summarize what holds true and what is debunked.`;
+1. Fact-check disputed claims between Thesis and Antithesis using empirical data and verifiable benchmarks.
+2. Determine which claims are objectively true, which are exaggerated, and which are context-dependent.
+3. Summarize the validated empirical reality clearly with concrete numbers and facts.`;
 
         verificationContent = await provider.sendMessageStream(
           [{ role: 'user', content: researchPrompt }],
@@ -407,15 +421,15 @@ Fact-check disputed claims between Thesis and Antithesis. Summarize what holds t
       }
 
       // 4. Judge / Final Synthesizer
-      const judgePrompt = `You are The Judge and Master Synthesizer.
-User Query: "${query}"
+      const judgePrompt = `You are The Supreme Judge and Master Synthesizer in a dialectic consensus engine.
+User Query / Debate Topic: "${query}"
 
-1. Original Thesis:
+1. Thesis (Primary Argument & Strengths):
 """
 ${thesisContent}
 """
 
-2. Adversarial Critique:
+2. Antithesis (Adversarial Critique & Disadvantages):
 """
 ${antithesisContent}
 """
@@ -423,10 +437,18 @@ ${antithesisContent}
 ${verificationContent ? `3. Empirical Verification:\n"""\n${verificationContent}\n"""\n` : ''}
 
 Your task:
-1. Deliver the authoritative, battle-tested FINAL SOLUTION and consensus answer.
-2. Clearly explain which criticisms were integrated, which were resolved, and why the final design is robust.
-3. Provide production-ready, clean code and architecture.
-4. Emoji Usage Rule: Keep emojis tasteful and minimal — maximum 2 emojis in your entire response.`;
+Deliver the definitive, high-impact, battle-tested EXECUTIVE CONSENSUS and comparative synthesis.
+Structure your response into clear, comprehensive markdown sections:
+1. 🏆 **Executive Verdict & Core Takeaways**: Definitive summary and overarching outcome of the analysis.
+2. 📊 **Side-by-Side Factor Comparison Matrix**: Comparative markdown table evaluating key dimensions (e.g. Performance, Scalability, Cost / Economic Output, Reliability, Labor / Talent, Maturity, Trade-offs).
+3. ⚡ **Core Strengths & Advantages (Pros)**: Deep domain breakdown of where each side excels.
+4. ⚠️ **Critical Vulnerabilities & Limitations (Cons)**: Objective analysis of drawbacks, bottlenecks, failure modes, and trade-offs.
+5. 🔬 **Empirical Reality & Real-World Precedents**: Verified metrics, official statistics, benchmark figures, or industry case studies.
+6. 🎯 **Strategic Decision Framework**: Clear, actionable heuristics for when to choose or invest in each path.
+
+CRITICAL INSTRUCTIONS:
+- Do NOT output generic boilerplate code (such as mock pandas/sklearn toy models) unless explicitly requested to write software. Provide deep, authentic, substantive domain intelligence.
+- Keep emojis tasteful and minimal — maximum 2 emojis in your entire response.`;
 
       const finalSynthesis = await provider.sendMessageStream(
         [{ role: 'user', content: judgePrompt }],
@@ -443,4 +465,3 @@ Your task:
     }
   }
 }
-
