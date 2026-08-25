@@ -32,6 +32,7 @@ import { FirestoreSyncManager } from '../dist/cloud/firestore.js';
 import { AuthManager } from '../dist/cloud/auth.js';
 import { RateLimiter } from '../dist/security/rateLimiter.js';
 import { SessionManager } from '../dist/core/sessionManager.js';
+import { isGoalOrPlanQuery, isDebateOrTradeoffQuery } from '../dist/core/agent.js';
 
 test('ConfigManager initializes with defaults including debateDepth and mode', () => {
   const manager = new ConfigManager();
@@ -71,7 +72,7 @@ test('ToolExecutor identifies privacy & security sensitive tools', () => {
 
 test('Updater reports correct package name and current version', () => {
   assert.strictEqual(Updater.PACKAGE_NAME, 'antri_cli');
-  assert.strictEqual(Updater.CURRENT_VERSION, '1.57.27');
+  assert.strictEqual(Updater.CURRENT_VERSION, '1.57.28');
 });
 
 test('GoalLoopEngine initializes with active configuration', () => {
@@ -957,6 +958,23 @@ test('ToolExecutor.materializeNextJsTodoList materializes complete Next.js 14 ta
   assert.ok(pageContent.includes('Task Matrix'));
 
   fs.rmSync(tempDir, { recursive: true, force: true });
+});
+
+test('isGoalOrPlanQuery and isDebateOrTradeoffQuery accurately classify multi-day plans and architectural trade-offs', () => {
+  // Goal & Multi-Day Plan Queries
+  assert.strictEqual(isGoalOrPlanQuery('generate 5 day workout plan'), true);
+  assert.strictEqual(isGoalOrPlanQuery('create a 7-day diet plan for weight loss'), true);
+  assert.strictEqual(isGoalOrPlanQuery('30 day study roadmap for Rust'), true);
+  assert.strictEqual(isGoalOrPlanQuery('prepare a fitness plan'), true);
+  assert.strictEqual(isGoalOrPlanQuery('/goal ship autonomous agent v2'), true);
+  assert.strictEqual(isGoalOrPlanQuery('what is the weather today?'), false);
+
+  // Debate & Trade-off Queries
+  assert.strictEqual(isDebateOrTradeoffQuery('Rust vs Go for backend scalability'), true);
+  assert.strictEqual(isDebateOrTradeoffQuery('monolith versus microservices trade-offs'), true);
+  assert.strictEqual(isDebateOrTradeoffQuery('pros and cons of PostgreSQL vs MongoDB'), true);
+  assert.strictEqual(isDebateOrTradeoffQuery('/debate which database to choose'), true);
+  assert.strictEqual(isDebateOrTradeoffQuery('write a hello world function'), false);
 });
 
 

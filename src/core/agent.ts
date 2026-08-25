@@ -34,6 +34,28 @@ export function isArtifactOrVisualPrompt(prompt: string): boolean {
          p.includes('visual artifact');
 }
 
+export function isGoalOrPlanQuery(prompt: string): boolean {
+  if (!prompt || typeof prompt !== 'string') return false;
+  const p = prompt.trim().toLowerCase();
+  if (p.startsWith('/goal') || p.startsWith('/silent-goal') || p.startsWith('goal:') || p.startsWith('objective:')) {
+    return true;
+  }
+  // Matches structured multi-day/week/month plans, workouts, diets, roadmaps, and routines
+  const pattern = /\b(\d+[\s-]day|\d+[\s-]week|\d+[\s-]month|workout plan|diet plan|fitness plan|training plan|exercise routine|study plan|learning roadmap|study schedule|launch roadmap|routine plan|curriculum plan|meal plan|travel itinerary)\b/i;
+  return pattern.test(p);
+}
+
+export function isDebateOrTradeoffQuery(prompt: string): boolean {
+  if (!prompt || typeof prompt !== 'string') return false;
+  const p = prompt.trim().toLowerCase();
+  if (p.startsWith('/debate') || p.startsWith('/silent-debate') || p.startsWith('/dialectic') || p.startsWith('research on ') || p.startsWith('debate on ')) {
+    return true;
+  }
+  // Matches deep architectural trade-offs, pros & cons, and vs comparisons
+  const pattern = /\b(vs\b|versus\b|trade-?offs?\b|debate on\b|pros and cons of\b|which is better\b|should i use .+ or)\b/i;
+  return pattern.test(p);
+}
+
 export class AntriAgent {
   private config: AntriConfig;
   private history: ConversationHistory;
@@ -303,9 +325,163 @@ ${visualArtifactSection}
     this.history.addMessage(userMsg);
     sessionManager.addMessageToActiveSession(userMsg);
 
+    // 5a. Auto-Initialize Autonomous Goal Loop for multi-day plans, workouts, diets, and structured roadmaps
+    if (isGoalOrPlanQuery(userPrompt)) {
+      const { GoalLoopEngine } = await import('./goalLoop.js');
+      const { artifactManager } = await import('./artifactManager.js');
+      const goalEngine = new GoalLoopEngine(this.config);
+
+      const statusNote = chalk.bold.hex('#818cf8')('\n🎯 [Initializing Autonomous Silent Goal Loop for multi-stage plan...]');
+      console.log(statusNote);
+      if (onStreamToken) onStreamToken('🎯 *[Synthesizing multi-stage goal plan...]*\n\n');
+
+      // Step 1: Run 3-stage silent goal optimization for deep, battle-tested plain text plan
+      const planSolution = await goalEngine.runSilentGoal(userPrompt);
+      const cleanPlan = planSolution.replace(/^>\s*🎯\s*\[Goal Loop Plan Synthesized\]\s*/i, '').trim();
+
+      // Step 2: Stream the complete plain-text plan to user first
+      if (onStreamToken) {
+        onStreamToken(cleanPlan + '\n\n');
+      }
+
+      // Step 3: Bundle interactive visual SPA artifact with tabs, rest timer, progress tracker
+      const planTitle = userPrompt
+        .replace(/^(\/goal|\/silent-goal|goal:|objective:)\s*/i, '')
+        .trim()
+        .slice(0, 50) || 'Multi-Stage Interactive Plan';
+      
+      const artifactId = 'art_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      const visualSpaHtml = artifactManager.generateRichTodoHtml ? artifactManager.generateRichTodoHtml(planTitle) : '';
+      
+      let fullResponse = cleanPlan;
+      if (visualSpaHtml) {
+        fullResponse += `\n\n<antri_artifact id="${artifactId}" type="html" title="${planTitle}">\n${visualSpaHtml}\n</antri_artifact>`;
+      }
+
+      const assistantMsg: ChatMessage = {
+        role: 'assistant',
+        content: fullResponse,
+      };
+      this.history.addMessage(assistantMsg);
+      sessionManager.addMessageToActiveSession(assistantMsg);
+
+      const activeSession = sessionManager.getActiveSession();
+      const parsed = artifactManager.parseAndStoreArtifacts(
+        fullResponse,
+        activeSession?.id || 'cli_session',
+        activeSession?.title || 'CLI Session'
+      );
+
+      if (parsed.artifacts && parsed.artifacts.length > 0) {
+        const os = await import('os');
+        const path = await import('path');
+        for (const art of parsed.artifacts) {
+          const icon = '🌐';
+          const typeLabel = 'Interactive Multi-Page SPA';
+          const filePath = artifactManager.getArtifactFilePath(art.id) || path.join(os.homedir(), '.antri', 'artifacts', `${art.id}.html`);
+          const fileUri = `file:///${filePath.replace(/\\/g, '/')}`;
+
+          console.log(chalk.bold.hex('#c084fc')(`\n┌─ ${icon} ${typeLabel}: ${art.title} ─────────────────┐`));
+          console.log(`  ${chalk.bold.white('• ID:')}          ${chalk.cyan(art.id)}`);
+          console.log(`  ${chalk.bold.white('• Live View:')}   ${chalk.green(fileUri)}`);
+          console.log(`  ${chalk.bold.white('• Desktop:')}     ${chalk.hex('#818cf8')('Launch Desktop Control Plane with: antri --desktop')}`);
+          console.log(chalk.bold.hex('#c084fc')(`└────────────────────────────────────────────────────────────┘\n`));
+        }
+      }
+
+      memoryManager.recordInteraction(userPrompt, fullResponse);
+      const duration = Date.now() - startTime;
+      metaOptimizer.recordQuerySuccess(duration);
+
+      const elapsed = Math.max(0.1, duration / 1000).toFixed(0);
+      const modeTag = (this.config.mode || 'vibe').toUpperCase();
+      console.log(chalk.hex('#64748b')(`* Worked for ${elapsed}s · Mode: ${modeTag} · Profile: ${activeProfileName}`));
+      console.log();
+      return fullResponse;
+    }
+
+    // 5b. Auto-Initialize Background Dialectic Consensus Debate for trade-off & vs queries
+    if (isDebateOrTradeoffQuery(userPrompt)) {
+      const { DialecticEngine } = await import('./dialectic.js');
+      const { artifactManager } = await import('./artifactManager.js');
+      const dialecticEngine = new DialecticEngine(this.config);
+
+      const statusNote = chalk.bold.hex('#c084fc')('\n⚔️ [Initializing Background Dialectic Consensus Debate...]');
+      console.log(statusNote);
+      if (onStreamToken) onStreamToken('⚔️ *[Conducting multi-perspective dialectic debate in background...]*\n\n');
+
+      const debateQuery = userPrompt
+        .replace(/^(\/debate|\/silent-debate|\/dialectic|research on|debate on)\s*/i, '')
+        .trim();
+      
+      const consensus = await dialecticEngine.silentDebate(debateQuery || userPrompt, this.config.debateDepth || 'deep');
+      const cleanConsensus = consensus.replace(/^>\s*⚔️\s*\[Dialectic Consensus Synthesized\]\s*/i, '').trim();
+
+      if (onStreamToken) {
+        onStreamToken(cleanConsensus + '\n\n');
+      }
+
+      const debateTitle = `${(debateQuery || userPrompt).slice(0, 45)} · Architectural Consensus`;
+      const artifactId = 'mindmap_' + Date.now().toString(36);
+      const mindmapSnippet = `mindmap
+  root((${debateTitle}))
+    Core Strengths & Thesis
+      Primary Advantages
+      Target Use Cases
+    Critical Trade-offs & Risks
+      Bottlenecks & Limitations
+      Operational Overhead
+    Empirical Decision Matrix
+      High-Throughput Benchmarks
+      Team Scalability`;
+
+      const fullResponse = `${cleanConsensus}\n\n<antri_artifact id="${artifactId}" type="mindmap" title="${debateTitle}">\n${mindmapSnippet}\n</antri_artifact>`;
+
+      const assistantMsg: ChatMessage = {
+        role: 'assistant',
+        content: fullResponse,
+      };
+      this.history.addMessage(assistantMsg);
+      sessionManager.addMessageToActiveSession(assistantMsg);
+
+      const activeSession = sessionManager.getActiveSession();
+      const parsed = artifactManager.parseAndStoreArtifacts(
+        fullResponse,
+        activeSession?.id || 'cli_session',
+        activeSession?.title || 'CLI Session'
+      );
+
+      if (parsed.artifacts && parsed.artifacts.length > 0) {
+        const os = await import('os');
+        const path = await import('path');
+        for (const art of parsed.artifacts) {
+          const icon = '🧠';
+          const typeLabel = 'Interactive Markmap Mind Map';
+          const filePath = artifactManager.getArtifactFilePath(art.id) || path.join(os.homedir(), '.antri', 'artifacts', `${art.id}.html`);
+          const fileUri = `file:///${filePath.replace(/\\/g, '/')}`;
+
+          console.log(chalk.bold.hex('#c084fc')(`\n┌─ ${icon} ${typeLabel}: ${art.title} ─────────────────┐`));
+          console.log(`  ${chalk.bold.white('• ID:')}          ${chalk.cyan(art.id)}`);
+          console.log(`  ${chalk.bold.white('• Live View:')}   ${chalk.green(fileUri)}`);
+          console.log(`  ${chalk.bold.white('• Desktop:')}     ${chalk.hex('#818cf8')('Launch Desktop Control Plane with: antri --desktop')}`);
+          console.log(chalk.bold.hex('#c084fc')(`└────────────────────────────────────────────────────────────┘\n`));
+        }
+      }
+
+      memoryManager.recordInteraction(userPrompt, fullResponse);
+      const duration = Date.now() - startTime;
+      metaOptimizer.recordQuerySuccess(duration);
+
+      const elapsed = Math.max(0.1, duration / 1000).toFixed(0);
+      const modeTag = (this.config.mode || 'vibe').toUpperCase();
+      console.log(chalk.hex('#64748b')(`* Worked for ${elapsed}s · Mode: ${modeTag} · Profile: ${activeProfileName}`));
+      console.log();
+      return fullResponse;
+    }
+
     const response = await this.runAgentLoop(0, contextText, skillContext, onStreamToken, onToolCall);
 
-    // 5b. Parse and persist any interactive Claude-style artifacts (<antri_artifact>...</antri_artifact>)
+    // 5c. Parse and persist any interactive Claude-style artifacts (<antri_artifact>...</antri_artifact>)
     const { artifactManager } = await import('./artifactManager.js');
     const activeSession = sessionManager.getActiveSession();
     const parsed = artifactManager.parseAndStoreArtifacts(
