@@ -3,6 +3,7 @@ import chalk from 'chalk';
 import path from 'path';
 import os from 'os';
 import { AntriConfig } from '../types.js';
+import { ProjectContextCache } from '../core/codebaseBreather.js';
 
 // Custom Chunky Block Font for ANTRI matching the aesthetic of Home.png
 const BLOCK_LETTERS: Record<string, string[]> = {
@@ -135,9 +136,15 @@ export function renderBanner(config: AntriConfig): void {
   const activeModel = chalk.hex('#cbd5e1')(config.model);
   console.log(`${commentHash} ${modelsLabel} ${activeModel}`);
 
-  // Working directory line
+  // Working directory & Codebase Intelligence line
   const dirDisplay = formatWorkingDir(config.workingDir);
-  console.log(`${commentHash} ${chalk.hex('#94a3b8')(dirDisplay)}`);
+  const cacheData = ProjectContextCache.get(config.workingDir);
+  let cacheBadge = '';
+  if (cacheData) {
+    const stack = cacheData.techStack.slice(0, 2).join('/') || cacheData.projectType;
+    cacheBadge = chalk.hex('#a855f7')(` · 🫁 cached [${cacheData.projectName} · ${stack} · ${cacheData.totalFiles} files]`);
+  }
+  console.log(`${commentHash} ${chalk.hex('#94a3b8')(dirDisplay)}${cacheBadge}`);
   console.log();
 }
 

@@ -60,7 +60,7 @@ export function createProvider(config: AntriConfig): LLMProvider {
         name: 'nvidia-nim',
         apiKey: config.apiKeys.nvidia_nim || process.env.NVIDIA_API_KEY || process.env.NVIDIA_NIM_API_KEY,
         baseUrl: config.customBaseUrls?.nvidia_nim || 'https://integrate.api.nvidia.com/v1',
-        model: config.model || 'meta/llama-3.1-8b-instruct',
+        model: config.model || 'meta/llama-3.2-11b-vision-instruct',
       });
 
     case 'openai':

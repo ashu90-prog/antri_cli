@@ -16,6 +16,7 @@ import { getAllActiveTools, ToolExecutor } from '../core/tools.js';
 import { PROVIDER_CATALOGS, getAvailableModels } from '../providers/models.js';
 import { PROMPT_TOOLKIT_COMMANDS } from '../cli/promptToolkit.js';
 import { FilePickerService } from '../cli/dialogs/filePicker.js';
+import { CodebaseBreather, ProjectContextCache } from '../core/codebaseBreather.js';
 import { log, colors } from '../utils/logger.js';
 import chalk from 'chalk';
 
@@ -278,6 +279,52 @@ export class DesktopServer {
       return;
     }
 
+    // GET /api/codebase/cache (Codebase Intelligence Radar)
+    if (pathname === '/api/codebase/cache' && req.method === 'GET') {
+      let cache = ProjectContextCache.get(config.workingDir);
+      if (!cache) {
+        cache = CodebaseBreather.analyzeCodebase(config.workingDir);
+        ProjectContextCache.set(config.workingDir, cache);
+      }
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ cache }));
+      return;
+    }
+
+    // GET /api/workspace/tree (Interactive File Explorer Tree)
+    if (pathname === '/api/workspace/tree' && req.method === 'GET') {
+      const query = url.searchParams.get('query') || '';
+      const tree = FilePickerService.listDirectory(config.workingDir, query);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(tree));
+      return;
+    }
+
+    // GET /api/workspace/file (Inspect & View file content)
+    if (pathname === '/api/workspace/file' && req.method === 'GET') {
+      const relPath = url.searchParams.get('path') || '';
+      const fullPath = path.resolve(config.workingDir, relPath);
+      if (!fullPath.startsWith(path.resolve(config.workingDir))) {
+        res.writeHead(403, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Access denied' }));
+        return;
+      }
+      try {
+        if (fs.existsSync(fullPath) && fs.statSync(fullPath).isFile()) {
+          const content = fs.readFileSync(fullPath, 'utf-8');
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: true, path: relPath, content }));
+        } else {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'File not found' }));
+        }
+      } catch (err: any) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
+      }
+      return;
+    }
+
     // GET /api/artifacts/:id/view (Render standalone HTML / visual graph artifact)
     if (pathname?.startsWith('/api/artifacts/') && pathname.endsWith('/view') && req.method === 'GET') {
       const { artifactManager } = await import('../core/artifactManager.js');
@@ -356,6 +403,36 @@ export class DesktopServer {
               isImage: fileType.startsWith('image/'),
             })
           );
+          return;
+        }
+
+        // POST /api/codebase/breathe (Trigger 1-2s Codebase Analysis & Cache Re-indexing)
+        if (pathname === '/api/codebase/breathe' && req.method === 'POST') {
+          const freshCache = await CodebaseBreather.breathe(config.workingDir, { minDurationMs: 1200, silent: true });
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: true, cache: freshCache }));
+          return;
+        }
+
+        // POST /api/workspace/file (Edit / Save workspace file directly)
+        if (pathname === '/api/workspace/file' && req.method === 'POST') {
+          const relPath = payload.path || '';
+          const content = payload.content || '';
+          const fullPath = path.resolve(config.workingDir, relPath);
+          if (!fullPath.startsWith(path.resolve(config.workingDir))) {
+            res.writeHead(403, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Access denied' }));
+            return;
+          }
+          try {
+            fs.mkdirSync(path.dirname(fullPath), { recursive: true });
+            fs.writeFileSync(fullPath, content, 'utf-8');
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: true, path: relPath }));
+          } catch (err: any) {
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: err.message }));
+          }
           return;
         }
 

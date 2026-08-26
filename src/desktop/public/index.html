@@ -15,7 +15,7 @@
   <header class="app-header">
     <div class="brand-zone">
       <span class="logo-mark">ANTRI</span>
-      <span class="version-tag">v1.57.29</span>
+      <span class="version-tag">v1.57.31</span>
     </div>
 
     <!-- Mode Toggle -->
@@ -78,6 +78,15 @@
       <div class="nav-section-title">Navigation</div>
       <button class="nav-item active" onclick="showTab('chat')">
         <span class="nav-label">Agent Studio</span>
+      </button>
+      <button class="nav-item" onclick="showTab('codebase')">
+        <span class="nav-label">🫁 Codebase Radar</span>
+      </button>
+      <button class="nav-item" onclick="showTab('workspace')">
+        <span class="nav-label">💻 Code Workspace</span>
+      </button>
+      <button class="nav-item" onclick="showTab('timeline')">
+        <span class="nav-label">🧠 Thinking Timeline</span>
       </button>
       <button class="nav-item" onclick="showTab('dialectic')">
         <span class="nav-label">Dialectic Arena</span>
@@ -492,6 +501,145 @@
             <textarea id="custom-idea-input" class="custom-idea-textarea" placeholder="e.g., Build Option 1, but add an interactive GitHub commit heatmap, dark obsidian theme with glowing cyan accents, and an interactive project filter tabs..."></textarea>
             <div class="custom-idea-actions">
               <button class="action-btn" onclick="buildFromCustomIdea()">🚀 Build Custom Project in Studio</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 9: Codebase Intelligence Radar (Desktop Exclusive) -->
+      <section id="tab-codebase" class="tab-panel">
+        <div class="panel-header">
+          <div class="panel-title-group">
+            <h2 class="panel-title">🫁 Codebase Intelligence Radar</h2>
+            <p class="panel-subtitle">Pre-analyzed codebase cache, technology stack matrix, subsystem modules, and Git workspace status.</p>
+          </div>
+          <button class="action-btn" id="btn-codebase-breathe" onclick="triggerCodebaseBreathe()">🫁 Breathe & Re-Index Codebase</button>
+        </div>
+
+        <div id="codebase-breathing-bar" class="breathing-progress-bar hidden">
+          <div class="breathing-pulse-indicator">✨ ANTRI is breathing... Analyzing codebase architecture & indexing context...</div>
+        </div>
+
+        <div id="codebase-dashboard-content" class="codebase-dashboard-layout">
+          <!-- Populated dynamically via loadCodebaseTab() -->
+        </div>
+      </section>
+
+      <!-- TAB 10: Code Workspace & Live File Editor (Desktop Exclusive) -->
+      <section id="tab-workspace" class="tab-panel">
+        <div class="panel-header">
+          <div class="panel-title-group">
+            <h2 class="panel-title">💻 Live Code Workspace & Playground</h2>
+            <p class="panel-subtitle">Browse workspace files, edit source code directly, and preview live HTML artifacts in real-time sandbox.</p>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="action-btn-secondary" onclick="loadWorkspaceTree()">⟳ Refresh Tree</button>
+            <button class="action-btn" id="btn-save-workspace-file" onclick="saveWorkspaceFile()">💾 Save File</button>
+          </div>
+        </div>
+
+        <div class="workspace-editor-layout">
+          <!-- Left: File Tree Browser -->
+          <div class="workspace-tree-sidebar">
+            <div class="tree-header">
+              <span>Workspace Files</span>
+            </div>
+            <div id="workspace-tree-list" class="workspace-tree-list">
+              <!-- Populated dynamically via JS -->
+            </div>
+          </div>
+
+          <!-- Center/Right: Code Editor & Live Preview -->
+          <div class="workspace-code-pane">
+            <div class="editor-header">
+              <span id="active-workspace-filename" class="active-file-tag">Select a file to inspect or edit</span>
+              <div class="device-toggles" id="workspace-device-toggles" style="display:none;">
+                <button class="device-btn active" onclick="setSandboxDevice('desktop')">🖥️ Desktop</button>
+                <button class="device-btn" onclick="setSandboxDevice('tablet')">📱 Tablet</button>
+                <button class="device-btn" onclick="setSandboxDevice('mobile')">📲 Mobile</button>
+              </div>
+            </div>
+            <textarea id="workspace-file-editor" class="profile-textarea code-font" placeholder="// Select a file from the left sidebar to edit..." spellcheck="false"></textarea>
+            <div id="workspace-sandbox-container" class="workspace-sandbox-container hidden">
+              <iframe id="workspace-sandbox-iframe" sandbox="allow-scripts allow-same-origin allow-popups allow-forms" class="sandbox-iframe"></iframe>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 11: Autonomous Thinking Timeline (Desktop Exclusive) -->
+      <section id="tab-timeline" class="tab-panel">
+        <div class="panel-header">
+          <div class="panel-title-group">
+            <h2 class="panel-title">🧠 Autonomous Engineering Mission Control</h2>
+            <p class="panel-subtitle">Deep multi-stage thinking pipeline, architectural planning protocols, and anti-shallow code verification.</p>
+          </div>
+          <button class="action-btn" onclick="showTab('chat')">🚀 Start Coding in Studio</button>
+        </div>
+
+        <div class="thinking-timeline-layout">
+          <div class="timeline-stage-card">
+            <div class="stage-number">01</div>
+            <div class="stage-content">
+              <h3>🫁 Codebase Breathing & Intelligence Cache Retrieval</h3>
+              <p>On boot, ANTRI takes 1-2 seconds to index manifests, technology stack, directory layout, and entrypoints into active memory cache without blocking.</p>
+              <div class="stage-tags">
+                <span class="badge">1.2s Warmup</span>
+                <span class="badge">Project Radar</span>
+                <span class="badge">Git Context</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="timeline-stage-card">
+            <div class="stage-number">02</div>
+            <div class="stage-content">
+              <h3>🏛️ Deep Architectural Blueprint & Type Schema Design</h3>
+              <p>Before coding, ANTRI models domain entities, DTOs, data flow, responsive breakpoints, state management, and edge cases to eliminate 4-5 line shallow codebases.</p>
+              <div class="stage-tags">
+                <span class="badge">Anti-Trivial Mandate</span>
+                <span class="badge">TypeScript Strict</span>
+                <span class="badge">State Modeling</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="timeline-stage-card">
+            <div class="stage-number">03</div>
+            <div class="stage-content">
+              <h3>🧱 Modular File Scaffolding & Multi-File Generation</h3>
+              <p>Writes real physical source files directly to the project directory (<code>index.html</code>, <code>style.css</code>, <code>app.js</code>, <code>package.json</code>, components) with zero fake placeholders.</p>
+              <div class="stage-tags">
+                <span class="badge">write_file</span>
+                <span class="badge">Multi-File Architecture</span>
+                <span class="badge">Zero Placeholders</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="timeline-stage-card">
+            <div class="stage-number">04</div>
+            <div class="stage-content">
+              <h3>🛡️ Defensive Engineering & High-Craft Polish</h3>
+              <p>Integrates Web Audio API sound synthesizers, keyframe animations, Chart.js visualizations, Canvas-Confetti celebrations, and comprehensive error handling.</p>
+              <div class="stage-tags">
+                <span class="badge">Web Audio API</span>
+                <span class="badge">Glassmorphism</span>
+                <span class="badge">Tactile UX</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="timeline-stage-card">
+            <div class="stage-number">05</div>
+            <div class="stage-content">
+              <h3>🌐 Dual-Delivery Synergy</h3>
+              <p>Real production files safely persisted on disk for deployment & Git, plus instant interactive single-page application artifact for in-chat desktop preview.</p>
+              <div class="stage-tags">
+                <span class="badge">Disk Source Files</span>
+                <span class="badge">Live Artifact Sandbox</span>
+                <span class="badge">Instant Testing</span>
+              </div>
             </div>
           </div>
         </div>

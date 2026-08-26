@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import readline from 'readline';
-import { exec } from 'child_process';
+import { exec, spawn } from 'child_process';
 import util from 'util';
 import chalk from 'chalk';
 import { ToolDefinition, ToolResult } from '../types.js';
@@ -1433,6 +1433,22 @@ export default function Home() {
     return false;
   }
 
+  public resolveWorkspacePath(rawPath: string): string {
+    if (!rawPath) return this.workingDir;
+    let clean = String(rawPath).trim();
+    const normalizedWorkingDir = path.resolve(this.workingDir);
+
+    if (path.isAbsolute(clean)) {
+      const resolved = path.resolve(clean);
+      if (resolved.startsWith(normalizedWorkingDir)) {
+        return resolved;
+      }
+      const base = path.basename(clean);
+      return path.resolve(normalizedWorkingDir, base);
+    }
+    return path.resolve(normalizedWorkingDir, clean);
+  }
+
   public async execute(name: string, args: Record<string, any>, toolCallId: string): Promise<ToolResult> {
     try {
       const { AuthManager } = await import('../cloud/auth.js');
@@ -1640,11 +1656,9 @@ export default function Home() {
               error: true,
             };
           }
-          let resolvedPath = filePath;
-          if (resolvedPath.startsWith('~')) {
-            resolvedPath = path.join(os.homedir(), resolvedPath.slice(1));
-          } else {
-            resolvedPath = path.resolve(this.workingDir, resolvedPath);
+          let resolvedPath = this.resolveWorkspacePath(filePath);
+          if (filePath.startsWith('~')) {
+            resolvedPath = path.join(os.homedir(), filePath.slice(1));
           }
 
           if (!fs.existsSync(resolvedPath)) {
@@ -1693,9 +1707,9 @@ export default function Home() {
         }
 
         case 'write_file': {
-          const filePath = toolArgs.filePath || toolArgs.file_path || toolArgs.filename || toolArgs.path || toolArgs.name;
+          const rawFilePath = toolArgs.filePath || toolArgs.file_path || toolArgs.filename || toolArgs.path || toolArgs.name;
           const content = toolArgs.content !== undefined ? toolArgs.content : toolArgs.code || toolArgs.text || '';
-          if (!filePath) {
+          if (!rawFilePath) {
             return {
               tool_call_id: toolCallId,
               name: toolName,
@@ -1703,21 +1717,22 @@ export default function Home() {
               error: true,
             };
           }
-          const targetPath = path.resolve(this.workingDir, filePath);
+          const targetPath = this.resolveWorkspacePath(rawFilePath);
           const dir = path.dirname(targetPath);
           if (!fs.existsSync(dir)) {
             fs.mkdirSync(dir, { recursive: true });
           }
           fs.writeFileSync(targetPath, content, 'utf-8');
+          const relWritten = path.relative(this.workingDir, targetPath).replace(/\\/g, '/') || path.basename(targetPath);
 
-          if (filePath.endsWith('.html') || (typeof content === 'string' && content.includes('<html'))) {
+          if (targetPath.endsWith('.html') || (typeof content === 'string' && content.includes('<html'))) {
             try {
               const { artifactManager } = await import('./artifactManager.js');
               const { sessionManager } = await import('./sessionManager.js');
               const activeSession = sessionManager.getActiveSession();
-              const baseName = path.basename(filePath, '.html').replace(/[_-]/g, ' ');
+              const baseName = path.basename(targetPath, '.html').replace(/[_-]/g, ' ');
               const title = baseName.charAt(0).toUpperCase() + baseName.slice(1);
-              const id = 'art_' + path.basename(filePath, '.html').replace(/[^a-zA-Z0-9_]/g, '_');
+              const id = 'art_' + path.basename(targetPath, '.html').replace(/[^a-zA-Z0-9_]/g, '_');
               artifactManager.saveArtifact({
                 id,
                 sessionId: activeSession?.id || 'workspace_files',
@@ -1733,7 +1748,7 @@ export default function Home() {
           return {
             tool_call_id: toolCallId,
             name: toolName,
-            output: `Successfully wrote ${content.length} characters to ${filePath}`,
+            output: `Successfully wrote ${content.length} characters to ${relWritten} (Full path: ${targetPath})`,
           };
         }
 
@@ -1747,11 +1762,9 @@ export default function Home() {
               error: true,
             };
           }
-          let resolvedPath = filePath;
-          if (resolvedPath.startsWith('~')) {
-            resolvedPath = path.join(os.homedir(), resolvedPath.slice(1));
-          } else {
-            resolvedPath = path.resolve(this.workingDir, resolvedPath);
+          let resolvedPath = this.resolveWorkspacePath(filePath);
+          if (filePath.startsWith('~')) {
+            resolvedPath = path.join(os.homedir(), filePath.slice(1));
           }
 
           if (!fs.existsSync(resolvedPath)) {
@@ -1845,12 +1858,13 @@ export default function Home() {
               error: true,
             };
           }
-          const targetPath = path.resolve(this.workingDir, dirPath);
+          const targetPath = this.resolveWorkspacePath(dirPath);
           fs.mkdirSync(targetPath, { recursive: true });
+          const relDir = path.relative(this.workingDir, targetPath).replace(/\\/g, '/') || path.basename(targetPath);
           return {
             tool_call_id: toolCallId,
             name: toolName,
-            output: `Successfully created directory: ${dirPath}`,
+            output: `Successfully created directory: ${relDir}`,
           };
         }
 
@@ -1864,7 +1878,7 @@ export default function Home() {
               error: true,
             };
           }
-          const targetPath = path.resolve(this.workingDir, filePath);
+          const targetPath = this.resolveWorkspacePath(filePath);
           if (!fs.existsSync(targetPath)) {
             return {
               tool_call_id: toolCallId,
@@ -2105,28 +2119,13 @@ export default function Home() {
             };
           }
 
-          try {
-            const { stdout, stderr } = await execPromise(cmd, {
-              cwd: this.workingDir,
-              timeout: 30000,
-              maxBuffer: 1024 * 1024,
-            });
-            const output = (stdout || '') + (stderr ? `\n[STDERR]: ${stderr}` : '');
-            const cleanOutput = output.trim() || '(command finished with no output)';
-            return {
-              tool_call_id: toolCallId,
-              name: toolName,
-              output: cleanOutput,
-            };
-          } catch (execErr: any) {
-            const errOutput = (execErr.stdout || '') + (execErr.stderr ? `\n${execErr.stderr}` : '') || execErr.message || 'Execution error';
-            return {
-              tool_call_id: toolCallId,
-              name: toolName,
-              output: `Command failed (exit code ${execErr.code || 1}): ${errOutput.trim()}`,
-              error: true,
-            };
-          }
+          const res = await this.executeCommandPipeline(cmd);
+          return {
+            tool_call_id: toolCallId,
+            name: toolName,
+            output: res.output,
+            error: res.error ? true : undefined,
+          };
         }
 
         case 'git_diff': {
@@ -2376,6 +2375,117 @@ export default function Home() {
         tool_call_id: toolCallId,
         name,
         output: `Tool execution failed: ${err.message}`,
+        error: true,
+      };
+    }
+  }
+
+  /**
+   * Robust multi-command, multi-line, and daemon/server execution pipeline with real-time feedback
+   */
+  private async executeCommandPipeline(cmd: string): Promise<{ output: string; error?: boolean }> {
+    const isWin = process.platform === 'win32';
+    const shellExe = isWin ? 'powershell.exe' : '/bin/bash';
+
+    // 1. Detect if this is a server or long-running daemon command
+    const isServerCommand = /^(?:npm\s+start|npm\s+run\s+dev|node\s+.*server|python(?:3)?\s+.*app\.py|python(?:3)?\s+-m\s+http\.server|npx\s+http-server|npx\s+vite|vite|uvicorn|flask\s+run|nodemon)/i.test(cmd.trim());
+
+    if (isServerCommand) {
+      return new Promise((resolve) => {
+        let stdout = '';
+        let stderr = '';
+        let exited = false;
+
+        const child = spawn(cmd, {
+          cwd: this.workingDir,
+          shell: shellExe,
+          stdio: ['pipe', 'pipe', 'pipe']
+        });
+
+        child.stdout?.on('data', (d) => { stdout += d.toString(); });
+        child.stderr?.on('data', (d) => { stderr += d.toString(); });
+
+        const timer = setTimeout(() => {
+          if (!exited) {
+            try {
+              if (isWin) {
+                spawn('taskkill', ['/pid', String(child.pid), '/f', '/t']);
+              } else {
+                child.kill('SIGTERM');
+              }
+            } catch (_) {}
+            const combined = (stdout + (stderr ? `\n[STDERR]: ${stderr}` : '')).trim();
+            resolve({
+              output: `✔ Server process started successfully (verified running for 3s):\n${combined || '(server listening with no stdout)'}`,
+              error: false
+            });
+          }
+        }, 3000);
+
+        child.on('error', (err) => {
+          exited = true;
+          clearTimeout(timer);
+          resolve({
+            output: `Failed to spawn server process: ${err.message}`,
+            error: true
+          });
+        });
+
+        child.on('exit', (code) => {
+          exited = true;
+          clearTimeout(timer);
+          const combined = (stdout + (stderr ? `\n[STDERR]: ${stderr}` : '')).trim();
+          if (code === 0) {
+            resolve({ output: combined || '(process exited successfully with code 0)', error: false });
+          } else {
+            resolve({ output: `Process exited with code ${code}:\n${combined}`, error: true });
+          }
+        });
+      });
+    }
+
+    // 2. Check if multiple commands are given line by line
+    const lines = cmd.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0 && !l.startsWith('#'));
+    if (lines.length > 1) {
+      const results: string[] = [];
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        console.log(chalk.hex('#06b6d4')(`  ⚡ [Step ${i + 1}/${lines.length}]: `) + chalk.hex('#38bdf8')(`"${line}"`));
+        try {
+          const { stdout, stderr } = await execPromise(line, {
+            cwd: this.workingDir,
+            timeout: 30000,
+            maxBuffer: 1024 * 1024,
+            shell: shellExe,
+          });
+          const out = (stdout || '') + (stderr ? `\n[STDERR]: ${stderr}` : '');
+          results.push(`[Step ${i + 1}: ${line}]\n${out.trim() || '(no output)'}`);
+        } catch (stepErr: any) {
+          const errOut = (stepErr.stdout || '') + (stepErr.stderr ? `\n${stepErr.stderr}` : '') || stepErr.message;
+          results.push(`[Step ${i + 1}: ${line} FAILED (exit code ${stepErr.code || 1})]\n${errOut.trim()}`);
+          return {
+            output: results.join('\n\n') + `\n\n✖ Multi-command execution stopped at step ${i + 1} due to error.`,
+            error: true
+          };
+        }
+      }
+      return { output: results.join('\n\n'), error: false };
+    }
+
+    // 3. Single command execution with shell support
+    try {
+      const { stdout, stderr } = await execPromise(cmd, {
+        cwd: this.workingDir,
+        timeout: 45000,
+        maxBuffer: 2 * 1024 * 1024,
+        shell: shellExe,
+      });
+      const output = (stdout || '') + (stderr ? `\n[STDERR]: ${stderr}` : '');
+      return { output: output.trim() || '(command finished with no output)', error: false };
+    } catch (execErr: any) {
+      const errOutput = (execErr.stdout || '') + (execErr.stderr ? `\n${execErr.stderr}` : '') || execErr.message || 'Execution error';
+      return {
+        output: `Command failed (exit code ${execErr.code || 1}): ${errOutput.trim()}`,
         error: true,
       };
     }

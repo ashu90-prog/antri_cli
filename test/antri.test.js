@@ -10,7 +10,7 @@ import { ToolExecutor, AVAILABLE_TOOLS, getAllActiveTools, SENSITIVE_TOOLS, extr
 import { PROMPT_TOOLKIT_COMMANDS } from '../dist/cli/promptToolkit.js';
 import { PROVIDER_CATALOGS, getAvailableModels } from '../dist/providers/models.js';
 import { PROVIDERS_LIST } from '../dist/cli/dialogs/providerPicker.js';
-import { ToolInspector } from '../dist/cli/renderer.js';
+import { ToolInspector, TerminalRenderer } from '../dist/cli/renderer.js';
 import { FilePickerService } from '../dist/cli/dialogs/filePicker.js';
 import { CitationEngine } from '../dist/core/citations.js';
 import { DialecticEngine } from '../dist/core/dialectic.js';
@@ -32,7 +32,8 @@ import { FirestoreSyncManager } from '../dist/cloud/firestore.js';
 import { AuthManager } from '../dist/cloud/auth.js';
 import { RateLimiter } from '../dist/security/rateLimiter.js';
 import { SessionManager } from '../dist/core/sessionManager.js';
-import { isGoalOrPlanQuery, isDebateOrTradeoffQuery } from '../dist/core/agent.js';
+import { isGoalOrPlanQuery, isDebateOrTradeoffQuery, isCodingQuery } from '../dist/core/agent.js';
+import { CodebaseBreather, ProjectContextCache } from '../dist/core/codebaseBreather.js';
 
 test('ConfigManager initializes with defaults including debateDepth and mode', () => {
   const manager = new ConfigManager();
@@ -72,7 +73,7 @@ test('ToolExecutor identifies privacy & security sensitive tools', () => {
 
 test('Updater reports correct package name and current version', () => {
   assert.strictEqual(Updater.PACKAGE_NAME, 'antri_cli');
-  assert.strictEqual(Updater.CURRENT_VERSION, '1.57.29');
+  assert.strictEqual(Updater.CURRENT_VERSION, '1.57.31');
 });
 
 test('GoalLoopEngine initializes with active configuration', () => {
@@ -998,6 +999,103 @@ test('ArtifactManager.sanitizeAndEnhanceMindmap enhances economic and tech debat
   assert.ok(enhancedRustGo.includes('Goroutines & Channels'));
   assert.strictEqual(enhancedRustGo.includes('Primary Advantages'), false);
 });
+
+test('CodebaseBreather and ProjectContextCache analyze codebase and cache rich project metadata', async () => {
+  const analysis = CodebaseBreather.analyzeCodebase(process.cwd());
+  assert.ok(analysis.projectName);
+  assert.ok(analysis.projectType);
+  assert.ok(Array.isArray(analysis.techStack));
+  assert.ok(analysis.totalFiles > 0);
+  assert.ok(analysis.totalDirectories > 0);
+  assert.ok(analysis.entryPoints.length > 0);
+  assert.ok(analysis.topDirectories.length > 0);
+
+  ProjectContextCache.set(process.cwd(), analysis);
+  const cached = ProjectContextCache.get(process.cwd());
+  assert.strictEqual(cached?.projectName, analysis.projectName);
+
+  const summary = ProjectContextCache.getContextSummary(process.cwd());
+  assert.ok(summary.includes('ANTRI CODEBASE INTELLIGENCE CACHE'));
+  assert.ok(summary.includes(analysis.projectName));
+});
+
+test('isCodingQuery accurately classifies software development and coding prompts', () => {
+  assert.strictEqual(isCodingQuery('code a snake game in vanilla js with html and css'), true);
+  assert.strictEqual(isCodingQuery('build a fullstack next.js portfolio website'), true);
+  assert.strictEqual(isCodingQuery('implement an LRU cache algorithm in typescript'), true);
+  assert.strictEqual(isCodingQuery('create a fastapi backend server with sqlite'), true);
+  assert.strictEqual(isCodingQuery('make a todo app with localstorage'), true);
+  assert.strictEqual(isCodingQuery('refactor this legacy component into clean modular code'), true);
+  assert.strictEqual(isCodingQuery('what is the capital of france?'), false);
+  assert.strictEqual(isCodingQuery('why does the sky appear blue?'), false);
+  assert.strictEqual(isCodingQuery('how to stay motivated while studying?'), false);
+});
+
+test('SkillManager registers and seeds expanded hardcoded engineering skills', () => {
+  const sm = new SkillManager();
+  const skills = sm.listSkills();
+  const ids = skills.map((s) => s.id);
+
+  assert.ok(ids.includes('autonomous_coder'));
+  assert.ok(ids.includes('artifact_maker'));
+  assert.ok(ids.includes('production_fullstack_architect'));
+  assert.ok(ids.includes('frontend_craftsman'));
+  assert.ok(ids.includes('backend_systems_engineer'));
+  assert.ok(ids.includes('algorithm_engineer'));
+  assert.ok(ids.includes('test_automation_architect'));
+  assert.ok(ids.includes('codebase_refactor_pro'));
+
+  const autoCoder = sm.getSkill('autonomous_coder');
+  assert.ok(autoCoder);
+  assert.ok(autoCoder.instructions.includes('ABSOLUTE PROHIBITION OF 4-5 LINE TOY CODEBASES'));
+
+  const fullstack = sm.getSkill('production_fullstack_architect');
+  assert.ok(fullstack);
+  assert.strictEqual(fullstack.category, 'Engineering');
+
+  const frontend = sm.getSkill('frontend_craftsman');
+  assert.ok(frontend);
+  assert.ok(frontend.instructions.includes('Visual Hierarchy & Typography'));
+});
+
+test('ToolExecutor executes multi-line command pipeline with step-by-step reporting', async () => {
+  await AuthManager.login('cmd_tester@example.com');
+  const executor = new ToolExecutor(process.cwd());
+
+  const multiCmd = `
+    node -e "console.log('step 1 output')"
+    node -e "console.log('step 2 output')"
+  `;
+
+  const res = await executor.execute('run_command', { command: multiCmd }, 'multi-test');
+  assert.strictEqual(res.error, undefined);
+  assert.ok(res.output.includes('step 1 output'));
+  assert.ok(res.output.includes('step 2 output'));
+  AuthManager.logout();
+});
+
+test('TerminalRenderer formats printToolStart and printToolFinish accurately', () => {
+  const tc = {
+    id: 'call_123',
+    type: 'function',
+    function: {
+      name: 'run_command',
+      arguments: JSON.stringify({ command: 'git status' }),
+    },
+  };
+
+  const res = {
+    tool_call_id: 'call_123',
+    name: 'run_command',
+    output: 'On branch main\nnothing to commit',
+  };
+
+  assert.doesNotThrow(() => {
+    TerminalRenderer.printToolStart(tc, 1, 3);
+    TerminalRenderer.printToolFinish(tc, res, 120, 1, 3);
+  });
+});
+
 
 
 

@@ -4,9 +4,15 @@ import { AntriAgent } from '../core/agent.js';
 import { renderBanner } from './banner.js';
 import { ShortcutHandler } from './shortcuts.js';
 import { promptBoxReader } from './promptToolkit.js';
+import { CodebaseBreather } from '../core/codebaseBreather.js';
 
 export async function startInteractiveSession(initialAgent?: AntriAgent): Promise<void> {
   const config = configManager.get();
+
+  // 1. Let ANTRI breathe for 1-2 seconds, analyze the codebase & index context
+  await CodebaseBreather.breathe(config.workingDir, { minDurationMs: 1200 });
+  await new Promise((r) => setTimeout(r, 150));
+
   const agent = initialAgent || new AntriAgent(config);
   const shortcutHandler = new ShortcutHandler(agent);
 

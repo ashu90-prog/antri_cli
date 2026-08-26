@@ -59,7 +59,7 @@ function onMobileProviderChange(prov) {
     cohere: 'command-r-plus',
     vortex: 'vortex-llama-3.3-70b-instruct',
     opencode: 'opencode/deepseek-coder-v2.5',
-    'nvidia-nim': 'meta/llama-3.1-8b-instruct',
+    'nvidia-nim': 'meta/llama-3.2-11b-vision-instruct',
     ollama: 'llama3.3:70b',
     custom: 'custom-model',
   };

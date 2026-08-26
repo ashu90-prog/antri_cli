@@ -44,16 +44,16 @@ export class OpenAICompatibleProvider implements LLMProvider {
       // 2. If model is inactive, 404, or 410 on NVIDIA NIM, auto-fallback to verified active model
       if (
         this.name === 'nvidia-nim' &&
-        this.model !== 'meta/llama-3.1-8b-instruct' &&
+        this.model !== 'meta/llama-3.2-11b-vision-instruct' &&
         (err.message.includes('404') ||
           err.message.includes('410') ||
           err.message.includes('Not found for account') ||
           err.message.includes('Gone'))
       ) {
         const prevModel = this.model;
-        this.model = 'meta/llama-3.1-8b-instruct';
+        this.model = 'meta/llama-3.2-11b-vision-instruct';
         log.warn(`Model '${prevModel}' is not deployed or inactive on this NVIDIA NIM account.`);
-        log.info(`Automatically falling back to active model 'meta/llama-3.1-8b-instruct'...\n`);
+        log.info(`Automatically falling back to active model 'meta/llama-3.2-11b-vision-instruct'...\n`);
         return await this.executeStream(messages, tools, callbacks);
       }
 
@@ -156,6 +156,22 @@ export class OpenAICompatibleProvider implements LLMProvider {
             } else if (data.choices?.[0]?.text) {
               fullContent += data.choices[0].text;
               callbacks.onToken(data.choices[0].text);
+            }
+
+            // Repetition Loop Breaker: abort stream if model enters an infinite repetitive loop
+            if (fullContent.length > 200) {
+              const tail = fullContent.slice(-400);
+              const lines = tail.split('\n').map(l => l.trim()).filter(l => l.length > 15);
+              if (lines.length >= 4) {
+                const last = lines[lines.length - 1];
+                let matchCount = 0;
+                for (let i = lines.length - 2; i >= 0; i--) {
+                  if (lines[i] === last) matchCount++;
+                }
+                if (matchCount >= 3) {
+                  break;
+                }
+              }
             }
 
             if (delta?.tool_calls) {

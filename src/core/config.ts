@@ -111,13 +111,18 @@ export class ConfigManager {
         merged.model = 'opencode/deepseek-coder-v2.5';
       } else if (merged.apiKeys.nvidia_nim || process.env.NVIDIA_API_KEY) {
         merged.provider = 'nvidia-nim';
-        merged.model = 'meta/llama-3.1-8b-instruct';
+        merged.model = 'meta/llama-3.2-11b-vision-instruct';
       } else if (merged.apiKeys.openrouter || process.env.OPENROUTER_API_KEY) {
         merged.provider = 'openrouter';
         merged.model = 'anthropic/claude-3.5-sonnet';
       } else {
         merged.provider = 'mock';
       }
+    }
+
+    // Auto-migrate any EOL model to active verified model
+    if (merged.model === 'meta/llama-3.1-8b-instruct') {
+      merged.model = 'meta/llama-3.2-11b-vision-instruct';
     }
 
     return merged;
@@ -182,7 +187,7 @@ export class ConfigManager {
           this.config.model = 'claude-3-7-sonnet-20250219';
           break;
         case 'nvidia-nim':
-          this.config.model = 'meta/llama-3.1-8b-instruct';
+          this.config.model = 'meta/llama-3.2-11b-vision-instruct';
           break;
         case 'openai':
           this.config.model = 'gpt-4o';

@@ -169,11 +169,20 @@ async function showTab(tabName) {
   const targetPanel = document.getElementById(`tab-${tabName}`);
   if (targetPanel) targetPanel.classList.add('active');
 
-  const navIndex = ['chat', 'dialectic', 'goal', 'profiles', 'skills', 'memory', 'artifacts', 'suggestions'].indexOf(tabName);
-  const navButtons = document.querySelectorAll('.nav-item');
-  if (navButtons[navIndex]) navButtons[navIndex].classList.add('active');
+  const navBtn = document.querySelector(`.nav-item[onclick*="'${tabName}'"]`);
+  if (navBtn) {
+    navBtn.classList.add('active');
+  } else {
+    const navIndex = ['chat', 'codebase', 'workspace', 'timeline', 'dialectic', 'goal', 'profiles', 'skills', 'memory', 'artifacts', 'suggestions'].indexOf(tabName);
+    const navButtons = document.querySelectorAll('.nav-item');
+    if (navButtons[navIndex]) navButtons[navIndex].classList.add('active');
+  }
 
-  if (tabName === 'profiles') {
+  if (tabName === 'codebase') {
+    await loadCodebaseTab();
+  } else if (tabName === 'workspace') {
+    await loadWorkspaceTree();
+  } else if (tabName === 'profiles') {
     await loadProfiles();
   } else if (tabName === 'skills') {
     await loadSkills();
@@ -1800,7 +1809,7 @@ function adoptSuggestion(index) {
   if (!sug) return;
 
   showTab('chat');
-  const chatInput = document.getElementById('chat-input');
+  const chatInput = document.getElementById('prompt-input') || document.getElementById('chat-input');
   if (chatInput) {
     chatInput.value = sug.prompt;
     chatInput.focus();
@@ -1837,10 +1846,271 @@ function buildFromCustomIdea() {
   }
 
   showTab('chat');
-  const chatInput = document.getElementById('chat-input');
+  const chatInput = document.getElementById('prompt-input') || document.getElementById('chat-input');
   if (chatInput) {
     chatInput.value = val;
     chatInput.focus();
   }
   showToast('Sent custom vision to Agent Studio.');
 }
+
+// 🫁 CODEBASE INTELLIGENCE RADAR LOGIC
+let activeCodebaseCache = null;
+
+async function loadCodebaseTab() {
+  const container = document.getElementById('codebase-dashboard-content');
+  if (!container) return;
+
+  try {
+    const res = await fetch('/api/codebase/cache');
+    const data = await res.json();
+    activeCodebaseCache = data.cache;
+    renderCodebaseDashboard(activeCodebaseCache);
+  } catch (err) {
+    console.error('Failed to load codebase cache:', err);
+    container.innerHTML = `<div class="error-msg">Failed to load codebase intelligence cache: ${err.message}</div>`;
+  }
+}
+
+function renderCodebaseDashboard(cache) {
+  const container = document.getElementById('codebase-dashboard-content');
+  if (!container || !cache) return;
+
+  const stackPills = (cache.techStack || [])
+    .map((s) => `<span class="tech-pill">${escapeHtml(s)}</span>`)
+    .join('');
+
+  const topDirs = (cache.topDirectories || [])
+    .map(
+      (d) =>
+        `<div class="subsystem-item">
+          <span class="subsystem-name">📁 ${escapeHtml(d.name)}</span>
+          <span class="subsystem-count">${d.fileCount} source files</span>
+        </div>`
+    )
+    .join('');
+
+  const keyFilesList = (cache.keyFiles || [])
+    .map((f) => `<div class="key-file-tag">📄 ${escapeHtml(f)}</div>`)
+    .join('');
+
+  const depsList = (cache.dependencies || [])
+    .map((dep) => `<span class="dep-pill">${escapeHtml(dep)}</span>`)
+    .join('');
+
+  const gitHtml = cache.gitInfo
+    ? `<div class="git-status-badge">
+        <span>🌿 <strong>Branch:</strong> ${escapeHtml(cache.gitInfo.branch)}</span>
+        <span>📝 <strong>Changes:</strong> ${cache.gitInfo.modifiedFilesCount} files</span>
+        <span>🔖 <strong>Last Commit:</strong> "${escapeHtml(cache.gitInfo.lastCommit)}"</span>
+      </div>`
+    : `<div class="git-status-badge"><span>Git workspace not initialized</span></div>`;
+
+  container.innerHTML = `
+    <!-- Top Hero Metric Card -->
+    <div class="codebase-hero-card">
+      <div class="hero-main-info">
+        <div class="project-identity">
+          <span class="project-title">${escapeHtml(cache.projectName)}</span>
+          <span class="project-version">v${escapeHtml(cache.version)}</span>
+          <span class="badge" style="background:var(--primary-subtle);color:var(--primary);">${escapeHtml(cache.projectType)}</span>
+        </div>
+        <div class="tech-stack-row">
+          ${stackPills || '<span class="tech-pill">General</span>'}
+        </div>
+      </div>
+      <div class="hero-stats-grid">
+        <div class="stat-box">
+          <span class="stat-number">${cache.totalFiles}</span>
+          <span class="stat-label">Source Files</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-number">${cache.totalDirectories}</span>
+          <span class="stat-label">Directories</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-number">${(cache.entryPoints || []).length}</span>
+          <span class="stat-label">Entrypoints</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Git Workspace Info -->
+    ${gitHtml}
+
+    <!-- 3-Column Architecture Breakdown -->
+    <div class="codebase-columns-grid">
+      <!-- Col 1: Top Subsystems -->
+      <div class="codebase-col-card">
+        <h3>📦 Subsystem Directories</h3>
+        <div class="subsystems-list">
+          ${topDirs || '<div style="color:var(--text-muted);font-size:12px;">Root directory only</div>'}
+        </div>
+      </div>
+
+      <!-- Col 2: Key Entrypoints & Configs -->
+      <div class="codebase-col-card">
+        <h3>🚀 Key Files & Entrypoints</h3>
+        <div class="key-files-list">
+          ${keyFilesList || '<div style="color:var(--text-muted);font-size:12px;">No key files discovered</div>'}
+        </div>
+      </div>
+
+      <!-- Col 3: Dependencies & Ecosystem -->
+      <div class="codebase-col-card">
+        <h3>⚡ Dependencies & Packages</h3>
+        <div class="deps-cloud">
+          ${depsList || '<div style="color:var(--text-muted);font-size:12px;">Zero external dependencies</div>'}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function triggerCodebaseBreathe() {
+  const btn = document.getElementById('btn-codebase-breathe');
+  const bar = document.getElementById('codebase-breathing-bar');
+
+  if (btn) btn.disabled = true;
+  if (bar) bar.classList.remove('hidden');
+
+  try {
+    const res = await fetch('/api/codebase/breathe', { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      activeCodebaseCache = data.cache;
+      renderCodebaseDashboard(activeCodebaseCache);
+      showToast(`✨ ANTRI Breathed! Indexed ${data.cache.totalFiles} files in ${data.cache.projectName}.`);
+    }
+  } catch (err) {
+    showToast(`Breathing error: ${err.message}`, true);
+  } finally {
+    if (btn) btn.disabled = false;
+    if (bar) bar.classList.add('hidden');
+  }
+}
+
+// 💻 LIVE CODE WORKSPACE & PLAYGROUND LOGIC
+let activeWorkspaceFilePath = null;
+
+async function loadWorkspaceTree() {
+  const treeContainer = document.getElementById('workspace-tree-list');
+  if (!treeContainer) return;
+
+  try {
+    const res = await fetch('/api/workspace/tree');
+    const data = await res.json();
+    renderWorkspaceTree(data.items || []);
+  } catch (err) {
+    console.error('Failed to load workspace tree:', err);
+    treeContainer.innerHTML = `<div style="color:var(--text-muted);font-size:12px;padding:8px;">Failed to load workspace tree</div>`;
+  }
+}
+
+function renderWorkspaceTree(items) {
+  const treeContainer = document.getElementById('workspace-tree-list');
+  if (!treeContainer) return;
+
+  if (items.length === 0) {
+    treeContainer.innerHTML = `<div style="color:var(--text-muted);font-size:12px;padding:8px;">No files in workspace</div>`;
+    return;
+  }
+
+  treeContainer.innerHTML = items
+    .map((item) => {
+      const isDir = item.type === 'directory';
+      const icon = isDir ? '📁' : item.name.endsWith('.html') ? '🌐' : item.name.endsWith('.css') ? '🎨' : item.name.endsWith('.js') || item.name.endsWith('.ts') ? '⚡' : '📄';
+      const activeClass = activeWorkspaceFilePath === item.relativePath ? 'active' : '';
+      return `
+        <div class="tree-item ${isDir ? 'is-dir' : 'is-file'} ${activeClass}" onclick="${isDir ? '' : `openWorkspaceFile('${escapeHtml(item.relativePath)}')`}">
+          <span class="tree-icon">${icon}</span>
+          <span class="tree-name">${escapeHtml(item.name)}</span>
+        </div>
+      `;
+    })
+    .join('');
+}
+
+async function openWorkspaceFile(filePath) {
+  activeWorkspaceFilePath = filePath;
+  renderWorkspaceTree(await (await fetch('/api/workspace/tree')).json().then((d) => d.items || []));
+
+  const filenameTag = document.getElementById('active-workspace-filename');
+  const editor = document.getElementById('workspace-file-editor');
+  const sandboxContainer = document.getElementById('workspace-sandbox-container');
+  const sandboxIframe = document.getElementById('workspace-sandbox-iframe');
+  const deviceToggles = document.getElementById('workspace-device-toggles');
+
+  if (filenameTag) filenameTag.textContent = filePath;
+
+  try {
+    const res = await fetch(`/api/workspace/file?path=${encodeURIComponent(filePath)}`);
+    const data = await res.json();
+    if (data.success && editor) {
+      editor.value = data.content;
+
+      // If HTML file, show live sandbox preview
+      if (filePath.endsWith('.html')) {
+        if (sandboxContainer) sandboxContainer.classList.remove('hidden');
+        if (deviceToggles) deviceToggles.style.display = 'flex';
+        if (sandboxIframe) {
+          sandboxIframe.srcdoc = data.content;
+        }
+      } else {
+        if (sandboxContainer) sandboxContainer.classList.add('hidden');
+        if (deviceToggles) deviceToggles.style.display = 'none';
+      }
+    }
+  } catch (err) {
+    showToast(`Failed to open file: ${err.message}`, true);
+  }
+}
+
+async function saveWorkspaceFile() {
+  if (!activeWorkspaceFilePath) {
+    alert('Please select a file to edit first.');
+    return;
+  }
+  const editor = document.getElementById('workspace-file-editor');
+  const content = editor?.value || '';
+
+  try {
+    const res = await fetch('/api/workspace/file', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: activeWorkspaceFilePath, content }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast(`Saved ${activeWorkspaceFilePath} successfully!`);
+      // Update sandbox if HTML
+      if (activeWorkspaceFilePath.endsWith('.html')) {
+        const sandboxIframe = document.getElementById('workspace-sandbox-iframe');
+        if (sandboxIframe) sandboxIframe.srcdoc = content;
+      }
+    } else {
+      showToast(`Failed to save: ${data.error}`, true);
+    }
+  } catch (err) {
+    showToast(`Error saving file: ${err.message}`, true);
+  }
+}
+
+function setSandboxDevice(device) {
+  const iframe = document.getElementById('workspace-sandbox-iframe');
+  document.querySelectorAll('.device-btn').forEach((b) => b.classList.remove('active'));
+  event?.target?.classList.add('active');
+
+  if (!iframe) return;
+  if (device === 'mobile') {
+    iframe.style.maxWidth = '375px';
+    iframe.style.margin = '0 auto';
+  } else if (device === 'tablet') {
+    iframe.style.maxWidth = '768px';
+    iframe.style.margin = '0 auto';
+  } else {
+    iframe.style.maxWidth = '100%';
+    iframe.style.margin = '0';
+  }
+}
+

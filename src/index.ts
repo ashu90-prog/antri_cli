@@ -11,6 +11,7 @@ import { GoalLoopEngine } from './core/goalLoop.js';
 import { Updater } from './core/updater.js';
 import { DesktopServer } from './desktop/server.js';
 import { MobileServer } from './mobile/server.js';
+import { CodebaseBreather } from './core/codebaseBreather.js';
 
 // Pre-process argv to support -alwaysallow syntax
 const normalizedArgv = process.argv.map((arg) => {
@@ -35,7 +36,7 @@ program
   .option('--alwaysallow', 'Always allow sensitive tools (web search, shell execution, python) without prompting')
   .option('--desktop', 'Launch the lightweight ANTRI Desktop Control Plane in app mode')
   .option('--mobile', 'Launch the standalone ANTRI Mobile App server')
-  .option('-m, --model <name>', 'Specify model to use (e.g. meta/llama-3.1-8b-instruct, gpt-4o, claude-3-7-sonnet)')
+  .option('-m, --model <name>', 'Specify model to use (e.g. meta/llama-3.2-11b-vision-instruct, gpt-4o, claude-3-7-sonnet)')
   .option('--provider <name>', 'Specify provider (cerebras, cohere, vortex, opencode, nvidia-nim, openai, gemini, anthropic, ollama, deepseek, mock)')
   .option('-w, --dir <path>', 'Working directory for workspace tools', process.cwd())
   .action(async (options) => {
@@ -75,6 +76,8 @@ program
 
     // 1. Goal Loop CLI Mode
     if (options.goal) {
+      await CodebaseBreather.breathe(config.workingDir, { minDurationMs: 1200 });
+      await new Promise((r) => setTimeout(r, 150));
       renderBanner(config);
       const goalEngine = new GoalLoopEngine(config);
       await goalEngine.runGoal(options.goal);
@@ -83,6 +86,8 @@ program
 
     // 2. Dialectic Debate CLI Mode
     if (options.debate) {
+      await CodebaseBreather.breathe(config.workingDir, { minDurationMs: 1200 });
+      await new Promise((r) => setTimeout(r, 150));
       renderBanner(config);
       const engine = new DialecticEngine(config);
       await engine.debate(options.debate, config.debateDepth || 'deep');
@@ -91,6 +96,8 @@ program
 
     // 3. One-shot Prompt CLI Mode
     if (options.prompt) {
+      await CodebaseBreather.breathe(config.workingDir, { minDurationMs: 1200 });
+      await new Promise((r) => setTimeout(r, 150));
       const agent = new AntriAgent(config);
       renderBanner(config);
       renderDivider();

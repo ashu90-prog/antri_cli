@@ -63,7 +63,7 @@ export class PromptBoxReader {
   private workingDir: string;
   private renderedLines: number = 0;
 
-  constructor(activeModel = 'meta/llama-3.1-8b-instruct', workingDir = process.cwd()) {
+  constructor(activeModel = 'meta/llama-3.2-11b-vision-instruct', workingDir = process.cwd()) {
     this.activeModel = activeModel;
     this.workingDir = workingDir;
   }

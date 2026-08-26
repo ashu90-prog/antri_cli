@@ -1,11 +1,10 @@
 import { ModelInfo, ProviderType, AntriConfig } from '../types.js';
 
 export const VERIFIED_NVIDIA_MODELS: string[] = [
-  'meta/llama-3.1-8b-instruct',
+  'meta/llama-3.2-11b-vision-instruct',
   'stepfun-ai/step-3.7-flash',
   'nvidia/nemotron-3-nano-30b-a3b',
   'openai/gpt-oss-20b',
-  'meta/llama-3.2-11b-vision-instruct',
   'minimaxai/minimax-m3',
   'nvidia/llama-3.3-nemotron-super-49b-v1.5',
   'thinkingmachines/inkling',
@@ -237,11 +236,10 @@ export const PROVIDER_CATALOGS: Record<ProviderType, ModelInfo[]> = {
   // NVIDIA NIM Models (Verified Active Models + Complete Catalog)
   'nvidia-nim': [
     // Verified Active
-    { id: 'meta/llama-3.1-8b-instruct', name: 'Llama 3.1 8B Instruct', provider: 'nvidia-nim', category: '⭐ Active & Verified', description: 'ultra-fast 8B instruction model with 128K context' },
+    { id: 'meta/llama-3.2-11b-vision-instruct', name: 'Llama 3.2 11B Vision', provider: 'nvidia-nim', category: '⭐ Active & Verified', description: 'multimodal vision and text model with 128K context' },
     { id: 'stepfun-ai/step-3.7-flash', name: 'Step 3.7 Flash', provider: 'nvidia-nim', category: '⭐ Active & Verified', description: 'blazing-fast multimodal sparse-MoE reasoning model' },
     { id: 'nvidia/nemotron-3-nano-30b-a3b', name: 'Nemotron 3 Nano 30B', provider: 'nvidia-nim', category: '⭐ Active & Verified', description: 'compact 30B MoE model tuned for agentic reasoning' },
     { id: 'openai/gpt-oss-20b', name: 'GPT-OSS 20B', provider: 'nvidia-nim', category: '⭐ Active & Verified', description: 'open weights GPT-architecture model on NIM' },
-    { id: 'meta/llama-3.2-11b-vision-instruct', name: 'Llama 3.2 11B Vision', provider: 'nvidia-nim', category: '⭐ Active & Verified', description: 'multimodal vision and text model with 128K context' },
     { id: 'minimaxai/minimax-m3', name: 'MiniMax M3', provider: 'nvidia-nim', category: '⭐ Active & Verified', description: 'multilingual high-speed model on NVIDIA NIM' },
     { id: 'nvidia/llama-3.3-nemotron-super-49b-v1.5', name: 'Nemotron Super 49B v1.5', provider: 'nvidia-nim', category: '⭐ Active & Verified', description: 'super high performance reasoning & coding LLM' },
     { id: 'thinkingmachines/inkling', name: 'Inkling MoE', provider: 'nvidia-nim', category: '⭐ Active & Verified', description: 'multimodal MoE reasoning at high throughput' },

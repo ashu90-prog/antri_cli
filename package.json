@@ -1,6 +1,6 @@
 {
   "name": "antri_cli",
-  "version": "1.57.29",
+  "version": "1.57.31",
   "description": "ANTRI Code - The Autonomous Agentic CLI & Desktop Assistant",
   "type": "module",
   "bin": {
@@ -60,5 +60,8 @@
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true
   }
 }
