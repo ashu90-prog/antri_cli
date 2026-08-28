@@ -764,15 +764,26 @@ You MUST output the HTML document enclosed in an artifact tag:
     // /key
     if (trimmed.startsWith('/key')) {
       const parts = trimmed.split(' ');
-      if (parts.length < 3) {
-        log.warn('Usage: /key <provider> <your-api-key>');
-        console.log(chalk.hex('#64748b')('Example: /key deepseek sk-xxxx or /key nvidia_nim nvapi-xxxx'));
-      } else {
-        const provider = parts[1].toLowerCase();
-        const key = parts[2];
-        configManager.setApiKey(provider, key);
+      if (parts.length === 2 && (parts[1].startsWith('AIza') || parts[1].startsWith('AQ.') || parts[1].length > 20)) {
+        // Direct key provided: /key <api-key>
+        const key = parts[1].trim();
+        configManager.setApiKey('gemini', key);
+        configManager.set('provider', 'gemini');
         this.agent.updateConfig(configManager.get());
-        log.success(`API Key saved for ${provider}!`);
+        log.success(`Google Gemini API Key updated and set as active provider!`);
+      } else if (parts.length >= 3) {
+        let provider = parts[1].toLowerCase();
+        if (provider === 'google') provider = 'gemini';
+        const key = parts.slice(2).join(' ').trim();
+        configManager.setApiKey(provider, key);
+        if (provider === 'gemini') {
+          configManager.set('provider', 'gemini');
+        }
+        this.agent.updateConfig(configManager.get());
+        log.success(`API Key saved for ${provider}! Active model: ${configManager.get().model || 'gemini-3.7-flash'}`);
+      } else {
+        log.warn('Usage: /key <provider> <your-api-key>  or  /key <your-gemini-key>');
+        console.log(chalk.hex('#64748b')('Example: /key gemini AIzaSy...  or  /key AQ.Ab8...'));
       }
       return { handled: true };
     }
