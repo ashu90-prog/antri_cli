@@ -1722,8 +1722,14 @@ export default function Home() {
           if (!fs.existsSync(dir)) {
             fs.mkdirSync(dir, { recursive: true });
           }
+          const prevContent = fs.existsSync(targetPath) ? fs.readFileSync(targetPath, 'utf-8') : null;
           fs.writeFileSync(targetPath, content, 'utf-8');
           const relWritten = path.relative(this.workingDir, targetPath).replace(/\\/g, '/') || path.basename(targetPath);
+
+          try {
+            const { DiffManager } = await import('./diffManager.js');
+            DiffManager.recordChange(targetPath, prevContent, content, prevContent === null ? 'create' : 'edit');
+          } catch (_) {}
 
           if (targetPath.endsWith('.html') || (typeof content === 'string' && content.includes('<html'))) {
             try {
@@ -1806,6 +1812,10 @@ export default function Home() {
               : fileContent.replace(targetContent, replacementContent);
 
             fs.writeFileSync(resolvedPath, newContent, 'utf-8');
+            try {
+              const { DiffManager } = await import('./diffManager.js');
+              DiffManager.recordChange(resolvedPath, fileContent, newContent, 'edit');
+            } catch (_) {}
             return {
               tool_call_id: toolCallId,
               name: toolName,
@@ -1833,6 +1843,10 @@ export default function Home() {
               : normalizedFile.replace(normalizedTarget, normalizedReplacement);
 
             fs.writeFileSync(resolvedPath, newContent, 'utf-8');
+            try {
+              const { DiffManager } = await import('./diffManager.js');
+              DiffManager.recordChange(resolvedPath, fileContent, newContent, 'edit');
+            } catch (_) {}
             return {
               tool_call_id: toolCallId,
               name: toolName,

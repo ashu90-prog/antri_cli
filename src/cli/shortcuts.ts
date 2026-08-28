@@ -58,6 +58,27 @@ export class ShortcutHandler {
       return { handled: true };
     }
 
+    // /diff (Inspect code modifications made by ANTRI)
+    if (trimmed === '/diff' || (trimmed.startsWith('/diff ') && !trimmed.startsWith('/diff revert'))) {
+      const targetFile = trimmed.startsWith('/diff ') ? trimmed.slice(6).trim() : undefined;
+      const { DiffManager } = await import('../core/diffManager.js');
+      await DiffManager.showDiff(targetFile);
+      return { handled: true };
+    }
+
+    // /revert or /undo or /diff revert (Roll back changes made to files)
+    if (trimmed === '/revert' || trimmed === '/undo' || trimmed.startsWith('/revert ') || trimmed === '/diff revert' || trimmed.startsWith('/diff revert ')) {
+      let targetFile: string | undefined;
+      if (trimmed.startsWith('/revert ')) {
+        targetFile = trimmed.slice(8).trim();
+      } else if (trimmed.startsWith('/diff revert ')) {
+        targetFile = trimmed.slice(13).trim();
+      }
+      const { DiffManager } = await import('../core/diffManager.js');
+      await DiffManager.revert(targetFile);
+      return { handled: true };
+    }
+
     // /new or /newchat or /clear (Start new chat session)
     if (trimmed === '/new' || trimmed === '/newchat' || trimmed === '/clear') {
       const { sessionManager } = await import('../core/sessionManager.js');
@@ -885,6 +906,8 @@ You MUST output the HTML document enclosed in an artifact tag:
       ['/mindmap [topic]', 'Generate interactive visual mind map and concept tree artifact'],
       ['/view [plan]', 'Generate interactive HTML/JS application/plan artifact and launch view'],
       ['/artifacts', 'List all generated interactive HTML, graph, and mind map artifacts'],
+      ['/diff [file]', 'Inspect colored diff of changes made by ANTRI in workspace'],
+      ['/revert [file]', 'Revert / roll back code modifications made in current session (/undo)'],
       ['/reproduce [bug]', 'Antri BugTwin: Autonomous minimal red test reproduction & visual fix verification'],
       ['/replay [crash]', 'Antri CrashZero: Autonomous incident replay & scrubbable time-travel variable debugger'],
       ['/fix [desc]', 'Automatically diagnose, reproduce, and repair bugs in current project'],

@@ -107,22 +107,25 @@ export class TerminalRenderer {
       const cmd = (parsed.command || parsed.cmd).trim();
       const shortCmd = cmd.length > 80 ? cmd.slice(0, 77) + '...' : cmd;
       console.log(chalk.hex('#06b6d4')(`⚡ [ANTRI Run${stepBadge}]: `) + chalk.bold.white(`Running: `) + chalk.hex('#38bdf8')(`"${shortCmd}"`));
-    } else if (toolName === 'read_file' && parsed.file_path) {
-      console.log(chalk.hex('#818cf8')(`📖 [ANTRI Tool${stepBadge}]: `) + chalk.hex('#cbd5e1')(`Reading file `) + chalk.cyan(`"${parsed.file_path}"`));
-    } else if (toolName === 'write_file' && parsed.file_path) {
-      console.log(chalk.hex('#10b981')(`✍️  [ANTRI Tool${stepBadge}]: `) + chalk.hex('#cbd5e1')(`Writing file `) + chalk.cyan(`"${parsed.file_path}"`));
-    } else if (toolName === 'edit_file' && parsed.file_path) {
-      console.log(chalk.hex('#f59e0b')(`🔧 [ANTRI Tool${stepBadge}]: `) + chalk.hex('#cbd5e1')(`Editing file `) + chalk.cyan(`"${parsed.file_path}"`));
+    } else if (toolName === 'read_file' && (parsed.file_path || parsed.filePath || parsed.path)) {
+      const p = parsed.file_path || parsed.filePath || parsed.path;
+      console.log(chalk.hex('#818cf8')(`📖 Read `) + chalk.cyan(`${p}`));
+    } else if (toolName === 'write_file' && (parsed.file_path || parsed.filePath || parsed.path || parsed.filename)) {
+      const p = parsed.file_path || parsed.filePath || parsed.path || parsed.filename;
+      console.log(chalk.hex('#10b981')(`✍️  Create `) + chalk.cyan(`${p}`));
+    } else if (toolName === 'edit_file' && (parsed.file_path || parsed.filePath || parsed.path)) {
+      const p = parsed.file_path || parsed.filePath || parsed.path;
+      console.log(chalk.hex('#f59e0b')(`🔧 Edit `) + chalk.cyan(`${p}`));
     } else if (toolName === 'create_directory' && (parsed.dir_path || parsed.path)) {
-      console.log(chalk.hex('#10b981')(`📁 [ANTRI Tool${stepBadge}]: `) + chalk.hex('#cbd5e1')(`Creating folder `) + chalk.cyan(`"${parsed.dir_path || parsed.path}"`));
+      console.log(chalk.hex('#10b981')(`📁 Create folder `) + chalk.cyan(`${parsed.dir_path || parsed.path}`));
     } else if (toolName === 'delete_file' && (parsed.file_path || parsed.path)) {
-      console.log(chalk.hex('#f43f5e')(`🗑️  [ANTRI Tool${stepBadge}]: `) + chalk.hex('#cbd5e1')(`Deleting `) + chalk.cyan(`"${parsed.file_path || parsed.path}"`));
+      console.log(chalk.hex('#f43f5e')(`🗑️  Delete `) + chalk.cyan(`${parsed.file_path || parsed.path}`));
     } else if (toolName === 'grep_search' && parsed.query) {
-      console.log(chalk.hex('#818cf8')(`🔍 [ANTRI Tool${stepBadge}]: `) + chalk.hex('#cbd5e1')(`Grep searching `) + chalk.cyan(`"${parsed.query}"`));
+      console.log(chalk.hex('#818cf8')(`🔍 Grep `) + chalk.cyan(`"${parsed.query}"`));
     } else if (toolName === 'find_files' && (parsed.pattern || parsed.name)) {
-      console.log(chalk.hex('#818cf8')(`🔎 [ANTRI Tool${stepBadge}]: `) + chalk.hex('#cbd5e1')(`Finding files `) + chalk.cyan(`"${parsed.pattern || parsed.name}"`));
+      console.log(chalk.hex('#818cf8')(`🔎 Find files `) + chalk.cyan(`"${parsed.pattern || parsed.name}"`));
     } else if (toolName === 'web_search' && parsed.query) {
-      console.log(chalk.hex('#38bdf8')(`🌐 [ANTRI Tool${stepBadge}]: `) + chalk.hex('#cbd5e1')(`Searching web for `) + chalk.cyan(`"${parsed.query}"`));
+      console.log(chalk.hex('#38bdf8')(`🌐 Search `) + chalk.cyan(`"${parsed.query}"`));
     } else {
       let argsSummary = '';
       try {
@@ -131,7 +134,7 @@ export class TerminalRenderer {
         argsSummary = toolCall.function.arguments || '';
       }
       const shortArgs = argsSummary.length > 70 ? argsSummary.slice(0, 67) + '...' : argsSummary;
-      console.log(chalk.hex('#818cf8')(`⚙️  [ANTRI Tool${stepBadge}]: `) + chalk.cyan(toolName) + (shortArgs ? chalk.hex('#64748b')(` (${shortArgs})`) : ''));
+      console.log(chalk.hex('#818cf8')(`⚙️  ${toolName}`) + (shortArgs ? chalk.hex('#64748b')(` (${shortArgs})`) : ''));
     }
   }
 
