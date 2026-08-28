@@ -682,24 +682,31 @@ ${twinRes.diff ? '```diff\n' + twinRes.diff.slice(0, 400) + '\n```' : ''}`;
         const fileCommentMatch = firstLine.match(/^(?:\/\/|\/\*|#|<!--)\s*([a-zA-Z0-9_\-\.\/]+\.[a-zA-Z0-9]+)/);
         if (fileCommentMatch) {
           fileName = fileCommentMatch[1].trim();
-        } else if (lang === 'css' && !fs.existsSync(path.join(workingDir, 'style.css'))) {
-          fileName = 'style.css';
-        } else if ((lang === 'javascript' || lang === 'js') && !fs.existsSync(path.join(workingDir, 'app.js'))) {
-          fileName = 'app.js';
-        } else if (lang === 'html' && !fs.existsSync(path.join(workingDir, 'index.html'))) {
+        } else if (lang === 'html' || code.includes('<!DOCTYPE') || code.includes('<html')) {
           fileName = 'index.html';
+        } else if (lang === 'css' || code.includes('body {') || code.includes(':root {')) {
+          fileName = 'style.css';
+        } else if (lang === 'javascript' || lang === 'js' || (code.includes('document.') && !code.includes('<html'))) {
+          fileName = 'app.js';
+        } else if (lang === 'python' || lang === 'py') {
+          fileName = 'main.py';
+        } else if (lang === 'json' && code.includes('"dependencies"')) {
+          fileName = 'package.json';
         }
       }
 
       if (fileName && !fileName.includes('<') && !fileName.includes('>')) {
         const cleanName = path.basename(fileName);
         const targetPath = path.join(workingDir, cleanName);
-        if (!fs.existsSync(targetPath) || fs.statSync(targetPath).size < 10) {
+        try {
+          const prev = fs.existsSync(targetPath) ? fs.readFileSync(targetPath, 'utf-8') : null;
+          fs.writeFileSync(targetPath, code, 'utf-8');
           try {
-            fs.writeFileSync(targetPath, code, 'utf-8');
-            console.log(chalk.hex('#10b981')(`  ✔ Materialized missing workspace file: ${cleanName} (${code.split('\n').length} lines)`));
+            const { DiffManager } = await import('./diffManager.js');
+            DiffManager.recordChange(targetPath, prev, code, prev === null ? 'create' : 'edit');
           } catch (_) {}
-        }
+          console.log(chalk.hex('#10b981')(`✍️  Create ${cleanName} (${code.split('\n').length} lines)`));
+        } catch (_) {}
       }
     }
 
