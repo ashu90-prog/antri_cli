@@ -1,0 +1,14 @@
+node_modules
+dist
+.git
+.agents
+Memory
+memory
+Refrence
+*.apk
+antri_flutter/build
+antri_flutter/.dart_tool
+cloned_benchmarks
+showcase_artifacts
+standalone-goal-demo
+.env

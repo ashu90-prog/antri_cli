@@ -73,8 +73,8 @@ export function createProvider(config: AntriConfig): LLMProvider {
 
     case 'gemini':
       return new GeminiProvider({
-        apiKey: config.apiKeys.gemini || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY,
-        model: config.model || 'gemini-2.5-flash',
+        apiKey: config.apiKeys.gemini || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GOOGLE_GENAI_API_KEY,
+        model: config.model || 'gemini-3.7-flash',
       });
 
     case 'deepseek':

@@ -580,6 +580,57 @@ You MUST output the HTML document enclosed in an artifact tag:
       return { handled: true };
     }
 
+    // /reproduce or /bugtwin (Antri BugTwin Autonomous Reproduction & Visual Fix)
+    if (trimmed === '/reproduce' || trimmed.startsWith('/reproduce ') || trimmed === '/bugtwin' || trimmed.startsWith('/bugtwin ')) {
+      let bugInput = trimmed.replace(/^\/(reproduce|bugtwin)/, '').trim();
+      if (!bugInput) {
+        const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+        const promptAsync = (q: string) => new Promise<string>((res) => rl.question(q, res));
+        console.log(chalk.bold.hex('#c084fc')('\n🧬 ANTRI BugTwin · Autonomous Bug Reproduction & Visual Fix'));
+        bugInput = await promptAsync(chalk.cyan('Paste error log, bug description, or issue snippet: '));
+        rl.close();
+      }
+
+      if (bugInput.trim()) {
+        const { BugTwinEngine } = await import('../core/bugTwin.js');
+        const engine = new BugTwinEngine(config);
+        await engine.reproduceAndFix(bugInput.trim());
+      } else {
+        log.warn('BugTwin cancelled: No input provided.');
+      }
+      return { handled: true };
+    }
+
+    // /replay or /crashzero (Antri CrashZero Incident Replay & Time-Travel Debugger)
+    if (trimmed === '/replay' || trimmed.startsWith('/replay ') || trimmed === '/crashzero' || trimmed.startsWith('/crashzero ')) {
+      let crashInput = trimmed.replace(/^\/(replay|crashzero)/, '').trim();
+      if (!crashInput) {
+        const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+        const promptAsync = (q: string) => new Promise<string>((res) => rl.question(q, res));
+        console.log(chalk.bold.hex('#f43f5e')('\n⏱️ ANTRI CrashZero · Autonomous Incident Replay & Time-Travel Debugger'));
+        crashInput = await promptAsync(chalk.cyan('Paste stack trace, Sentry error log, or exception payload: '));
+        rl.close();
+      }
+
+      if (crashInput.trim()) {
+        const { CrashZeroEngine } = await import('../core/crashZero.js');
+        const engine = new CrashZeroEngine(config);
+        await engine.replayAndHeal(crashInput.trim());
+      } else {
+        log.warn('CrashZero cancelled: No input provided.');
+      }
+      return { handled: true };
+    }
+
+    // /fix [desc]
+    if (trimmed === '/fix' || trimmed.startsWith('/fix ')) {
+      const desc = trimmed.replace(/^\/fix/, '').trim();
+      const { BugTwinEngine } = await import('../core/bugTwin.js');
+      const engine = new BugTwinEngine(config);
+      await engine.reproduceAndFix(desc || 'Fix workspace bugs and failing tests');
+      return { handled: true };
+    }
+
     // /debate or /dialectic
     if (trimmed === '/debate' || trimmed.startsWith('/debate ') || trimmed === '/dialectic' || trimmed.startsWith('/dialectic ')) {
       let query = trimmed.replace(/^\/(debate|dialectic)/, '').trim();
@@ -834,7 +885,9 @@ You MUST output the HTML document enclosed in an artifact tag:
       ['/mindmap [topic]', 'Generate interactive visual mind map and concept tree artifact'],
       ['/view [plan]', 'Generate interactive HTML/JS application/plan artifact and launch view'],
       ['/artifacts', 'List all generated interactive HTML, graph, and mind map artifacts'],
-      ['/fix [desc]', 'Automatically diagnose and repair bugs in current project'],
+      ['/reproduce [bug]', 'Antri BugTwin: Autonomous minimal red test reproduction & visual fix verification'],
+      ['/replay [crash]', 'Antri CrashZero: Autonomous incident replay & scrubbable time-travel variable debugger'],
+      ['/fix [desc]', 'Automatically diagnose, reproduce, and repair bugs in current project'],
       ['/selfheal', 'Run ANTRI health check, diagnose blocking bugs & auto-heal storage'],
       ['/meta', 'View Meta-Optimization metrics, success rates & self-healing stats'],
       ['/skills', 'List built-in & dynamically synthesized custom skills'],

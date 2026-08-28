@@ -41,7 +41,7 @@ function getLocalIp(): string {
 
 export class MobileServer {
   private server: http.Server | null = null;
-  private port = 3457;
+  private port = parseInt(process.env.PORT || '3457', 10);
   private activeAgent: AntriAgent;
 
   constructor() {

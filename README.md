@@ -162,19 +162,19 @@ ANTRI continuously listens and adapts to your thinking style without interruptiv
 
 ## Supported AI Providers & Model Suites
 
-ANTRI includes built-in support for 11+ AI providers with dedicated model catalogs:
+ANTRI defaults to **Google Gemini 3.7** via the official **Google GenAI SDK (`@google/genai`)**, while also supporting multi-provider fallback:
 
 | Provider | Description | Notable Models |
 |---|---|---|
+| **Google Gemini** *(Default Flagship)* | Next-gen hybrid reasoning, coding & 1M context via `@google/genai` | `gemini-3.7-flash`, `gemini-3.7-pro`, `gemini-3.5-pro`, `gemini-2.5-flash` |
+| **OpenAI** | Frontier reasoning & omni models | `gpt-4o`, `gpt-4o-mini`, `o1`, `o3-mini`, `gpt-4.5-preview` |
+| **Anthropic** | Industry standard coding models | `claude-3-7-sonnet`, `claude-3-5-sonnet`, `claude-3-5-haiku` |
+| **DeepSeek** | Frontier open-weights & reasoning | `deepseek-chat` (V3), `deepseek-reasoner` (R1), `deepseek-v4-flash` |
 | **Cerebras** | Ultra-fast ~2,000 tok/sec CS-3 inference | `llama-3.3-70b`, `llama3.1-70b`, `llama3.1-8b`, `qwen-2.5-coder-32b` |
 | **Cohere** | Enterprise reasoning & citations | `command-r-plus-08-2024`, `command-r-08-2024`, `command-r7b-12-2024` |
 | **Vortex API** | High-throughput GPU cluster | `vortex-llama-3.3-70b`, `vortex-deepseek-r1-full`, `vortex-deepseek-v3` |
 | **OpenCode** | Dedicated coding & architecture | `opencode/deepseek-coder-v2.5`, `opencode/qwen2.5-coder-32b-instruct` |
-| **DeepSeek** | Frontier open-weights & reasoning | `deepseek-chat` (V3), `deepseek-reasoner` (R1), `deepseek-v4-flash` |
-| **NVIDIA NIM** | 100+ Live NIM API cloud functions | `meta/llama-3.1-8b-instruct`, `stepfun-ai/step-3.7-flash`, `nemotron-3` |
-| **OpenAI** | Frontier reasoning & omni models | `gpt-4o`, `gpt-4o-mini`, `o1`, `o3-mini`, `gpt-4.5-preview` |
-| **Anthropic** | Industry standard coding models | `claude-3-7-sonnet`, `claude-3-5-sonnet`, `claude-3-5-haiku` |
-| **Google Gemini** | Massive context & agentic coding | `gemini-2.5-flash`, `gemini-2.5-pro`, `gemini-2.0-flash` |
+| **NVIDIA NIM** | 100+ Live NIM API cloud functions | `meta/llama-3.2-11b-vision-instruct`, `stepfun-ai/step-3.7-flash` |
 | **Ollama** | Local offline GPU inference | `llama3.3:70b`, `qwen2.5-coder:32b`, `deepseek-r1:latest` |
 | **Custom** | Custom endpoints | Any OpenAI-compatible server (`vLLM`, `LocalAI`, `LM Studio`) |
 
@@ -236,40 +236,32 @@ antri --provider <name>              # Specify provider
 
 ---
 
-## Environment Configuration
+## ⚙️ Google Cloud & Gemini Configuration
 
-You can configure API keys using `/connect`, `/key <provider> <key>`, or by creating a `.env` file in your workspace:
+ANTRI is built natively around **Google Gemini 3.7** and the **Google GenAI SDK (`@google/genai`)**, with backend deployment ready for **Google Cloud Run**.
 
-```env
-# Cerebras
-CEREBRAS_API_KEY=csk-...
+### 1. Free Gemini API Key (Default Engine)
+Get a free API key from [Google AI Studio](https://aistudio.google.com/):
 
-# Cohere
-COHERE_API_KEY=...
+```bash
+# In the interactive CLI:
+antri
+> /key gemini AIzaSy...
 
-# Vortex API
-VORTEX_API_KEY=...
+# Or set as an environment variable:
+export GEMINI_API_KEY=AIzaSy...
+```
 
-# OpenCode
-OPENCODE_API_KEY=...
+### 2. Google Cloud Run Backend Deployment
+The ANTRI backend runs on **Google Cloud Run** (`*.run.app`) with built-in health probes (`/api/health`), Cloud Firestore state persistence, and zero-config browser access for judges:
 
-# DeepSeek
-DEEPSEEK_API_KEY=sk-...
-
-# NVIDIA NIM
-NVIDIA_API_KEY=nvapi-...
-
-# OpenAI
-OPENAI_API_KEY=sk-...
-
-# Anthropic Claude
-ANTHROPIC_API_KEY=sk-ant-...
-
-# Google Gemini
-GEMINI_API_KEY=AIzaSy...
-
-# Ollama (Local)
-OLLAMA_BASE_URL=http://localhost:11434
+```bash
+# Deploy ANTRI backend to Google Cloud Run in 1 command:
+gcloud run deploy antri-backend \
+  --source . \
+  --region us-central1 \
+  --allow-unauthenticated \
+  --set-env-vars GEMINI_API_KEY=AIzaSy...
 ```
 
 ---

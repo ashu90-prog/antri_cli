@@ -116,8 +116,20 @@ const List<PromptCommand> _promptCommands = [
     color: Color(0xFF6366F1),
   ),
   PromptCommand(
+    name: '/reproduce',
+    description: 'BugTwin: Autonomous minimal red test & visual fix sandbox',
+    icon: Icons.biotech_outlined,
+    color: Color(0xFF9333EA),
+  ),
+  PromptCommand(
+    name: '/replay',
+    description: 'CrashZero: Incident replay & scrubbable time-travel slider',
+    icon: Icons.history_toggle_off_outlined,
+    color: Color(0xFFE11D48),
+  ),
+  PromptCommand(
     name: '/fix',
-    description: 'Diagnose and fix project bugs & broken tests',
+    description: 'Diagnose, reproduce, and fix project bugs & broken tests',
     icon: Icons.build_outlined,
     color: Color(0xFF10B981),
   ),
@@ -889,6 +901,98 @@ $memoriesText
     });
   }
 
+  void _showModelQuickPicker() {
+    final Map<String, List<String>> modelsByProvider = {
+      'gemini': [
+        'gemini-3.7-flash',
+        'gemini-3.7-pro',
+        'gemini-3.5-pro',
+        'gemini-2.5-flash',
+        'gemini-2.5-pro',
+      ],
+    };
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFFFCFBF9),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(color: const Color(0xFFD6D3D1), borderRadius: BorderRadius.circular(2)),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Quick Switch AI Model', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Color(0xFF1C1917))),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: widget.config.mode == 'vibe' ? const Color(0xFF10B981) : const Color(0xFF6366F1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        widget.config.mode == 'vibe' ? '⚡ VIBE MODE' : '📐 PLAN MODE',
+                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: ListView(
+                    children: modelsByProvider.entries.map((entry) {
+                      final prov = entry.key;
+                      final models = entry.value;
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            child: Text(prov.toUpperCase(), style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: Color(0xFF8C827A), letterSpacing: 0.5)),
+                          ),
+                          ...models.map((m) {
+                            final isSelected = widget.config.model == m && widget.config.provider == prov;
+                            return ListTile(
+                              dense: true,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                              title: Text(m, style: TextStyle(fontSize: 13, fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500, color: isSelected ? const Color(0xFF6366F1) : const Color(0xFF1C1917))),
+                              trailing: isSelected ? const Icon(Icons.check_circle, color: Color(0xFF6366F1), size: 18) : null,
+                              onTap: () {
+                                setState(() {
+                                  widget.config.provider = prov;
+                                  widget.config.model = m;
+                                });
+                                widget.storageService.saveConfig(widget.config);
+                                widget.onConfigChanged();
+                                Navigator.pop(ctx);
+                              },
+                            );
+                          }),
+                        ],
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     const creamBg = Color(0xFFFCFBF9);
@@ -1021,6 +1125,67 @@ $memoriesText
       ),
       body: Column(
         children: [
+          // Sleek Active Model & Mode Selector Bar
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: const BoxDecoration(
+              color: Color(0xFFF7F4EE),
+              border: Border(bottom: BorderSide(color: Color(0xFFE6E0D4))),
+            ),
+            child: Row(
+              children: [
+                InkWell(
+                  onTap: _showModelQuickPicker,
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFFFFF),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFE6E0D4)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.smart_toy_outlined, size: 14, color: Color(0xFF6366F1)),
+                        const SizedBox(width: 6),
+                        Text(
+                          widget.config.model,
+                          style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFF1C1917)),
+                        ),
+                        const SizedBox(width: 4),
+                        const Icon(Icons.keyboard_arrow_down, size: 14, color: Color(0xFF78716C)),
+                      ],
+                    ),
+                  ),
+                ),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: widget.config.mode == 'vibe' ? const Color(0x1F10B981) : const Color(0x1F6366F1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: widget.config.mode == 'vibe' ? const Color(0x4D10B981) : const Color(0x4D6366F1),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        widget.config.mode == 'vibe' ? '⚡ VIBE' : '📐 PLAN',
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w800,
+                          color: widget.config.mode == 'vibe' ? const Color(0xFF059669) : const Color(0xFF4F46E5),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
           Expanded(
             child: _messages.isEmpty
                 ? Center(

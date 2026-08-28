@@ -10,14 +10,14 @@ dotenv.config();
 
 export const DEFAULT_CONFIG: AntriConfig = {
   version: Updater.CURRENT_VERSION,
-  provider: 'deepseek',
-  model: 'deepseek-v4-flash-(latest)',
+  provider: 'gemini',
+  model: 'gemini-3.7-flash',
   mode: 'vibe',
   alwaysAllow: false,
   apiKeys: {
+    gemini: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GOOGLE_GENAI_API_KEY,
     deepseek: process.env.DEEPSEEK_API_KEY || process.env.ANTRI_API_KEY,
     openai: process.env.OPENAI_API_KEY,
-    gemini: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY,
     anthropic: process.env.ANTHROPIC_API_KEY,
     nvidia_nim: process.env.NVIDIA_API_KEY || process.env.NVIDIA_NIM_API_KEY,
     cohere: process.env.COHERE_API_KEY,
@@ -87,13 +87,13 @@ export class ConfigManager {
     merged.version = DEFAULT_CONFIG.version;
 
     // Only auto-detect if the user has NOT previously chosen and saved a provider
-    if (!hasSavedProvider && !merged.apiKeys.deepseek && !process.env.DEEPSEEK_API_KEY) {
+    if (!hasSavedProvider && !merged.apiKeys.gemini && !process.env.GEMINI_API_KEY && !process.env.GOOGLE_API_KEY && !process.env.GOOGLE_GENAI_API_KEY) {
       if (merged.apiKeys.openai || process.env.OPENAI_API_KEY) {
         merged.provider = 'openai';
         merged.model = 'gpt-4o';
-      } else if (merged.apiKeys.gemini || process.env.GEMINI_API_KEY) {
-        merged.provider = 'gemini';
-        merged.model = 'gemini-2.5-flash';
+      } else if (merged.apiKeys.deepseek || process.env.DEEPSEEK_API_KEY) {
+        merged.provider = 'deepseek';
+        merged.model = 'deepseek-v4-flash-(latest)';
       } else if (merged.apiKeys.anthropic || process.env.ANTHROPIC_API_KEY) {
         merged.provider = 'anthropic';
         merged.model = 'claude-3-7-sonnet-20250219';
@@ -193,7 +193,7 @@ export class ConfigManager {
           this.config.model = 'gpt-4o';
           break;
         case 'gemini':
-          this.config.model = 'gemini-2.5-flash';
+          this.config.model = 'gemini-3.7-flash';
           break;
         case 'deepseek':
           this.config.model = 'deepseek-v4-flash-(latest)';
@@ -205,7 +205,7 @@ export class ConfigManager {
           this.config.model = 'deepseek/deepseek-r1';
           break;
         case 'mock':
-          this.config.model = 'deepseek-v4-flash-(latest)';
+          this.config.model = 'gemini-3.7-flash';
           break;
       }
     }
@@ -218,6 +218,10 @@ export class ConfigManager {
     let envVar = 'API_KEY';
 
     switch (provider) {
+      case 'gemini':
+        key = this.config.apiKeys.gemini || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GOOGLE_GENAI_API_KEY;
+        envVar = 'GEMINI_API_KEY';
+        break;
       case 'deepseek':
         key = this.config.apiKeys.deepseek || process.env.DEEPSEEK_API_KEY || process.env.ANTRI_API_KEY;
         envVar = 'DEEPSEEK_API_KEY';
@@ -225,10 +229,6 @@ export class ConfigManager {
       case 'openai':
         key = this.config.apiKeys.openai || process.env.OPENAI_API_KEY;
         envVar = 'OPENAI_API_KEY';
-        break;
-      case 'gemini':
-        key = this.config.apiKeys.gemini || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
-        envVar = 'GEMINI_API_KEY';
         break;
       case 'anthropic':
         key = this.config.apiKeys.anthropic || process.env.ANTHROPIC_API_KEY;

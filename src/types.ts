@@ -167,7 +167,7 @@ export interface DialecticResult {
   sources?: string[];
 }
 
-export type ArtifactType = 'html' | 'graph' | 'mindmap' | 'svg' | 'markdown';
+export type ArtifactType = 'html' | 'graph' | 'mindmap' | 'svg' | 'markdown' | 'bugtwin' | 'crashzero';
 
 export interface Artifact {
   id: string;

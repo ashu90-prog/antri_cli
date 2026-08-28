@@ -31,18 +31,12 @@
     <!-- Global Controls -->
     <div class="header-controls">
       <div class="control-group">
-        <label>Provider</label>
-        <select id="select-provider" onchange="onProviderChange(this.value)">
-          <option value="cerebras">Cerebras (CS-3)</option>
-          <option value="cohere">Cohere (Command R+)</option>
-          <option value="vortex">Vortex API</option>
-          <option value="opencode">OpenCode</option>
-          <option value="deepseek" selected>DeepSeek (V3/R1)</option>
-          <option value="nvidia-nim">NVIDIA NIM</option>
-          <option value="openai">OpenAI (GPT-4o/o1)</option>
-          <option value="anthropic">Anthropic (Claude 3.7)</option>
-          <option value="gemini">Google Gemini</option>
-          <option value="ollama">Ollama (Local)</option>
+        <label>Engine</label>
+        <div class="engine-badge" style="display: flex; align-items: center; gap: 6px; padding: 6px 12px; background: rgba(59, 130, 246, 0.12); border: 1px solid rgba(59, 130, 246, 0.35); border-radius: 8px; color: #60a5fa; font-size: 12px; font-weight: 600; letter-spacing: 0.3px;">
+          <span>♊ Google Gemini</span>
+        </div>
+        <select id="select-provider" style="display: none;">
+          <option value="gemini" selected>Google Gemini</option>
         </select>
       </div>
 
@@ -144,6 +138,8 @@
               <p>Minimalist environment for autonomous coding, architectural planning, and self-refinement. State, memory, profiles, and skills are synchronized across CLI and Desktop.</p>
               <div class="quick-action-pills">
                 <button onclick="setPrompt('Plan the architecture for a real-time collaborative code editor')">Plan Editor Architecture</button>
+                <button onclick="setPrompt('/reproduce TypeError: Cannot read properties of undefined in calculateCartTotal')">🧬 BugTwin Reproduce</button>
+                <button onclick="setPrompt('/replay TypeError: Unhandled exception at src/server.ts:42:15')">⏱️ CrashZero Replay</button>
                 <button onclick="setPrompt('/debate What are the trade-offs between WebSockets vs Server-Sent Events?')">Start Dialectic Debate</button>
                 <button onclick="setPrompt('/goal Implement a zero-dependency LRU cache with TTL in TypeScript')">Run Goal Loop</button>
               </div>
@@ -501,6 +497,72 @@
             <textarea id="custom-idea-input" class="custom-idea-textarea" placeholder="e.g., Build Option 1, but add an interactive GitHub commit heatmap, dark obsidian theme with glowing cyan accents, and an interactive project filter tabs..."></textarea>
             <div class="custom-idea-actions">
               <button class="action-btn" onclick="buildFromCustomIdea()">🚀 Build Custom Project in Studio</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 8: Artifacts Hub & Live Interactive Studio -->
+      <section id="tab-artifacts" class="tab-panel">
+        <div class="panel-header">
+          <div class="panel-title-group">
+            <h2 class="panel-title">🎨 Artifacts Hub & Interactive Studio</h2>
+            <p class="panel-subtitle">Browse and interact with generated BugTwin sandboxes, CrashZero time-travel replays, mind maps, and live SPA artifacts.</p>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="action-btn-secondary" onclick="loadArtifactsTab()">⟳ Refresh Artifacts</button>
+            <button class="action-btn" onclick="showTab('chat')">✨ Generate New Artifact</button>
+          </div>
+        </div>
+
+        <div class="artifacts-hub-layout" style="display:grid;grid-template-columns:360px 1fr;gap:20px;height:calc(100vh - 160px);">
+          <!-- Left: Artifacts Explorer List -->
+          <div class="artifacts-sidebar" style="background:var(--bg-surface);border:1px solid var(--border-color);border-radius:12px;display:flex;flex-direction:column;overflow:hidden;">
+            <!-- Filter Bar -->
+            <div style="padding:12px;border-bottom:1px solid var(--border-color);background:var(--bg-subtle);">
+              <input type="text" id="artifact-search-input" placeholder="Search artifacts..." oninput="filterArtifactsList(this.value)" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-surface);color:var(--text-primary);font-size:12px;outline:none;" />
+              <div class="artifact-type-pills" style="display:flex;gap:6px;margin-top:8px;overflow-x:auto;padding-bottom:2px;">
+                <button class="device-btn active" onclick="filterArtifactsByType('all')">All</button>
+                <button class="device-btn" onclick="filterArtifactsByType('bugtwin')">🧬 BugTwin</button>
+                <button class="device-btn" onclick="filterArtifactsByType('crashzero')">⏱️ CrashZero</button>
+                <button class="device-btn" onclick="filterArtifactsByType('mindmap')">🧠 Mindmap</button>
+                <button class="device-btn" onclick="filterArtifactsByType('html')">🌐 HTML</button>
+              </div>
+            </div>
+
+            <!-- List of Artifact Cards -->
+            <div id="artifacts-list-container" style="flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:8px;">
+              <div class="placeholder-text" style="text-align:center;padding:30px 10px;color:var(--text-muted);font-size:13px;">Loading artifacts...</div>
+            </div>
+          </div>
+
+          <!-- Right: Live Interactive Artifact Preview Stage -->
+          <div class="artifacts-stage-container" style="background:var(--bg-surface);border:1px solid var(--border-color);border-radius:12px;display:flex;flex-direction:column;overflow:hidden;">
+            <!-- Top Action Header -->
+            <div style="padding:10px 16px;border-bottom:1px solid var(--border-color);background:var(--bg-subtle);display:flex;align-items:center;justify-content:between;gap:12px;">
+              <div style="display:flex;align-items:center;gap:10px;flex:1;overflow:hidden;">
+                <span id="stage-artifact-icon" style="font-size:20px;">🎨</span>
+                <div style="overflow:hidden;">
+                  <h3 id="stage-artifact-title" style="margin:0;font-size:14px;font-weight:700;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Select an artifact to preview</h3>
+                  <span id="stage-artifact-meta" style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);">Interactive Sandbox Standby</span>
+                </div>
+              </div>
+
+              <!-- Device Viewport Toggles & Actions -->
+              <div style="display:flex;align-items:center;gap:8px;">
+                <div class="device-toggles" id="stage-device-toggles">
+                  <button class="device-btn active" id="btn-device-desktop" onclick="setStageDevice('desktop')">🖥️ Desktop</button>
+                  <button class="device-btn" id="btn-device-tablet" onclick="setStageDevice('tablet')">📱 Tablet</button>
+                  <button class="device-btn" id="btn-device-mobile" onclick="setStageDevice('mobile')">📲 Mobile</button>
+                </div>
+                <button class="action-btn-secondary" style="padding:4px 10px;font-size:11px;" onclick="reloadStageArtifact()">⟳ Reload</button>
+                <button class="action-btn" style="padding:4px 12px;font-size:11px;" onclick="openActiveArtifactInNewTab()">↗ Open Full Screen</button>
+              </div>
+            </div>
+
+            <!-- Stage Iframe Viewport Container -->
+            <div id="stage-iframe-wrapper" style="flex:1;background:#090d16;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:12px;transition:all 0.25s ease;">
+              <iframe id="stage-artifact-iframe" allow="autoplay; clipboard-read; clipboard-write;" sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals" style="width:100%;height:100%;border:none;border-radius:8px;background:#ffffff;box-shadow:0 10px 30px rgba(0,0,0,0.5);transition:width 0.25s ease;"></iframe>
             </div>
           </div>
         </div>

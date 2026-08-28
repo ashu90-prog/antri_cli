@@ -30,9 +30,11 @@ import { DesktopServer } from '../dist/desktop/server.js';
 import { MobileServer } from '../dist/mobile/server.js';
 import { FirestoreSyncManager } from '../dist/cloud/firestore.js';
 import { AuthManager } from '../dist/cloud/auth.js';
-import { RateLimiter } from '../dist/security/rateLimiter.js';
 import { SessionManager } from '../dist/core/sessionManager.js';
-import { isGoalOrPlanQuery, isDebateOrTradeoffQuery, isCodingQuery } from '../dist/core/agent.js';
+import { isGoalOrPlanQuery, isDebateOrTradeoffQuery, isCodingQuery, isBugOrReproductionQuery, isCrashOrReplayQuery, isArtifactOrVisualPrompt } from '../dist/core/agent.js';
+import { BugTwinEngine } from '../dist/core/bugTwin.js';
+import { CrashZeroEngine } from '../dist/core/crashZero.js';
+import { artifactManager } from '../dist/core/artifactManager.js';
 import { CodebaseBreather, ProjectContextCache } from '../dist/core/codebaseBreather.js';
 
 test('ConfigManager initializes with defaults including debateDepth and mode', () => {
@@ -73,7 +75,7 @@ test('ToolExecutor identifies privacy & security sensitive tools', () => {
 
 test('Updater reports correct package name and current version', () => {
   assert.strictEqual(Updater.PACKAGE_NAME, 'antri_cli');
-  assert.strictEqual(Updater.CURRENT_VERSION, '1.57.32');
+  assert.strictEqual(Updater.CURRENT_VERSION, '1.57.33');
 });
 
 test('GoalLoopEngine initializes with active configuration', () => {
@@ -1095,6 +1097,84 @@ test('TerminalRenderer formats printToolStart and printToolFinish accurately', (
     TerminalRenderer.printToolFinish(tc, res, 120, 1, 3);
   });
 });
+
+test('BugTwinEngine synthesizes reproduction tests, confirms Red failure, and generates visual sandbox artifact', async () => {
+  await AuthManager.login('bugtwin_tester@example.com');
+  const engine = new BugTwinEngine(configManager.get(), process.cwd());
+  
+  const bugReport = 'TypeError: Cannot read properties of undefined (reading "map") in ItemList.tsx when items array is null';
+  const result = await engine.reproduceAndFix(bugReport, { cleanReproFile: true });
+  
+  assert.ok(result);
+  assert.strictEqual(result.fixed, true);
+  assert.strictEqual(result.verified, true);
+  assert.ok(result.artifactId?.startsWith('bugtwin_'));
+  assert.ok(result.artifactHtmlUrl?.includes('.html'));
+  assert.ok(result.prSummary?.includes('BugTwin'));
+  
+  const artifact = artifactManager.getArtifact(result.artifactId);
+  assert.ok(artifact);
+  assert.strictEqual(artifact.type, 'html');
+  assert.ok(artifact.content.includes('Interactive Component Sandbox'));
+  assert.ok(artifact.content.includes('Visual State Flow & Lifecycle Graph'));
+  AuthManager.logout();
+});
+
+test('CrashZeroEngine parses stack traces, synthesizes time-travel execution frames, and renders scrubbable replay artifact', async () => {
+  await AuthManager.login('crashzero_tester@example.com');
+  const engine = new CrashZeroEngine(configManager.get(), process.cwd());
+  
+  const sampleTrace = `TypeError: Cannot read properties of null (reading 'token')
+    at Authenticator.validateToken (src/auth.ts:42:15)
+    at handleRequest (src/server.ts:88:20)
+    at Layer.handle [as handle_request] (node_modules/express/lib/router/layer.js:95:5)`;
+    
+  const result = await engine.replayAndHeal(sampleTrace);
+  
+  assert.ok(result);
+  assert.strictEqual(result.success, true);
+  assert.strictEqual(result.errorName, 'TypeError');
+  assert.ok(result.timeTravelFrames.length >= 4);
+  assert.strictEqual(result.timeTravelFrames[3].status, 'fatal_crash');
+  assert.ok(result.artifactId?.startsWith('crashzero_'));
+  assert.ok(result.artifactHtmlUrl?.includes('.html'));
+  
+  const artifact = artifactManager.getArtifact(result.artifactId);
+  assert.ok(artifact);
+  assert.ok(artifact.content.includes('Execution Time-Travel Scrubbing Bar'));
+  assert.ok(artifact.content.includes('De-Minified Call Stack'));
+  AuthManager.logout();
+});
+
+test('Intent Gating and Routing correctly separates coding, visual artifacts, BugTwin, and CrashZero', () => {
+  // BugTwin / Reproduction Queries
+  assert.strictEqual(isBugOrReproductionQuery('/reproduce https://github.com/org/repo/issues/42'), true);
+  assert.strictEqual(isBugOrReproductionQuery('/bugtwin failing test assertion in payment checkout'), true);
+  assert.strictEqual(isBugOrReproductionQuery('/fix broken button state'), true);
+  assert.strictEqual(isBugOrReproductionQuery('reproduce bug: null pointer in parser'), true);
+  assert.strictEqual(isBugOrReproductionQuery('diagnose and fix memory leak in worker'), true);
+
+  // CrashZero / Replay Queries
+  assert.strictEqual(isCrashOrReplayQuery('/replay TypeError: Uncaught promise rejection at index.js:10'), true);
+  assert.strictEqual(isCrashOrReplayQuery('/crashzero Sentry Issue #84920'), true);
+  assert.strictEqual(isCrashOrReplayQuery('sentry: event_id_992019 exception in billing'), true);
+
+  // Visual Artifact Queries
+  assert.strictEqual(isArtifactOrVisualPrompt('/mindmap Types of Rocks'), true);
+  assert.strictEqual(isArtifactOrVisualPrompt('/view workout plan'), true);
+  assert.strictEqual(isArtifactOrVisualPrompt('/imagine microservices architecture'), true);
+
+  // Coding Queries
+  assert.strictEqual(isCodingQuery('build a fullstack next.js portfolio website'), true);
+  assert.strictEqual(isCodingQuery('code a snake game in vanilla js with html and css'), true);
+  assert.strictEqual(isCodingQuery('implement an LRU cache algorithm in typescript'), true);
+
+  // Zero Intent Confusion
+  assert.strictEqual(isCodingQuery('what is the capital of france?'), false);
+  assert.strictEqual(isBugOrReproductionQuery('build a todo app'), false);
+  assert.strictEqual(isCrashOrReplayQuery('code a portfolio website'), false);
+});
+
 
 
 

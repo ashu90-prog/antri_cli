@@ -368,14 +368,38 @@ export const PROVIDER_CATALOGS: Record<ProviderType, ModelInfo[]> = {
     },
   ],
 
-  // Google Gemini Models
+  // Google Gemini Models (Primary Google GenAI Suite)
   'gemini': [
+    {
+      id: 'gemini-3.7-flash',
+      name: 'Gemini 3.7 Flash',
+      provider: 'gemini',
+      category: 'Gemini 3.7',
+      description: 'Flagship hybrid reasoning, agentic coding & 1M context via Google GenAI SDK',
+      contextWindow: 1000000,
+    },
+    {
+      id: 'gemini-3.7-pro',
+      name: 'Gemini 3.7 Pro',
+      provider: 'gemini',
+      category: 'Gemini 3.7',
+      description: 'State-of-the-art multimodal reasoning and long-horizon software engineering',
+      contextWindow: 2000000,
+    },
+    {
+      id: 'gemini-3.5-pro',
+      name: 'Gemini 3.5 Pro',
+      provider: 'gemini',
+      category: 'Gemini 3.5',
+      description: 'Advanced agentic coding with high-depth architectural problem solving',
+      contextWindow: 2000000,
+    },
     {
       id: 'gemini-2.5-flash',
       name: 'Gemini 2.5 Flash',
       provider: 'gemini',
       category: 'Gemini 2.5',
-      description: 'next-gen high-efficiency speed & 1M context with native tool use',
+      description: 'Next-gen high-efficiency speed & 1M context with native tool use',
       contextWindow: 1000000,
     },
     {
@@ -383,7 +407,7 @@ export const PROVIDER_CATALOGS: Record<ProviderType, ModelInfo[]> = {
       name: 'Gemini 2.5 Pro',
       provider: 'gemini',
       category: 'Gemini 2.5',
-      description: 'advanced reasoning, multimodal & agentic coding with 2M context',
+      description: 'Advanced reasoning, multimodal & agentic coding with 2M context',
       contextWindow: 2000000,
     },
     {
@@ -391,7 +415,7 @@ export const PROVIDER_CATALOGS: Record<ProviderType, ModelInfo[]> = {
       name: 'Gemini 2.0 Flash',
       provider: 'gemini',
       category: 'Gemini 2.0',
-      description: 'second generation multimodal real-time agent engine',
+      description: 'Second generation multimodal real-time agent engine',
       contextWindow: 1000000,
     },
     {
@@ -399,7 +423,7 @@ export const PROVIDER_CATALOGS: Record<ProviderType, ModelInfo[]> = {
       name: 'Gemini 1.5 Pro',
       provider: 'gemini',
       category: 'Gemini 1.5',
-      description: 'massive 2M token context for whole repository ingestion',
+      description: 'Massive 2M token context for whole repository ingestion',
       contextWindow: 2000000,
     },
   ],

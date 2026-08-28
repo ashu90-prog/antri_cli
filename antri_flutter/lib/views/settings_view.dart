@@ -19,48 +19,45 @@ class SettingsView extends StatefulWidget {
 }
 
 class _SettingsViewState extends State<SettingsView> {
-  final TextEditingController _modelController = TextEditingController();
+  final TextEditingController _customModelController = TextEditingController();
   final TextEditingController _apiKeyController = TextEditingController();
   final TextEditingController _baseUrlController = TextEditingController();
   final TextEditingController _gcpProjectIdController = TextEditingController();
   final TextEditingController _syncKeyController = TextEditingController();
 
-  final Map<String, String> _defaultModels = {
-    'deepseek': 'deepseek-chat',
-    'openai': 'gpt-4o',
-    'anthropic': 'claude-3-7-sonnet-20250219',
-    'gemini': 'gemini-2.5-flash',
-    'cerebras': 'llama-3.3-70b',
-    'cohere': 'command-r-plus-08-2024',
-    'vortex': 'vortex-llama-3.3-70b-instruct',
-    'opencode': 'opencode/deepseek-coder-v2.5',
-    'nvidia-nim': 'meta/llama-3.1-8b-instruct',
-    'ollama': 'llama3.3:70b',
-    'custom': 'custom-model',
-  };
+  final List<Map<String, String>> _geminiModels = const [
+    {'id': 'gemini-3.7-flash', 'name': 'Gemini 3.7 Flash (Default Flagship)'},
+    {'id': 'gemini-3.7-pro', 'name': 'Gemini 3.7 Pro (Advanced Multimodal)'},
+    {'id': 'gemini-3.5-pro', 'name': 'Gemini 3.5 Pro (Deep Reasoning)'},
+    {'id': 'gemini-2.5-flash', 'name': 'Gemini 2.5 Flash (High Efficiency)'},
+    {'id': 'gemini-2.5-pro', 'name': 'Gemini 2.5 Pro (2M Context)'},
+  ];
 
   @override
   void initState() {
     super.initState();
-    _modelController.text = widget.config.model;
+    widget.config.provider = 'gemini';
+    if (widget.config.model.isEmpty || !widget.config.model.startsWith('gemini')) {
+      widget.config.model = 'gemini-3.7-flash';
+    }
+    _customModelController.text = widget.config.model;
     _apiKeyController.text = widget.config.apiKey;
     _baseUrlController.text = widget.config.baseUrl;
     _gcpProjectIdController.text = widget.config.firestoreProjectId;
     _syncKeyController.text = widget.config.syncKey;
   }
 
-  void _onProviderChanged(String? newProv) {
-    if (newProv != null) {
+  void _onModelChanged(String? newModel) {
+    if (newModel != null) {
       setState(() {
-        widget.config.provider = newProv;
-        widget.config.model = _defaultModels[newProv] ?? 'default-model';
-        _modelController.text = widget.config.model;
+        widget.config.model = newModel;
+        _customModelController.text = newModel;
       });
     }
   }
 
   Future<void> _saveSettings() async {
-    widget.config.model = _modelController.text.trim();
+    widget.config.model = _customModelController.text.trim();
     widget.config.apiKey = _apiKeyController.text.trim();
     widget.config.baseUrl = _baseUrlController.text.trim();
     widget.config.firestoreProjectId = _gcpProjectIdController.text.trim();
@@ -71,7 +68,10 @@ class _SettingsViewState extends State<SettingsView> {
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Settings saved successfully.')),
+        SnackBar(
+          content: Text('Saved: ${widget.config.model} · Mode: ${widget.config.mode.toUpperCase()}'),
+          backgroundColor: const Color(0xFF1C1917),
+        ),
       );
     }
   }
@@ -114,19 +114,71 @@ class _SettingsViewState extends State<SettingsView> {
     const cardBg = Color(0xFFFFFFFF);
     const textPrimary = Color(0xFF1C1917);
     const borderMain = Color(0xFFE6E0D4);
-    const subtleBg = Color(0xFFF7F4EE);
 
     return Scaffold(
       backgroundColor: creamBg,
       appBar: AppBar(
         backgroundColor: const Color(0xFFF7F4EE),
         elevation: 0,
-        title: const Text('Settings & Cloud Sync', style: TextStyle(fontWeight: FontWeight.w800, color: textPrimary, fontSize: 16)),
+        title: const Text('Settings & AI Models', style: TextStyle(fontWeight: FontWeight.w800, color: textPrimary, fontSize: 16)),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // USER ACCOUNT SYSTEM SECTION
+          // ACTIVE MODE & MODEL STATUS CARD
+          Container(
+            padding: const EdgeInsets.all(16),
+            margin: const EdgeInsets.only(bottom: 16),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF1C1917), Color(0xFF292524)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x14000000),
+                  blurRadius: 10,
+                  offset: Offset(0, 4),
+                )
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('ACTIVE ENGINE STATUS', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFFA8A29E), letterSpacing: 0.5)),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: widget.config.mode == 'vibe' ? const Color(0xFF10B981) : const Color(0xFF6366F1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        widget.config.mode == 'vibe' ? '⚡ VIBE MODE' : '📐 PLAN MODE',
+                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  widget.config.model,
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Engine: Google Gemini · Profile: ${widget.config.activeProfile}',
+                  style: const TextStyle(fontSize: 12, color: Color(0xFFD6D3D1)),
+                ),
+              ],
+            ),
+          ),
+
+          // AGENT WORKSPACE MODE SELECTOR
           Container(
             padding: const EdgeInsets.all(16),
             margin: const EdgeInsets.only(bottom: 16),
@@ -138,96 +190,88 @@ class _SettingsViewState extends State<SettingsView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('USER ACCOUNT & CLOUD PARTITION', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: textPrimary, letterSpacing: 0.5)),
-                const SizedBox(height: 6),
-                Text(
-                  widget.config.syncKey.isNotEmpty && widget.config.syncKey != 'default_user'
-                      ? 'Logged in with partition: ${widget.config.syncKey}'
-                      : 'Log in to isolate your private profiles and memory in Firestore.',
-                  style: const TextStyle(fontSize: 12, color: Color(0xFF57534E)),
+                const Text('AGENT WORKSPACE MODE', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: textPrimary, letterSpacing: 0.5)),
+                const SizedBox(height: 8),
+                const Text(
+                  'Select how ANTRI interacts: Vibe Mode codes and iterates continuously; Plan Mode plans and debates architecture before coding.',
+                  style: TextStyle(fontSize: 12, color: Color(0xFF57534E), height: 1.35),
                 ),
                 const SizedBox(height: 12),
                 Row(
                   children: [
                     Expanded(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          final emailCtrl = TextEditingController();
-                          showDialog(
-                            context: context,
-                            builder: (ctx) => AlertDialog(
-                              title: const Text('Account Login / Switch', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
-                              content: TextField(
-                                controller: emailCtrl,
-                                decoration: const InputDecoration(
-                                  hintText: 'Enter your email (e.g. user@gmail.com)',
-                                  hintStyle: TextStyle(fontSize: 13),
+                      child: InkWell(
+                        onTap: () {
+                          setState(() => widget.config.mode = 'vibe');
+                        },
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: widget.config.mode == 'vibe' ? const Color(0xFF1C1917) : const Color(0xFFF7F4EE),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: widget.config.mode == 'vibe' ? const Color(0xFF1C1917) : borderMain),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text('⚡', style: TextStyle(fontSize: 14, color: widget.config.mode == 'vibe' ? Colors.white : textPrimary)),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Vibe Mode',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: widget.config.mode == 'vibe' ? Colors.white : textPrimary,
                                 ),
                               ),
-                              actions: [
-                                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-                                ElevatedButton(
-                                  onPressed: () {
-                                    final email = emailCtrl.text.trim().toLowerCase();
-                                    if (email.isNotEmpty && email.contains('@')) {
-                                      final prefix = email.split('@')[0].replaceAll(RegExp(r'[^a-z0-9_-]'), '_');
-                                      final hash = email.hashCode.toRadixString(16).padLeft(8, '0');
-                                      final userId = '${prefix}_$hash';
-                                      setState(() {
-                                        widget.config.syncKey = userId;
-                                        _syncKeyController.text = userId;
-                                      });
-                                      widget.storageService.saveConfig(widget.config);
-                                      widget.onConfigSaved();
-                                      Navigator.pop(ctx);
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(content: Text('Logged in as $email (Partition: $userId)')),
-                                      );
-                                    }
-                                  },
-                                  child: const Text('Sign In'),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: subtleBg,
-                          foregroundColor: textPrimary,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6), side: const BorderSide(color: borderMain)),
-                          padding: const EdgeInsets.symmetric(vertical: 10),
+                            ],
+                          ),
                         ),
-                        child: const Text('Login with Email', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
                       ),
                     ),
-                    if (widget.config.syncKey.isNotEmpty && widget.config.syncKey != 'default_user') ...[
-                      const SizedBox(width: 8),
-                      OutlinedButton(
-                        onPressed: () {
-                          setState(() {
-                            widget.config.syncKey = 'default_user';
-                            _syncKeyController.text = 'default_user';
-                          });
-                          widget.storageService.saveConfig(widget.config);
-                          widget.onConfigSaved();
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: InkWell(
+                        onTap: () {
+                          setState(() => widget.config.mode = 'plan');
                         },
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: const Color(0xFFDC2626),
-                          side: const BorderSide(color: Color(0xFFFCA5A5)),
-                          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: widget.config.mode == 'plan' ? const Color(0xFF1C1917) : const Color(0xFFF7F4EE),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: widget.config.mode == 'plan' ? const Color(0xFF1C1917) : borderMain),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text('📐', style: TextStyle(fontSize: 14, color: widget.config.mode == 'plan' ? Colors.white : textPrimary)),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Plan Mode',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: widget.config.mode == 'plan' ? Colors.white : textPrimary,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                        child: const Text('Logout', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
                       ),
-                    ],
+                    ),
                   ],
                 ),
               ],
             ),
           ),
 
+          // GOOGLE GEMINI SUITE & MODEL SELECTOR
           Container(
             padding: const EdgeInsets.all(16),
+            margin: const EdgeInsets.only(bottom: 16),
             decoration: BoxDecoration(
               color: cardBg,
               borderRadius: BorderRadius.circular(10),
@@ -236,11 +280,34 @@ class _SettingsViewState extends State<SettingsView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('AI PROVIDER SETTINGS', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: textPrimary, letterSpacing: 0.5)),
+                const Text('GOOGLE GEMINI ENGINE & MODELS', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: textPrimary, letterSpacing: 0.5)),
                 const SizedBox(height: 14),
 
-                // Provider Dropdown
-                const Text('Active Provider', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF8C827A))),
+                // Engine Badge
+                const Text('Active AI Engine', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF8C827A))),
+                const SizedBox(height: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEFF6FF),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFFBFDBFE)),
+                  ),
+                  child: const Row(
+                    children: [
+                      Text('♊', style: TextStyle(fontSize: 16)),
+                      SizedBox(width: 8),
+                      Text(
+                        'Google Gemini · GenAI SDK',
+                        style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: Color(0xFF1D4ED8)),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+
+                // Gemini Model Selector Dropdown
+                const Text('Gemini Model Selector', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF8C827A))),
                 const SizedBox(height: 6),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -251,34 +318,25 @@ class _SettingsViewState extends State<SettingsView> {
                   ),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
-                      value: widget.config.provider,
+                      value: _geminiModels.any((m) => m['id'] == widget.config.model) ? widget.config.model : 'gemini-3.7-flash',
                       isExpanded: true,
-                      items: const [
-                        DropdownMenuItem(value: 'deepseek', child: Text('DeepSeek (V3/R1)')),
-                        DropdownMenuItem(value: 'openai', child: Text('OpenAI (GPT-4o/o1)')),
-                        DropdownMenuItem(value: 'anthropic', child: Text('Anthropic (Claude 3.7)')),
-                        DropdownMenuItem(value: 'gemini', child: Text('Google Gemini (Flash/Pro)')),
-                        DropdownMenuItem(value: 'cerebras', child: Text('Cerebras (CS-3 2000 tok/s)')),
-                        DropdownMenuItem(value: 'cohere', child: Text('Cohere (Command R+)')),
-                        DropdownMenuItem(value: 'vortex', child: Text('Vortex API')),
-                        DropdownMenuItem(value: 'opencode', child: Text('OpenCode')),
-                        DropdownMenuItem(value: 'nvidia-nim', child: Text('NVIDIA NIM')),
-                        DropdownMenuItem(value: 'ollama', child: Text('Ollama (Local / Tailscale)')),
-                        DropdownMenuItem(value: 'custom', child: Text('Custom Endpoint')),
-                      ],
-                      onChanged: _onProviderChanged,
+                      items: _geminiModels.map(
+                        (m) => DropdownMenuItem<String>(
+                          value: m['id'],
+                          child: Text(m['name'] ?? m['id']!, style: const TextStyle(fontSize: 13, color: textPrimary)),
+                        ),
+                      ).toList(),
+                      onChanged: _onModelChanged,
                     ),
                   ),
                 ),
                 const SizedBox(height: 14),
 
-                _buildField('Model Identifier', _modelController, hint: 'e.g. deepseek-chat, gpt-4o'),
-                _buildField('API Key', _apiKeyController, obscure: true, hint: 'sk-...'),
-                _buildField('Custom Base URL (Optional)', _baseUrlController, hint: 'https://api...'),
+                _buildField('Gemini API Key', _apiKeyController, obscure: true, hint: 'AIzaSy...'),
+                _buildField('Cloud Run Backend URL (Optional)', _baseUrlController, hint: 'https://antri-backend-xxxx.run.app'),
               ],
             ),
           ),
-          const SizedBox(height: 16),
 
           // Google Cloud Firestore Sync Section
           Container(
@@ -298,8 +356,8 @@ class _SettingsViewState extends State<SettingsView> {
                   style: TextStyle(fontSize: 12, color: Color(0xFF57534E), height: 1.4),
                 ),
                 const SizedBox(height: 14),
-                _buildField('Google Cloud Project ID', _gcpProjectIdController, hint: 'e.g. my-agentic-hackathon-proj'),
-                _buildField('Sync Key / User ID', _syncKeyController, hint: 'e.g. ashu90 or default_user'),
+                _buildField('Google Cloud Project ID', _gcpProjectIdController, hint: 'e.g. antri-agentic-hackathon'),
+                _buildField('Sync Key / User Partition', _syncKeyController, hint: 'e.g. ashu90 or default_user'),
               ],
             ),
           ),

@@ -38,7 +38,7 @@ function getPublicDir(): string {
 
 export class DesktopServer {
   private server: http.Server | null = null;
-  private port = 3456;
+  private port = parseInt(process.env.PORT || '3456', 10);
   private activeAgent: AntriAgent;
   private pendingPermissions = new Map<string, (allowed: boolean) => void>();
   private currentSseSender: ((event: string, data: any) => void) | null = null;
@@ -100,7 +100,36 @@ export class DesktopServer {
           return;
         }
 
-        // 2. Static File Serving
+        // Pure Backend API Mode: When deployed as a backend service, return API info instead of HTML
+        if (pathname === '/' && (process.env.ANTRI_BACKEND_ONLY === 'true' || process.env.BACKEND_ONLY === 'true')) {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(
+            JSON.stringify({
+              status: 'online',
+              service: 'ANTRI Code Google Cloud Run Backend API',
+              version: configManager.get().version,
+              provider: 'gemini',
+              model: 'gemini-3.7-flash',
+              framework: '@google/genai (Google GenAI SDK)',
+              platform: 'Google Cloud Run',
+              endpoints: {
+                health: 'GET /api/health',
+                status: 'GET /api/status',
+                models: 'GET /api/models',
+                commands: 'GET /api/commands',
+                chatStream: 'POST /api/chat',
+                bugTwinReproduce: 'POST /api/bugtwin/reproduce',
+                crashZeroReplay: 'POST /api/crashzero/replay',
+                dialecticDebate: 'POST /api/debate',
+                goalLoop: 'POST /api/goal',
+              },
+              documentation: 'https://github.com/ashu90-prog/antri_cli',
+            }, null, 2)
+          );
+          return;
+        }
+
+        // 2. Static File Serving (Desktop & Web Control Plane)
         let filePath = path.join(publicDir, pathname === '/' ? 'index.html' : pathname);
         if (!fs.existsSync(filePath)) {
           filePath = path.join(publicDir, 'index.html');
@@ -156,6 +185,29 @@ export class DesktopServer {
 
   private async handleApi(pathname: string, url: URL, req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
     const config = configManager.get();
+
+    // GET /api/health (Google Cloud Run probe & verification endpoint)
+    if (pathname === '/api/health' && req.method === 'GET') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(
+        JSON.stringify({
+          status: 'healthy',
+          service: 'antri_backend',
+          version: config.version,
+          provider: config.provider,
+          model: config.model,
+          googleCloud: {
+            platform: 'Google Cloud Run',
+            project: process.env.GOOGLE_CLOUD_PROJECT || process.env.GCP_PROJECT || 'antri-agentic-hackathon',
+            framework: '@google/genai (Google GenAI SDK)',
+            modelFamily: 'Gemini 3.7 / 3.5 Suite',
+            region: process.env.K_SERVICE ? 'cloud-run-managed' : 'local-node',
+          },
+          uptime: process.uptime(),
+        })
+      );
+      return;
+    }
 
     // GET /api/status
     if (pathname === '/api/status' && req.method === 'GET') {
@@ -361,6 +413,14 @@ export class DesktopServer {
       const fullHtml = artifactManager.getArtifactHtml(artifact);
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
       res.end(fullHtml);
+      return;
+    }
+
+    // GET /api/commands (List all available slash commands for desktop autocomplete)
+    if (pathname === '/api/commands' && req.method === 'GET') {
+      const { PROMPT_TOOLKIT_COMMANDS } = await import('../cli/promptToolkit.js');
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true, commands: PROMPT_TOOLKIT_COMMANDS }));
       return;
     }
 
@@ -583,6 +643,38 @@ export class DesktopServer {
           const engine = new GoalLoopEngine(configManager.get());
           try {
             const result = await engine.runSilentGoal(objective);
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: true, result }));
+          } catch (err: any) {
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: false, error: err.message }));
+          }
+          return;
+        }
+
+        // POST /api/bugtwin/reproduce or POST /api/fix
+        if ((pathname === '/api/bugtwin/reproduce' || pathname === '/api/fix') && req.method === 'POST') {
+          const input = payload.input || payload.description || 'Fix workspace bugs';
+          const { BugTwinEngine } = await import('../core/bugTwin.js');
+          const engine = new BugTwinEngine(configManager.get());
+          try {
+            const result = await engine.reproduceAndFix(input);
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: true, result }));
+          } catch (err: any) {
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: false, error: err.message }));
+          }
+          return;
+        }
+
+        // POST /api/crashzero/replay
+        if (pathname === '/api/crashzero/replay' && req.method === 'POST') {
+          const input = payload.input || payload.trace || 'TypeError: Unhandled runtime state exception';
+          const { CrashZeroEngine } = await import('../core/crashZero.js');
+          const engine = new CrashZeroEngine(configManager.get());
+          try {
+            const result = await engine.replayAndHeal(input);
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ success: true, result }));
           } catch (err: any) {

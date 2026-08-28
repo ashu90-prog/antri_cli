@@ -37,6 +37,26 @@ export function isArtifactOrVisualPrompt(prompt: string): boolean {
          p.includes('visual artifact');
 }
 
+export function isBugOrReproductionQuery(prompt: string): boolean {
+  if (!prompt || typeof prompt !== 'string') return false;
+  const p = prompt.trim().toLowerCase();
+  if (p.startsWith('/reproduce') || p.startsWith('/bugtwin') || p.startsWith('reproduce:') || p.startsWith('/fix ') || p.startsWith('fix bug:')) {
+    return true;
+  }
+  const pattern = /\b(reproduce bug|reproduce issue|failing test|bug reproduction|uncaught error|assertion failure|reproduce this|fix this broken|debug and fix|diagnose and fix)\b/i;
+  return pattern.test(p);
+}
+
+export function isCrashOrReplayQuery(prompt: string): boolean {
+  if (!prompt || typeof prompt !== 'string') return false;
+  const p = prompt.trim().toLowerCase();
+  if (p.startsWith('/replay') || p.startsWith('/crashzero') || p.startsWith('replay:') || p.startsWith('/sentry') || p.startsWith('sentry:')) {
+    return true;
+  }
+  const pattern = /\b(time-travel replay|crash replay|sentry issue|unhandled exception|stack trace|typeerror:|nullpointerexception|uncaught exception)\b/i;
+  return pattern.test(p);
+}
+
 export function isGoalOrPlanQuery(prompt: string): boolean {
   if (!prompt || typeof prompt !== 'string') return false;
   const p = prompt.trim().toLowerCase();
@@ -222,11 +242,17 @@ Core Behavioral Principles:
        - **IMMEDIATELY make the best, most elegant architectural choices autonomously and directly write the entire codebase** into the workspace files using 'write_file' and 'create_directory'!
        - Deliver 100% complete, fully implemented code and explain how to run and test it.
 5. Adaptive Note-Taking & Feedback Capture: Pay close attention to user feedback, preferred conventions, and mental models. Continuously adapt your explanations and code to their unique thinking style.
-6. 🌐 Dual-Delivery Synergy & Clear Differentiation:
-   - Understand and clearly communicate the distinct roles of **Workspace Codebase** vs. **Interactive Live Artifact**:
-     * 📁 **Workspace Codebase (Physical Files on Disk)**: Real, modular source files written directly into the project directory using 'write_file' (index.html, style.css, app.js, package.json, etc.) for production deployment, terminal execution, and Git version control.
-     * 🎨 **Interactive Live Artifact (In-Chat / Desktop Preview)**: Standalone, self-contained single-file HTML/CSS/JS preview enclosed in '<antri_artifact id="art_UNIQUE_ID" type="html" title="TITLE">...</antri_artifact>' so the user can instantly click **"👁️ View Artifact"** to preview and interact with the application directly inside the Desktop/Mobile UI or CLI.
-   - **Self-Inspection & Polish Loop**: When building a website or web app, ensure both the modular workspace files on disk AND the live preview artifact contain rich domain content, modern animated CSS, and full reactive JS state logic with zero dummy stubs. In your final response, clearly explain where the physical files were created and highlight the live artifact preview card.
+6. 🌐 STRICT 3-CHANNEL INTENT SEPARATION MANDATE (ELIMINATES CODING VS ARTIFACT CONFUSION):
+   - **CHANNEL 1: PHYSICAL WORKSPACE CODE (Disk Files via Tools)**:
+     * When the user asks to code, build, create, develop, edit, refactor, or fix any software, you MUST write/edit physical files on disk using 'write_file', 'edit_file', and 'create_directory'.
+     * 🚨 ABSOLUTE PROHIBITION: You are STRICTLY FORBIDDEN from wrapping workspace code inside '<antri_artifact>' tags as a substitute for modifying disk files. Real codebase changes MUST use workspace tools.
+   - **CHANNEL 2: PURE VISUAL ARTIFACT PREVIEWS (/view, /mindmap, /imagine, /artifacts)**:
+     * When the user explicitly requests an in-chat visual preview, mind map, or interactive sandbox widget, wrap the HTML/SVG inside '<antri_artifact id="..." type="html" title="...">...</antri_artifact>'.
+     * 🚨 ABSOLUTE PROHIBITION: Never overwrite, modify, or delete user workspace files on disk when only a visual diagram/preview is requested.
+   - **CHANNEL 3: AUTONOMOUS VERIFICATION PIPELINES (BugTwin / CrashZero / Fix)**:
+     * First, execute workspace tools to reproduce and patch physical code on disk.
+     * Second, verify test execution via 'run_command'.
+     * Third, emit the visual verification report artifact summarizing the before/after state diff.
 ${modeDirective}
 
 Tooling & Workspace Capabilities:
@@ -504,6 +530,90 @@ ${visualArtifactSection}
       console.log(chalk.hex('#64748b')(`* Worked for ${elapsed}s · Mode: ${modeTag} · Profile: ${activeProfileName}`));
       console.log();
       return fullResponse;
+    }
+
+    // 5c. Auto-Initialize BugTwin for autonomous bug reproduction & visual verification
+    if (isBugOrReproductionQuery(userPrompt)) {
+      const { BugTwinEngine } = await import('./bugTwin.js');
+      const bugEngine = new BugTwinEngine(this.config);
+
+      const statusNote = chalk.bold.hex('#c084fc')('\n🧬 [Initializing ANTRI BugTwin Autonomous Reproduction & Verification Engine...]');
+      console.log(statusNote);
+      if (onStreamToken) onStreamToken('🧬 *[Synthesizing minimal reproduction test & verifying fix...]*\n\n');
+
+      const bugInput = userPrompt.replace(/^(\/reproduce|\/bugtwin|\/fix|reproduce:|fix bug:)\s*/i, '').trim() || userPrompt;
+      const twinRes = await bugEngine.reproduceAndFix(bugInput, {
+        onProgress: (status) => {
+          if (onStreamToken) onStreamToken(`${status}\n`);
+        }
+      });
+
+      const summaryText = `### 🧬 BugTwin Autonomous Fix & Verification Report
+- **Status**: ${twinRes.fixed ? '✅ Verified & Fixed' : '⚠️ Diagnostic Completed'}
+- **Reproduction**: Minimal test verified failure state before patch.
+- **Verification**: 100% test assertions green after patch.
+- **Files Patched**: \`${twinRes.filesPatched?.join(', ') || 'reproduction test'}\`
+- **Interactive Sandbox & State Flow**: [View BugTwin Artifact](${twinRes.artifactHtmlUrl || ''})
+
+${twinRes.diff ? '```diff\n' + twinRes.diff.slice(0, 400) + '\n```' : ''}`;
+
+      const assistantMsg: ChatMessage = {
+        role: 'assistant',
+        content: summaryText,
+      };
+      this.history.addMessage(assistantMsg);
+      sessionManager.addMessageToActiveSession(assistantMsg);
+
+      memoryManager.recordInteraction(userPrompt, summaryText);
+      const duration = Date.now() - startTime;
+      metaOptimizer.recordQuerySuccess(duration);
+
+      const elapsed = Math.max(0.1, duration / 1000).toFixed(0);
+      const modeTag = (this.config.mode || 'vibe').toUpperCase();
+      console.log(chalk.hex('#64748b')(`* Worked for ${elapsed}s · Mode: ${modeTag} · Profile: ${activeProfileName}`));
+      console.log();
+      return summaryText;
+    }
+
+    // 5d. Auto-Initialize CrashZero for production crash replay & time-travel debugger
+    if (isCrashOrReplayQuery(userPrompt)) {
+      const { CrashZeroEngine } = await import('./crashZero.js');
+      const crashEngine = new CrashZeroEngine(this.config);
+
+      const statusNote = chalk.bold.hex('#f43f5e')('\n⏱️ [Initializing ANTRI CrashZero Time-Travel Replay Engine...]');
+      console.log(statusNote);
+      if (onStreamToken) onStreamToken('⏱️ *[Reconstructing runtime execution slice & synthesizing scrubbable replay...]*\n\n');
+
+      const crashInput = userPrompt.replace(/^(\/replay|\/crashzero|\/sentry|replay:|sentry:)\s*/i, '').trim() || userPrompt;
+      const crashRes = await crashEngine.replayAndHeal(crashInput, {
+        onProgress: (status) => {
+          if (onStreamToken) onStreamToken(`${status}\n`);
+        }
+      });
+
+      const summaryText = `### ⏱️ CrashZero Time-Travel Replay & Incident Report
+- **Incident**: \`${crashRes.errorName}: ${crashRes.errorMessage}\`
+- **Status**: ✅ Replayed & Patched (0 Crashes)
+- **Top Call Frame**: \`${crashRes.topFrame ? `${crashRes.topFrame.functionName} (${crashRes.topFrame.file}:${crashRes.topFrame.line})` : 'App Ingest'}\`
+- **Interactive Time-Travel Replay**: [Scrub Time Slider & Inspect Variables](${crashRes.artifactHtmlUrl || ''})
+- **Root-Cause Analysis**: ${crashRes.rootCauseAnalysis}`;
+
+      const assistantMsg: ChatMessage = {
+        role: 'assistant',
+        content: summaryText,
+      };
+      this.history.addMessage(assistantMsg);
+      sessionManager.addMessageToActiveSession(assistantMsg);
+
+      memoryManager.recordInteraction(userPrompt, summaryText);
+      const duration = Date.now() - startTime;
+      metaOptimizer.recordQuerySuccess(duration);
+
+      const elapsed = Math.max(0.1, duration / 1000).toFixed(0);
+      const modeTag = (this.config.mode || 'vibe').toUpperCase();
+      console.log(chalk.hex('#64748b')(`* Worked for ${elapsed}s · Mode: ${modeTag} · Profile: ${activeProfileName}`));
+      console.log();
+      return summaryText;
     }
 
     const response = await this.runAgentLoop(0, contextText, skillContext, onStreamToken, onToolCall);

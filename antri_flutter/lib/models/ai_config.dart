@@ -10,8 +10,8 @@ class AIConfig {
   String syncKey;
 
   AIConfig({
-    this.provider = 'deepseek',
-    this.model = 'deepseek-chat',
+    this.provider = 'gemini',
+    this.model = 'gemini-3.7-flash',
     this.apiKey = '',
     this.baseUrl = '',
     this.mode = 'vibe',
@@ -34,8 +34,8 @@ class AIConfig {
       };
 
   factory AIConfig.fromJson(Map<String, dynamic> json) => AIConfig(
-        provider: json['provider'] ?? 'deepseek',
-        model: json['model'] ?? 'deepseek-chat',
+        provider: json['provider'] ?? 'gemini',
+        model: json['model'] ?? 'gemini-3.7-flash',
         apiKey: json['apiKey'] ?? '',
         baseUrl: json['baseUrl'] ?? '',
         mode: json['mode'] ?? 'vibe',

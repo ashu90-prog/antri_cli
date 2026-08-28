@@ -521,6 +521,8 @@ async function clearCurrentChatContext() {
         <p>Minimalist environment for autonomous coding, architectural planning, and self-refinement. State, memory, profiles, and skills are synchronized across CLI and Desktop.</p>
         <div class="quick-action-pills">
           <button onclick="setPrompt('Plan the architecture for a real-time collaborative code editor')">Plan Editor Architecture</button>
+          <button onclick="setPrompt('/reproduce TypeError: Cannot read properties of undefined in calculateCartTotal')">🧬 BugTwin Reproduce</button>
+          <button onclick="setPrompt('/replay TypeError: Unhandled exception at src/server.ts:42:15')">⏱️ CrashZero Replay</button>
           <button onclick="setPrompt('/debate What are the trade-offs between WebSockets vs Server-Sent Events?')">Start Dialectic Debate</button>
           <button onclick="setPrompt('/goal Implement a zero-dependency LRU cache with TTL in TypeScript')">Run Goal Loop</button>
         </div>
@@ -2113,4 +2115,209 @@ function setSandboxDevice(device) {
     iframe.style.margin = '0';
   }
 }
+
+// -------------------------------------------------------------
+// ARTIFACTS HUB & INTERACTIVE STAGE ENGINE
+// -------------------------------------------------------------
+
+let allArtifactsList = [];
+let activeStageArtifact = null;
+let currentArtifactTypeFilter = 'all';
+let currentArtifactSearchQuery = '';
+
+async function loadArtifactsTab() {
+  const container = document.getElementById('artifacts-list-container');
+  if (!container) return;
+  container.innerHTML = '<div class="placeholder-text" style="text-align:center;padding:30px 10px;color:var(--text-muted);font-size:13px;">Loading artifacts...</div>';
+
+  try {
+    const res = await fetch('/api/artifacts');
+    const data = await res.json();
+    allArtifactsList = data.artifacts || [];
+
+    if (allArtifactsList.length === 0) {
+      container.innerHTML = '<div class="placeholder-text" style="text-align:center;padding:40px 10px;color:var(--text-muted);font-size:13px;">No artifacts generated yet.<br><br>Use <code>/reproduce</code>, <code>/replay</code>, or <code>/view</code> in Agent Studio to generate interactive artifacts!</div>';
+      return;
+    }
+
+    renderArtifactsList();
+
+    // Auto-preview first artifact if none selected
+    if (!activeStageArtifact && allArtifactsList.length > 0) {
+      previewArtifactOnStage(allArtifactsList[0].id);
+    }
+  } catch (err) {
+    container.innerHTML = `<div class="placeholder-text" style="color:#ef4444;text-align:center;padding:20px;">Failed to load artifacts: ${err.message}</div>`;
+  }
+}
+
+function renderArtifactsList() {
+  const container = document.getElementById('artifacts-list-container');
+  if (!container) return;
+
+  const filtered = allArtifactsList.filter((art) => {
+    // Type filter
+    if (currentArtifactTypeFilter !== 'all') {
+      const artType = (art.type || '').toLowerCase();
+      if (currentArtifactTypeFilter === 'bugtwin' && !artType.includes('bugtwin') && !art.id.startsWith('bugtwin_')) return false;
+      if (currentArtifactTypeFilter === 'crashzero' && !artType.includes('crashzero') && !art.id.startsWith('crashzero_')) return false;
+      if (currentArtifactTypeFilter === 'mindmap' && !artType.includes('mindmap') && !art.id.startsWith('mindmap_')) return false;
+      if (currentArtifactTypeFilter === 'html' && (artType.includes('bugtwin') || artType.includes('crashzero') || artType.includes('mindmap'))) return false;
+    }
+
+    // Search query filter
+    if (currentArtifactSearchQuery) {
+      const q = currentArtifactSearchQuery.toLowerCase();
+      const matchTitle = (art.title || '').toLowerCase().includes(q);
+      const matchId = (art.id || '').toLowerCase().includes(q);
+      const matchSession = (art.sessionTitle || '').toLowerCase().includes(q);
+      if (!matchTitle && !matchId && !matchSession) return false;
+    }
+
+    return true;
+  });
+
+  if (filtered.length === 0) {
+    container.innerHTML = '<div class="placeholder-text" style="text-align:center;padding:30px 10px;color:var(--text-muted);font-size:12px;">No matching artifacts found.</div>';
+    return;
+  }
+
+  container.innerHTML = '';
+  filtered.forEach((art) => {
+    const isSelected = activeStageArtifact && activeStageArtifact.id === art.id;
+    const card = document.createElement('div');
+    card.className = `artifact-list-card ${isSelected ? 'active' : ''}`;
+    card.style.cssText = `padding:12px;border-radius:10px;background:${isSelected ? 'var(--primary-subtle)' : 'var(--bg-subtle)'};border:1px solid ${isSelected ? 'var(--primary)' : 'var(--border-color)'};cursor:pointer;transition:all 0.15s ease;display:flex;flex-direction:column;gap:6px;`;
+
+    let icon = '🌐';
+    let badgeColor = 'var(--text-muted)';
+    let typeLabel = 'HTML App';
+
+    if (art.id.startsWith('bugtwin_') || (art.type || '').includes('bugtwin')) {
+      icon = '🧬';
+      badgeColor = '#10b981';
+      typeLabel = 'BugTwin Sandbox';
+    } else if (art.id.startsWith('crashzero_') || (art.type || '').includes('crashzero')) {
+      icon = '⏱️';
+      badgeColor = '#ef4444';
+      typeLabel = 'CrashZero Replay';
+    } else if (art.id.startsWith('mindmap_') || (art.type || '').includes('mindmap')) {
+      icon = '🧠';
+      badgeColor = '#6366f1';
+      typeLabel = 'Mind Map';
+    } else if (art.id.startsWith('graph_') || (art.type || '').includes('graph')) {
+      icon = '🏗️';
+      badgeColor = '#3b82f6';
+      typeLabel = 'Architecture Graph';
+    }
+
+    const timeStr = art.createdAt ? new Date(art.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+
+    card.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+        <div style="display:flex;align-items:center;gap:6px;overflow:hidden;">
+          <span style="font-size:16px;">${icon}</span>
+          <span style="font-size:12.5px;font-weight:700;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${art.title || art.id}</span>
+        </div>
+        <span style="font-size:10px;font-family:var(--font-mono);color:${badgeColor};background:rgba(255,255,255,0.05);padding:2px 6px;border-radius:4px;border:1px solid rgba(255,255,255,0.08);white-space:nowrap;">${typeLabel}</span>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;color:var(--text-muted);">
+        <span style="font-family:var(--font-mono);font-size:10px;">${art.id}</span>
+        <span>${timeStr}</span>
+      </div>
+    `;
+
+    card.onclick = () => previewArtifactOnStage(art.id);
+    container.appendChild(card);
+  });
+}
+
+function filterArtifactsList(query) {
+  currentArtifactSearchQuery = (query || '').trim();
+  renderArtifactsList();
+}
+
+function filterArtifactsByType(type) {
+  currentArtifactTypeFilter = type;
+  document.querySelectorAll('.artifact-type-pills .device-btn').forEach((b) => b.classList.remove('active'));
+  event?.target?.classList.add('active');
+  renderArtifactsList();
+}
+
+function previewArtifactOnStage(artifactId) {
+  const art = allArtifactsList.find((a) => a.id === artifactId);
+  if (!art) return;
+
+  activeStageArtifact = art;
+  renderArtifactsList();
+
+  const titleEl = document.getElementById('stage-artifact-title');
+  const metaEl = document.getElementById('stage-artifact-meta');
+  const iconEl = document.getElementById('stage-artifact-icon');
+  const iframe = document.getElementById('stage-artifact-iframe');
+
+  if (titleEl) titleEl.textContent = art.title || art.id;
+
+  let icon = '🌐';
+  let typeLabel = 'Interactive Application';
+
+  if (art.id.startsWith('bugtwin_') || (art.type || '').includes('bugtwin')) {
+    icon = '🧬';
+    typeLabel = 'BugTwin Autonomous Verification Sandbox';
+  } else if (art.id.startsWith('crashzero_') || (art.type || '').includes('crashzero')) {
+    icon = '⏱️';
+    typeLabel = 'CrashZero Time-Travel Scrubbable Replay';
+  } else if (art.id.startsWith('mindmap_') || (art.type || '').includes('mindmap')) {
+    icon = '🧠';
+    typeLabel = 'Hierarchical Visual Mind Map';
+  }
+
+  if (iconEl) iconEl.textContent = icon;
+  if (metaEl) metaEl.textContent = `${typeLabel} · ID: ${art.id}`;
+
+  if (iframe) {
+    if (art.type === 'mindmap' || (art.content || '').startsWith('mindmap')) {
+      const escaped = (art.content || '').replace(/`/g, '\\`');
+      iframe.srcdoc = `<!DOCTYPE html><html><head><meta charset="utf-8"><script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script><style>body{margin:0;background:#090d16;color:#f8fafc;display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif;}</style></head><body><pre class="mermaid" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;">${art.content}</pre><script>mermaid.initialize({startOnLoad:true,theme:'dark'});</script></body></html>`;
+    } else {
+      iframe.srcdoc = art.content || '';
+    }
+  }
+}
+
+function setStageDevice(device) {
+  const iframe = document.getElementById('stage-artifact-iframe');
+  document.querySelectorAll('#stage-device-toggles .device-btn').forEach((b) => b.classList.remove('active'));
+  event?.target?.classList.add('active');
+
+  if (!iframe) return;
+  if (device === 'mobile') {
+    iframe.style.width = '375px';
+    iframe.style.height = '667px';
+  } else if (device === 'tablet') {
+    iframe.style.width = '768px';
+    iframe.style.height = '1024px';
+  } else {
+    iframe.style.width = '100%';
+    iframe.style.height = '100%';
+  }
+}
+
+function reloadStageArtifact() {
+  if (activeStageArtifact) {
+    previewArtifactOnStage(activeStageArtifact.id);
+    showToast('Stage refreshed');
+  }
+}
+
+function openActiveArtifactInNewTab() {
+  if (!activeStageArtifact) return;
+  const newWin = window.open('', '_blank');
+  if (newWin) {
+    newWin.document.open();
+    newWin.document.write(activeStageArtifact.content || '');
+    newWin.document.close();
+  }
+}
+
 

@@ -222,15 +222,46 @@ program
     console.log(chalk.green('\n✅ Logged out successfully. Reverted to local session.\n'));
   });
 
+// Autonomous Bug Reproduction & Visual Fix Verification: antri reproduce [input] / antri bugtwin
+program
+  .command('reproduce [input...]')
+  .alias('bugtwin')
+  .description('Antri BugTwin: Autonomous minimal red test reproduction, self-healing patch, and visual sandbox verification')
+  .action(async (inputArgs) => {
+    const input = inputArgs && inputArgs.length > 0 ? inputArgs.join(' ') : 'Fix workspace bugs and failing tests';
+    const { BugTwinEngine } = await import('./core/bugTwin.js');
+    const engine = new BugTwinEngine();
+    const res = await engine.reproduceAndFix(input);
+    if (!res.success && !res.verified) {
+      process.exit(1);
+    }
+  });
+
+// Autonomous Incident Replay & Time-Travel Debugger: antri replay [input] / antri crashzero
+program
+  .command('replay [input...]')
+  .alias('crashzero')
+  .description('Antri CrashZero: Autonomous incident replay & scrubbable time-travel variable debugger')
+  .action(async (inputArgs) => {
+    const input = inputArgs && inputArgs.length > 0 ? inputArgs.join(' ') : 'TypeError: Unhandled runtime state exception';
+    const { CrashZeroEngine } = await import('./core/crashZero.js');
+    const engine = new CrashZeroEngine();
+    const res = await engine.replayAndHeal(input);
+    if (!res.success) {
+      process.exit(1);
+    }
+  });
+
 // Autonomous project bug fix command: antri fix [description]
 program
   .command('fix [description...]')
-  .description('Automatically diagnose and repair bugs, failing tests, or syntax errors in the current project')
+  .description('Automatically diagnose, reproduce, and repair bugs, failing tests, or syntax errors in the current project')
   .action(async (descriptionArgs) => {
-    const description = descriptionArgs && descriptionArgs.length > 0 ? descriptionArgs.join(' ') : undefined;
-    const { ProjectBugFixer } = await import('./core/fixer.js');
-    const res = await ProjectBugFixer.runFix(description);
-    if (!res.success && res.reason !== 'verification_failed') {
+    const description = descriptionArgs && descriptionArgs.length > 0 ? descriptionArgs.join(' ') : 'Diagnose and fix workspace bugs';
+    const { BugTwinEngine } = await import('./core/bugTwin.js');
+    const engine = new BugTwinEngine();
+    const res = await engine.reproduceAndFix(description);
+    if (!res.success && !res.verified) {
       process.exit(1);
     }
   });
@@ -244,6 +275,21 @@ program
     const { SelfDebugger } = await import('./core/debugger.js');
     const config = configManager.get();
     await SelfDebugger.runSelfDoctor(config);
+  });
+
+// Pure Backend API Server command: antri backend / antri api
+program
+  .command('backend')
+  .alias('api')
+  .description('Launch the headless ANTRI Cloud Run Backend API server')
+  .action(async () => {
+    process.env.ANTRI_BACKEND_ONLY = 'true';
+    const server = new DesktopServer();
+    const port = await server.start();
+    console.log(chalk.green(`\n⚡ ANTRI Cloud Run Backend API running on port ${port}`));
+    console.log(chalk.hex('#94a3b8')(`   Google GenAI SDK: @google/genai`));
+    console.log(chalk.hex('#94a3b8')(`   Default Model:    gemini-3.7-flash`));
+    console.log(chalk.hex('#94a3b8')(`   Health Endpoint:  http://localhost:${port}/api/health\n`));
   });
 
 // Self-update command: antri update
