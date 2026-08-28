@@ -23,6 +23,29 @@ class AIService {
 
     final finalSystem = '$systemPrompt\n\nActive Mode: ${config.mode.toUpperCase()}\nActive Profile: ${config.activeProfile}';
 
+    // 0. Remote Google Cloud Backend (Cloud Run / Cloud Shell)
+    if (customUrl.isNotEmpty && (customUrl.startsWith('http://') || customUrl.startsWith('https://'))) {
+      try {
+        final cleanUrl = customUrl.replaceAll(RegExp(r'/$'), '');
+        final endpoint = '$cleanUrl/api/chat';
+        final response = await http.post(
+          Uri.parse(endpoint),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'prompt': promptToSend,
+            'model': model.isNotEmpty ? model : 'gemini-3.7-flash',
+            'history': conversationHistory.map((m) => {'role': m.role, 'content': m.content}).toList(),
+          }),
+        );
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+          final data = jsonDecode(utf8.decode(response.bodyBytes));
+          return data['response'] ?? data['text'] ?? data['content'] ?? data['choices']?[0]?['message']?['content'] ?? 'No output generated.';
+        }
+      } catch (_) {
+        // Fallback to direct client call if backend unavailable
+      }
+    }
+
     // 1. OpenAI-compatible providers
     final Map<String, String> baseUrls = {
       'deepseek': 'https://api.deepseek.com/v1',
@@ -76,7 +99,19 @@ class AIService {
 
     // 2. Google Gemini
     if (prov == 'gemini') {
-      final endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$apiKey';
+      // Normalize model name for Google Generative Language v1beta API
+      String normalizedModel = model.replaceAll(RegExp(r'^models/'), '').trim();
+      if (normalizedModel.isEmpty) normalizedModel = 'gemini-3.7-flash';
+
+      // Dynamic alias mapping to verified Google v1beta model IDs
+      if (normalizedModel == 'gemini-3.5-pro' || normalizedModel == 'gemini-3.5') {
+        normalizedModel = 'gemini-3.1-pro-preview';
+      } else if (normalizedModel == 'gemini-3.7-pro') {
+        normalizedModel = 'gemini-3.7-flash';
+      } else if (normalizedModel == 'gemini-2.0-flash' || normalizedModel == 'gemini-2.0-flash-thinking-exp-01-21' || normalizedModel == 'gemini-2.0') {
+        normalizedModel = 'gemini-2.5-flash';
+      }
+
       final List<Map<String, dynamic>> contents = [];
 
       for (int i = 0; i < conversationHistory.length; i++) {
@@ -109,11 +144,26 @@ class AIService {
         });
       }
 
-      final response = await http.post(
+      final endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/$normalizedModel:generateContent?key=$apiKey';
+
+      var response = await http.post(
         Uri.parse(endpoint),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'contents': contents}),
       );
+
+      // Automatic resilient fallback if 404 (model not found), 503 (high demand), or 429
+      if (response.statusCode != 200 && normalizedModel != 'gemini-2.5-flash') {
+        final fallbackEndpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$apiKey';
+        final fallbackResp = await http.post(
+          Uri.parse(fallbackEndpoint),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'contents': contents}),
+        );
+        if (fallbackResp.statusCode >= 200 && fallbackResp.statusCode < 300) {
+          response = fallbackResp;
+        }
+      }
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final data = jsonDecode(utf8.decode(response.bodyBytes));

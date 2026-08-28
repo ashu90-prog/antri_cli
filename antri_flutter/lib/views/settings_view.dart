@@ -27,12 +27,12 @@ class _SettingsViewState extends State<SettingsView> {
 
   final List<Map<String, String>> _geminiModels = const [
     {'id': 'gemini-3.7-flash', 'name': 'Gemini 3.7 Flash (Default Flagship)'},
-    {'id': 'gemini-3.7-pro', 'name': 'Gemini 3.7 Pro (Advanced Reasoning)'},
-    {'id': 'gemini-3.5-pro', 'name': 'Gemini 3.5 Pro (Deep Coding)'},
+    {'id': 'gemini-3.1-pro-preview', 'name': 'Gemini 3.1 Pro (Advanced Reasoning)'},
+    {'id': 'gemini-3.5-flash', 'name': 'Gemini 3.5 Flash (Fast Coding)'},
     {'id': 'gemini-2.5-flash', 'name': 'Gemini 2.5 Flash (Ultra Fast)'},
     {'id': 'gemini-2.5-pro', 'name': 'Gemini 2.5 Pro (2M Long Context)'},
-    {'id': 'gemini-2.0-flash', 'name': 'Gemini 2.0 Flash (Multimodal)'},
-    {'id': 'gemini-2.0-flash-thinking-exp-01-21', 'name': 'Gemini 2.0 Flash Thinking'},
+    {'id': 'gemini-flash-latest', 'name': 'Gemini Flash (Auto-Latest)'},
+    {'id': 'gemini-pro-latest', 'name': 'Gemini Pro (Auto-Latest)'},
     {'id': 'custom', 'name': 'Custom Gemini Model ID (Type Below)'},
   ];
 

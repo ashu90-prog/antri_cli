@@ -175,6 +175,49 @@ CRITICAL INSTRUCTIONS:
 
     this.renderConsensusFooter(stages, depth);
 
+    // Persist into sessionManager and artifactManager so Desktop UI displays it
+    try {
+      const { sessionManager } = await import('./sessionManager.js');
+      const { artifactManager } = await import('./artifactManager.js');
+      const activeSession = sessionManager.getActiveSession();
+      const sessionId = activeSession?.id || 'cli_session';
+      const sessionTitle = activeSession?.title || 'CLI Session';
+
+      const fullDebateReport = `### 🧠 Dialectic Self-Debate: "${query}" (Depth: ${depth.toUpperCase()})
+
+#### 💡 1. The Proposer (Thesis)
+${thesisContent}
+
+#### ⚔️ 2. The Adversary (Antithesis)
+${antithesisContent}
+
+${verificationContent ? `#### 🔬 3. Empirical Verification\n${verificationContent}\n\n` : ''}
+${revisedThesisContent ? `#### 🛡️ 4. Revised Proposal\n${revisedThesisContent}\n\n` : ''}
+#### ⚖️ 5. Supreme Consensus & Synthesis
+${synthesisContent}`;
+
+      sessionManager.addMessageToActiveSession({
+        role: 'user',
+        content: `/debate ${query}`,
+      });
+      sessionManager.addMessageToActiveSession({
+        role: 'assistant',
+        content: fullDebateReport,
+      });
+
+      const artifactId = 'debate_' + Date.now().toString(36);
+      const htmlContent = this.generateInteractiveDebateHtml(query, depth, stages);
+      artifactManager.saveArtifact({
+        id: artifactId,
+        sessionId,
+        sessionTitle,
+        title: `Debate: ${query.slice(0, 40)}`,
+        type: 'html',
+        content: htmlContent,
+        createdAt: Date.now(),
+      });
+    } catch (_) {}
+
     return {
       query,
       depth,
@@ -185,6 +228,63 @@ CRITICAL INSTRUCTIONS:
       stages,
       sources: this.citationEngine.getSources().map((s) => s.url),
     };
+  }
+
+  public generateInteractiveDebateHtml(query: string, depth: string, stages: DialecticStage[]): string {
+    const thesis = stages.find(s => s.persona === 'proposer')?.content || '';
+    const adversary = stages.find(s => s.persona === 'adversary')?.content || '';
+    const judge = stages.find(s => s.persona === 'judge')?.content || '';
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dialectic Arena: ${query.replace(/"/g, '&quot;')}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background-color: #0f172a; color: #f8fafc; font-family: ui-sans-serif, system-ui, sans-serif; }
+    .glass { background: rgba(30, 41, 59, 0.85); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); }
+  </style>
+</head>
+<body class="p-6 md:p-10 max-w-6xl mx-auto">
+  <header class="mb-8 border-b border-slate-800 pb-6">
+    <div class="inline-block px-3 py-1 bg-purple-950 text-purple-300 rounded-full text-xs font-bold tracking-wide uppercase mb-2">
+      🧠 ANTRI Dialectic Multi-Persona Arena · Depth: ${depth.toUpperCase()}
+    </div>
+    <h1 class="text-2xl md:text-3xl font-extrabold text-white">${query.replace(/</g, '&lt;')}</h1>
+  </header>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+    <!-- Thesis -->
+    <div class="glass p-6 rounded-xl border-l-4 border-emerald-400">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="text-xl">💡</span>
+        <h2 class="text-lg font-bold text-emerald-400">The Proposer (Thesis)</h2>
+      </div>
+      <div class="text-slate-300 text-sm leading-relaxed whitespace-pre-wrap">${thesis.replace(/</g, '&lt;')}</div>
+    </div>
+
+    <!-- Antithesis -->
+    <div class="glass p-6 rounded-xl border-l-4 border-rose-400">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="text-xl">⚔️</span>
+        <h2 class="text-lg font-bold text-rose-400">The Adversary (Antithesis)</h2>
+      </div>
+      <div class="text-slate-300 text-sm leading-relaxed whitespace-pre-wrap">${adversary.replace(/</g, '&lt;')}</div>
+    </div>
+  </div>
+
+  <!-- Synthesis -->
+  <div class="glass p-8 rounded-xl border-l-4 border-purple-500 bg-slate-900/90 shadow-2xl">
+    <div class="flex items-center gap-2 mb-4">
+      <span class="text-2xl">⚖️</span>
+      <h2 class="text-xl font-bold text-purple-300">Supreme Consensus & Battle-Tested Synthesis</h2>
+    </div>
+    <div class="text-slate-200 text-sm md:text-base leading-relaxed whitespace-pre-wrap">${judge.replace(/</g, '&lt;')}</div>
+  </div>
+</body>
+</html>`;
   }
 
   /**

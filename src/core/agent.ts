@@ -617,6 +617,45 @@ ${twinRes.diff ? '```diff\n' + twinRes.diff.slice(0, 400) + '\n```' : ''}`;
       return summaryText;
     }
 
+    // 5e. Auto-Initialize Dialectic Engine for multi-persona debate & tradeoff consensus
+    if (isDebateOrTradeoffQuery(userPrompt) || userPrompt.startsWith('/debate') || userPrompt.startsWith('/dialectic')) {
+      const { DialecticEngine } = await import('./dialectic.js');
+      const debateEngine = new DialecticEngine(this.config);
+
+      const statusNote = chalk.bold.hex('#c084fc')('\n🧠 [Initializing ANTRI Dialectic Multi-Persona Consensus Engine...]');
+      console.log(statusNote);
+      if (onStreamToken) onStreamToken('🧠 *[Synthesizing multi-persona dialectic debate & architectural consensus...]*\n\n');
+
+      const debateInput = userPrompt.replace(/^(\/debate|\/dialectic|debate:|tradeoff:)\s*/i, '').trim() || userPrompt;
+      const debateRes = await debateEngine.debate(debateInput, this.config.debateDepth || 'deep');
+
+      const summaryText = `### 🧠 Dialectic Consensus Report: "${debateInput}"
+
+#### 💡 1. The Proposer (Thesis)
+${debateRes.thesis}
+
+#### ⚔️ 2. The Adversary (Antithesis)
+${debateRes.antithesis}
+
+${debateRes.verification ? `#### 🔬 3. Empirical Verification\n${debateRes.verification}\n\n` : ''}
+#### ⚖️ 4. Supreme Consensus & Synthesis
+${debateRes.synthesis}`;
+
+      if (onStreamToken) {
+        onStreamToken(`\n${summaryText}\n`);
+      }
+
+      memoryManager.recordInteraction(userPrompt, summaryText);
+      const duration = Date.now() - startTime;
+      metaOptimizer.recordQuerySuccess(duration);
+
+      const elapsed = Math.max(0.1, duration / 1000).toFixed(0);
+      const modeTag = (this.config.mode || 'vibe').toUpperCase();
+      console.log(chalk.hex('#64748b')(`* Worked for ${elapsed}s · Mode: ${modeTag} · Profile: ${activeProfileName}`));
+      console.log();
+      return summaryText;
+    }
+
     const response = await this.runAgentLoop(0, contextText, skillContext, onStreamToken, onToolCall);
 
     // 5c. Materialize any unwritten code blocks & enhance web projects

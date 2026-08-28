@@ -905,12 +905,12 @@ $memoriesText
     final Map<String, List<String>> modelsByProvider = {
       'gemini': [
         'gemini-3.7-flash',
-        'gemini-3.7-pro',
-        'gemini-3.5-pro',
+        'gemini-3.1-pro-preview',
+        'gemini-3.5-flash',
         'gemini-2.5-flash',
         'gemini-2.5-pro',
-        'gemini-2.0-flash',
-        'gemini-2.0-flash-thinking-exp-01-21',
+        'gemini-flash-latest',
+        'gemini-pro-latest',
       ],
     };
 
