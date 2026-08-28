@@ -35,51 +35,44 @@ export class GeminiProvider implements LLMProvider {
       this.ai = new GoogleGenAI({ apiKey: this.apiKey });
     }
 
-    const contents = messages
-      .filter((m) => m.role !== 'system')
-      .map((m) => ({
-        role: m.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: m.content }],
-      }));
+    const sanitizedContents: any[] = [];
+    let currentTurn: { role: string; parts: { text: string }[] } | null = null;
+
+    for (const m of messages) {
+      if (m.role === 'system') continue;
+      const role = m.role === 'assistant' ? 'model' : 'user';
+      const text = m.content || '';
+      if (!text.trim()) continue;
+
+      if (currentTurn && currentTurn.role === role) {
+        currentTurn.parts.push({ text });
+      } else {
+        currentTurn = { role, parts: [{ text }] };
+        sanitizedContents.push(currentTurn);
+      }
+    }
+
+    if (sanitizedContents.length === 0) {
+      sanitizedContents.push({ role: 'user', parts: [{ text: 'Hello' }] });
+    }
 
     const systemMsg = messages.find((m) => m.role === 'system');
+    const normalizedModel = this.model.replace(/^models\//, '');
+
+    // Direct Google Generative Language REST SSE Streaming (Zero-Latency Instant Streaming)
+    const payload: any = {
+      contents: sanitizedContents,
+    };
+
+    if (systemMsg) {
+      payload.systemInstruction = {
+        parts: [{ text: systemMsg.content }],
+      };
+    }
+
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${normalizedModel}:streamGenerateContent?alt=sse&key=${this.apiKey}`;
 
     try {
-      // Primary: Google GenAI SDK (@google/genai)
-      const streamResponse = await this.ai.models.generateContentStream({
-        model: this.model,
-        contents,
-        config: systemMsg ? { systemInstruction: systemMsg.content } : undefined,
-      });
-
-      let fullContent = '';
-      for await (const chunk of streamResponse) {
-        const text = chunk.text || '';
-        if (text) {
-          fullContent += text;
-          callbacks.onToken(text);
-        }
-      }
-
-      if (callbacks.onComplete) {
-        callbacks.onComplete(fullContent);
-      }
-
-      return fullContent;
-    } catch (sdkError: any) {
-      // Direct Google Generative Language REST SSE fallback
-      const payload: any = {
-        contents,
-      };
-
-      if (systemMsg) {
-        payload.systemInstruction = {
-          parts: [{ text: systemMsg.content }],
-        };
-      }
-
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:streamGenerateContent?alt=sse&key=${this.apiKey}`;
-
       const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -130,6 +123,31 @@ export class GeminiProvider implements LLMProvider {
       }
 
       return fullContent;
+    } catch (sseError: any) {
+      // Secondary fallback to Google GenAI SDK (@google/genai)
+      if (this.ai) {
+        const streamResponse = await this.ai.models.generateContentStream({
+          model: normalizedModel,
+          contents: sanitizedContents,
+          config: systemMsg ? { systemInstruction: systemMsg.content } : undefined,
+        });
+
+        let fullContent = '';
+        for await (const chunk of streamResponse) {
+          const text = chunk.text || '';
+          if (text) {
+            fullContent += text;
+            callbacks.onToken(text);
+          }
+        }
+
+        if (callbacks.onComplete) {
+          callbacks.onComplete(fullContent);
+        }
+
+        return fullContent;
+      }
+      throw sseError;
     }
   }
 
