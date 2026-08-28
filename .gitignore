@@ -12,15 +12,15 @@ dist/
 .antri/
 
 # Internal Agent Memory & References (Not needed for production repo)
-Memory/
-memory/
-Refrence/
-Reference/
-refrence/
-reference/
+/Memory/
+/Refrence/
+/Reference/
+/refrence/
+/reference/
 AGENTS.md
 GEMINI.md
 .agents/
+!src/memory/
 *.html
 !src/desktop/public/index.html
 !src/mobile/public/index.html

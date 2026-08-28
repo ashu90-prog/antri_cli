@@ -27,10 +27,13 @@ class _SettingsViewState extends State<SettingsView> {
 
   final List<Map<String, String>> _geminiModels = const [
     {'id': 'gemini-3.7-flash', 'name': 'Gemini 3.7 Flash (Default Flagship)'},
-    {'id': 'gemini-3.7-pro', 'name': 'Gemini 3.7 Pro (Advanced Multimodal)'},
-    {'id': 'gemini-3.5-pro', 'name': 'Gemini 3.5 Pro (Deep Reasoning)'},
-    {'id': 'gemini-2.5-flash', 'name': 'Gemini 2.5 Flash (High Efficiency)'},
-    {'id': 'gemini-2.5-pro', 'name': 'Gemini 2.5 Pro (2M Context)'},
+    {'id': 'gemini-3.7-pro', 'name': 'Gemini 3.7 Pro (Advanced Reasoning)'},
+    {'id': 'gemini-3.5-pro', 'name': 'Gemini 3.5 Pro (Deep Coding)'},
+    {'id': 'gemini-2.5-flash', 'name': 'Gemini 2.5 Flash (Ultra Fast)'},
+    {'id': 'gemini-2.5-pro', 'name': 'Gemini 2.5 Pro (2M Long Context)'},
+    {'id': 'gemini-2.0-flash', 'name': 'Gemini 2.0 Flash (Multimodal)'},
+    {'id': 'gemini-2.0-flash-thinking-exp-01-21', 'name': 'Gemini 2.0 Flash Thinking'},
+    {'id': 'custom', 'name': 'Custom Gemini Model ID (Type Below)'},
   ];
 
   @override
@@ -50,8 +53,12 @@ class _SettingsViewState extends State<SettingsView> {
   void _onModelChanged(String? newModel) {
     if (newModel != null) {
       setState(() {
-        widget.config.model = newModel;
-        _customModelController.text = newModel;
+        if (newModel == 'custom') {
+          widget.config.model = _customModelController.text.isNotEmpty ? _customModelController.text : 'gemini-3.7-flash';
+        } else {
+          widget.config.model = newModel;
+          _customModelController.text = newModel;
+        }
       });
     }
   }
@@ -318,7 +325,7 @@ class _SettingsViewState extends State<SettingsView> {
                   ),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
-                      value: _geminiModels.any((m) => m['id'] == widget.config.model) ? widget.config.model : 'gemini-3.7-flash',
+                      value: _geminiModels.any((m) => m['id'] == widget.config.model && m['id'] != 'custom') ? widget.config.model : 'custom',
                       isExpanded: true,
                       items: _geminiModels.map(
                         (m) => DropdownMenuItem<String>(
@@ -331,6 +338,10 @@ class _SettingsViewState extends State<SettingsView> {
                   ),
                 ),
                 const SizedBox(height: 14),
+
+                if (!_geminiModels.any((m) => m['id'] == widget.config.model && m['id'] != 'custom')) ...[
+                  _buildField('Custom Gemini Model Identifier', _customModelController, hint: 'e.g. gemini-3.7-pro-preview'),
+                ],
 
                 _buildField('Gemini API Key', _apiKeyController, obscure: true, hint: 'AIzaSy...'),
                 _buildField('Cloud Run Backend URL (Optional)', _baseUrlController, hint: 'https://antri-backend-xxxx.run.app'),
