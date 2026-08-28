@@ -80,6 +80,17 @@ export class GeminiProvider implements LLMProvider {
       });
 
       if (!response.ok) {
+        if ((response.status === 503 || response.status === 429 || response.status === 404) && normalizedModel !== 'gemini-2.5-flash') {
+          const fallbackUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key=${this.apiKey}`;
+          const fallbackResp = await fetch(fallbackUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+          if (fallbackResp.ok && fallbackResp.body) {
+            return this.consumeSseStream(fallbackResp.body, callbacks);
+          }
+        }
         const errText = await response.text();
         throw new Error(`Gemini API error (${response.status}): ${errText}`);
       }
@@ -88,67 +99,98 @@ export class GeminiProvider implements LLMProvider {
         throw new Error('Gemini response body is null');
       }
 
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder('utf-8');
-      let fullContent = '';
-      let buffer = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (trimmed.startsWith('data: ')) {
-            try {
-              const data = JSON.parse(trimmed.slice(6));
-              const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-              if (text) {
-                fullContent += text;
-                callbacks.onToken(text);
-              }
-            } catch {
-              // Ignore parse errors on chunks
-            }
-          }
-        }
-      }
-
-      if (callbacks.onComplete) {
-        callbacks.onComplete(fullContent);
-      }
-
-      return fullContent;
+      return this.consumeSseStream(response.body, callbacks);
     } catch (sseError: any) {
       // Secondary fallback to Google GenAI SDK (@google/genai)
       if (this.ai) {
-        const streamResponse = await this.ai.models.generateContentStream({
-          model: normalizedModel,
-          contents: sanitizedContents,
-          config: systemMsg ? { systemInstruction: systemMsg.content } : undefined,
-        });
+        try {
+          const streamResponse = await this.ai.models.generateContentStream({
+            model: normalizedModel,
+            contents: sanitizedContents,
+            config: systemMsg ? { systemInstruction: systemMsg.content } : undefined,
+          });
 
-        let fullContent = '';
-        for await (const chunk of streamResponse) {
-          const text = chunk.text || '';
-          if (text) {
-            fullContent += text;
-            callbacks.onToken(text);
+          let fullContent = '';
+          for await (const chunk of streamResponse) {
+            const text = chunk.text || '';
+            if (text) {
+              fullContent += text;
+              callbacks.onToken(text);
+            }
           }
-        }
 
-        if (callbacks.onComplete) {
-          callbacks.onComplete(fullContent);
-        }
+          if (callbacks.onComplete) {
+            callbacks.onComplete(fullContent);
+          }
 
-        return fullContent;
+          return fullContent;
+        } catch {
+          // If primary model failed in SDK, fallback to gemini-2.5-flash
+          const streamResponse = await this.ai.models.generateContentStream({
+            model: 'gemini-2.5-flash',
+            contents: sanitizedContents,
+            config: systemMsg ? { systemInstruction: systemMsg.content } : undefined,
+          });
+
+          let fullContent = '';
+          for await (const chunk of streamResponse) {
+            const text = chunk.text || '';
+            if (text) {
+              fullContent += text;
+              callbacks.onToken(text);
+            }
+          }
+
+          if (callbacks.onComplete) {
+            callbacks.onComplete(fullContent);
+          }
+
+          return fullContent;
+        }
       }
       throw sseError;
     }
+  }
+
+  private async consumeSseStream(
+    body: ReadableStream<Uint8Array>,
+    callbacks: StreamCallbacks
+  ): Promise<string> {
+    const reader = body.getReader();
+    const decoder = new TextDecoder('utf-8');
+    let fullContent = '';
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (trimmed.startsWith('data: ')) {
+          try {
+            const data = JSON.parse(trimmed.slice(6));
+            const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (text) {
+              fullContent += text;
+              callbacks.onToken(text);
+            }
+          } catch {
+            // Ignore parse errors on chunks
+          }
+        }
+      }
+    }
+
+    if (callbacks.onComplete) {
+      callbacks.onComplete(fullContent);
+    }
+
+    return fullContent;
   }
 
   private async streamFromCloudBackend(
