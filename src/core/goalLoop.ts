@@ -14,6 +14,21 @@ export interface GoalIterationResult {
   qualityScore?: number;
 }
 
+export interface GoalCallbacks {
+  onStatus?: (status: { iteration: number; message: string; type: string }) => void;
+  onStage?: (stage: GoalIterationResult) => void;
+  onToken?: (iteration: number, token: string) => void;
+}
+
+export interface GoalLoopResult {
+  objective: string;
+  draft: string;
+  critique: string;
+  finalOutput: string;
+  iterations: GoalIterationResult[];
+  duration: string;
+}
+
 export class GoalLoopEngine {
   private config: AntriConfig;
   private toolExecutor: ToolExecutor;
@@ -23,9 +38,10 @@ export class GoalLoopEngine {
     this.toolExecutor = new ToolExecutor(config.workingDir);
   }
 
-  public async runGoal(goalPrompt: string, maxIterations = 3): Promise<string> {
+  public async runGoal(goalPrompt: string, maxIterations = 3, callbacks?: GoalCallbacks): Promise<GoalLoopResult> {
     const startTime = Date.now();
     const activeProfile = profileManager.getActiveProfileName();
+    const iterations: GoalIterationResult[] = [];
 
     console.log();
     console.log(chalk.bgRgb(67, 56, 202).bold.white(` 🎯 AUTONOMOUS GOAL LOOP · OBJECTIVE `));
@@ -46,6 +62,7 @@ export class GoalLoopEngine {
     // ==========================================
     console.log(chalk.bold.hex('#10b981')('📍 [Iter 1/3: Formulate Initial Solution & Strategy]'));
     console.log(chalk.hex('#064e3b')('─'.repeat(74)));
+    callbacks?.onStatus?.({ iteration: 1, type: 'draft', message: 'Formulating initial solution & architecture plan...' });
 
     const iter1Messages: ChatMessage[] = [
       {
@@ -61,15 +78,27 @@ Be specific, write clean code, and address the core requirements.`,
     ];
 
     currentDraft = await provider.sendMessageStream(iter1Messages, activeTools, {
-      onToken: (t) => TerminalRenderer.printToken(t),
+      onToken: (t) => {
+        TerminalRenderer.printToken(t);
+        callbacks?.onToken?.(1, t);
+      },
     });
     console.log('\n');
+
+    const draftResult: GoalIterationResult = {
+      iteration: 1,
+      type: 'draft',
+      content: currentDraft,
+    };
+    iterations.push(draftResult);
+    callbacks?.onStage?.(draftResult);
 
     // ==========================================
     // ITERATION 2: ADVERSARIAL SELF-REVIEW & CRITIQUE
     // ==========================================
     console.log(chalk.bold.hex('#f43f5e')('🔍 [Iter 2/3: Adversarial Self-Review, Flaw Detection & Quality Scoring]'));
     console.log(chalk.hex('#881337')('─'.repeat(74)));
+    callbacks?.onStatus?.({ iteration: 2, type: 'review', message: 'Adversarial self-review, flaw detection & quality scoring...' });
 
     const iter2Messages: ChatMessage[] = [
       {
@@ -87,15 +116,27 @@ Evaluate the draft solution against the original goal with ruthless precision.
     ];
 
     currentCritique = await provider.sendMessageStream(iter2Messages, [], {
-      onToken: (t) => TerminalRenderer.printToken(t),
+      onToken: (t) => {
+        TerminalRenderer.printToken(t);
+        callbacks?.onToken?.(2, t);
+      },
     });
     console.log('\n');
+
+    const reviewResult: GoalIterationResult = {
+      iteration: 2,
+      type: 'review',
+      content: currentCritique,
+    };
+    iterations.push(reviewResult);
+    callbacks?.onStage?.(reviewResult);
 
     // ==========================================
     // ITERATION 3: REFINEMENT, HARDENING & SYNTHESIS
     // ==========================================
     console.log(chalk.bold.hex('#a855f7')('✨ [Iter 3/3: Hardening & Final Optimal Solution Delivery]'));
     console.log(chalk.hex('#581c87')('─'.repeat(74)));
+    callbacks?.onStatus?.({ iteration: 3, type: 'refinement', message: 'Hardening & final optimal solution delivery...' });
 
     const iter3Messages: ChatMessage[] = [
       {
@@ -111,9 +152,20 @@ Ensure every single critique and edge case is resolved with flawless code and ex
     ];
 
     finalSolution = await provider.sendMessageStream(iter3Messages, activeTools, {
-      onToken: (t) => TerminalRenderer.printToken(t),
+      onToken: (t) => {
+        TerminalRenderer.printToken(t);
+        callbacks?.onToken?.(3, t);
+      },
     });
     console.log('\n');
+
+    const refinementResult: GoalIterationResult = {
+      iteration: 3,
+      type: 'refinement',
+      content: finalSolution,
+    };
+    iterations.push(refinementResult);
+    callbacks?.onStage?.(refinementResult);
 
     // Record learning into memory
     const duration = ((Date.now() - startTime) / 1000).toFixed(1);
@@ -125,7 +177,99 @@ Ensure every single critique and edge case is resolved with flawless code and ex
     console.log(chalk.hex('#4338ca')('═'.repeat(74)));
     console.log();
 
-    return finalSolution;
+    // Persist into sessionManager and artifactManager so Desktop UI displays it
+    try {
+      const { sessionManager } = await import('./sessionManager.js');
+      const { artifactManager } = await import('./artifactManager.js');
+      const activeSession = sessionManager.getActiveSession();
+      const sessionId = activeSession?.id || 'cli_session';
+      const sessionTitle = activeSession?.title || 'CLI Session';
+
+      const fullGoalReport = `### 🎯 Autonomous Goal Loop: "${goalPrompt}"\n\n#### 📍 1. Initial Draft\n${currentDraft}\n\n#### 🔍 2. Adversarial Critique\n${currentCritique}\n\n#### ✨ 3. Hardened Final Solution\n${finalSolution}`;
+
+      sessionManager.addMessageToActiveSession({
+        role: 'user',
+        content: `/goal ${goalPrompt}`,
+      });
+      sessionManager.addMessageToActiveSession({
+        role: 'assistant',
+        content: fullGoalReport,
+      });
+
+      const artifactId = 'goal_' + Date.now().toString(36);
+      const htmlContent = this.generateInteractiveGoalHtml(goalPrompt, currentDraft, currentCritique, finalSolution, duration);
+      artifactManager.saveArtifact({
+        id: artifactId,
+        sessionId,
+        sessionTitle,
+        title: `Goal: ${goalPrompt.slice(0, 40)}`,
+        type: 'html',
+        content: htmlContent,
+        createdAt: Date.now(),
+      });
+    } catch (_) {}
+
+    return {
+      objective: goalPrompt,
+      draft: currentDraft,
+      critique: currentCritique,
+      finalOutput: finalSolution,
+      iterations,
+      duration,
+    };
+  }
+
+  public generateInteractiveGoalHtml(objective: string, draft: string, critique: string, finalSolution: string, duration = '0'): string {
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Goal Loop: ${objective.replace(/"/g, '&quot;')}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background-color: #0f172a; color: #f8fafc; font-family: ui-sans-serif, system-ui, sans-serif; }
+    .glass { background: rgba(30, 41, 59, 0.85); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); }
+  </style>
+</head>
+<body class="p-6 md:p-10 max-w-6xl mx-auto">
+  <header class="mb-8 border-b border-slate-800 pb-6">
+    <div class="inline-block px-3 py-1 bg-indigo-950 text-indigo-300 rounded-full text-xs font-bold tracking-wide uppercase mb-2">
+      🎯 ANTRI Autonomous Goal Loop Pipeline · Completed in ${duration}s
+    </div>
+    <h1 class="text-2xl md:text-3xl font-extrabold text-white">${objective.replace(/</g, '&lt;')}</h1>
+  </header>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+    <!-- Stage 1 -->
+    <div class="glass p-6 rounded-xl border-l-4 border-emerald-400">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="text-xl">📍</span>
+        <h2 class="text-lg font-bold text-emerald-400">Stage 1: Formulation & Initial Draft</h2>
+      </div>
+      <div class="text-slate-300 text-sm leading-relaxed whitespace-pre-wrap">${draft.replace(/</g, '&lt;')}</div>
+    </div>
+
+    <!-- Stage 2 -->
+    <div class="glass p-6 rounded-xl border-l-4 border-rose-400">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="text-xl">🔍</span>
+        <h2 class="text-lg font-bold text-rose-400">Stage 2: Adversarial Review & Score</h2>
+      </div>
+      <div class="text-slate-300 text-sm leading-relaxed whitespace-pre-wrap">${critique.replace(/</g, '&lt;')}</div>
+    </div>
+  </div>
+
+  <!-- Stage 3 -->
+  <div class="glass p-8 rounded-xl border-l-4 border-purple-500 bg-slate-900/90 shadow-2xl">
+    <div class="flex items-center gap-2 mb-4">
+      <span class="text-2xl">✨</span>
+      <h2 class="text-xl font-bold text-purple-300">Stage 3: Hardened Optimal Delivery</h2>
+    </div>
+    <div class="text-slate-200 text-sm md:text-base leading-relaxed whitespace-pre-wrap">${finalSolution.replace(/</g, '&lt;')}</div>
+  </div>
+</body>
+</html>`;
   }
 
   /**

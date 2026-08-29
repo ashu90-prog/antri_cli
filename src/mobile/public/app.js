@@ -319,18 +319,67 @@ function setPrompt(text) {
   input.focus();
 }
 
+// Robust SSE Stream Reader with Chunk Buffer Persistence
+async function readSSEStream(response, onEvent) {
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+
+    let currentEvent = 'message';
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) {
+        currentEvent = 'message';
+        continue;
+      }
+      if (line.startsWith('event: ')) {
+        currentEvent = line.slice(7).trim();
+      } else if (line.startsWith('data: ')) {
+        const rawData = line.slice(6);
+        let parsed = rawData;
+        try {
+          parsed = JSON.parse(rawData);
+        } catch (_) {}
+        onEvent(currentEvent, parsed);
+      }
+    }
+  }
+
+  if (buffer.trim().startsWith('data: ')) {
+    const rawData = buffer.trim().slice(6);
+    let parsed = rawData;
+    try {
+      parsed = JSON.parse(rawData);
+    } catch (_) {}
+    onEvent('complete', parsed);
+  }
+}
+
 // Dialectic Debate Runner
 async function startMobileDebate() {
   const input = document.getElementById('mobile-debate-query');
   const query = input.value.trim();
   if (!query) return;
 
-  const depth = document.getElementById('mobile-debate-depth').value;
+  const depth = document.getElementById('mobile-debate-depth')?.value || 'deep';
 
-  document.getElementById('m-dialectic-thesis').textContent = 'Drafting thesis...';
-  document.getElementById('m-dialectic-antithesis').textContent = 'Awaiting thesis for critique...';
-  document.getElementById('m-dialectic-verification').textContent = 'Verification engine standby...';
-  document.getElementById('m-dialectic-synthesis').textContent = 'Consensus will appear here...';
+  const thesisEl = document.getElementById('m-dialectic-thesis');
+  const antithesisEl = document.getElementById('m-dialectic-antithesis');
+  const verificationEl = document.getElementById('m-dialectic-verification');
+  const synthesisEl = document.getElementById('m-dialectic-synthesis');
+
+  thesisEl.textContent = '💡 Formulating initial thesis & hypothesis...';
+  antithesisEl.textContent = '⏳ Awaiting thesis for adversarial critique...';
+  verificationEl.textContent = '🔬 Verification engine standby...';
+  synthesisEl.textContent = '⚖️ Synthesizer awaiting debate completion...';
 
   try {
     const res = await fetch('/api/debate', {
@@ -339,30 +388,30 @@ async function startMobileDebate() {
       body: JSON.stringify({ query, depth, config: mobileConfig }),
     });
 
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      const chunk = decoder.decode(value);
-      const lines = chunk.split('\n');
-
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          try {
-            const data = JSON.parse(line.slice(6));
-            if (data.thesis) document.getElementById('m-dialectic-thesis').textContent = data.thesis;
-            if (data.antithesis) document.getElementById('m-dialectic-antithesis').textContent = data.antithesis;
-            if (data.verification) document.getElementById('m-dialectic-verification').textContent = data.verification;
-            if (data.synthesis) document.getElementById('m-dialectic-synthesis').textContent = data.synthesis;
-          } catch (e) {}
+    await readSSEStream(res, (event, data) => {
+      if (event === 'status') {
+        if (data.stage === 'proposer') thesisEl.textContent = `💡 ${data.message}`;
+        else if (data.stage === 'adversary') antithesisEl.textContent = `⚔️ ${data.message}`;
+        else if (data.stage === 'researcher') verificationEl.textContent = `🔬 ${data.message}`;
+        else if (data.stage === 'judge') synthesisEl.textContent = `⚖️ ${data.message}`;
+      } else if (event === 'stage') {
+        if (data.persona === 'proposer') thesisEl.textContent = data.content;
+        else if (data.persona === 'adversary') antithesisEl.textContent = data.content;
+        else if (data.persona === 'researcher') verificationEl.textContent = data.content;
+        else if (data.persona === 'judge') synthesisEl.textContent = data.content;
+      } else if (event === 'complete') {
+        if (typeof data === 'object') {
+          if (data.thesis) thesisEl.textContent = data.thesis;
+          if (data.antithesis) antithesisEl.textContent = data.antithesis;
+          if (data.verification) verificationEl.textContent = data.verification;
+          if (data.synthesis) synthesisEl.textContent = data.synthesis;
         }
+      } else if (event === 'error') {
+        synthesisEl.textContent = `Debate error: ${data.message || data}`;
       }
-    }
+    });
   } catch (err) {
-    document.getElementById('m-dialectic-synthesis').textContent = `Debate error: ${err.message}`;
+    synthesisEl.textContent = `Debate error: ${err.message}`;
   }
 }
 
@@ -372,9 +421,13 @@ async function startMobileGoalLoop() {
   const objective = input.value.trim();
   if (!objective) return;
 
-  document.getElementById('m-goal-stage-1').textContent = 'Drafting plan & code...';
-  document.getElementById('m-goal-stage-2').textContent = 'Adversarial review standby...';
-  document.getElementById('m-goal-stage-3').textContent = 'Final synthesis standby...';
+  const stage1El = document.getElementById('m-goal-stage-1');
+  const stage2El = document.getElementById('m-goal-stage-2');
+  const stage3El = document.getElementById('m-goal-stage-3');
+
+  stage1El.textContent = '⚙️ Stage 1 executing: Drafting plan & code...';
+  stage2El.textContent = '⏳ Stage 2 standby: Awaiting draft for critique...';
+  stage3El.textContent = '✨ Stage 3 standby: Awaiting final synthesis...';
 
   try {
     const res = await fetch('/api/goal', {
@@ -383,29 +436,29 @@ async function startMobileGoalLoop() {
       body: JSON.stringify({ objective, config: mobileConfig }),
     });
 
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      const chunk = decoder.decode(value);
-      const lines = chunk.split('\n');
-
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          try {
-            const data = JSON.parse(line.slice(6));
-            if (data.draft) document.getElementById('m-goal-stage-1').textContent = data.draft;
-            if (data.critique) document.getElementById('m-goal-stage-2').textContent = data.critique;
-            if (data.finalOutput) document.getElementById('m-goal-stage-3').textContent = data.finalOutput;
-          } catch (e) {}
+    await readSSEStream(res, (event, data) => {
+      if (event === 'status') {
+        if (data.iteration === 1) stage1El.textContent = `⚙️ ${data.message}`;
+        else if (data.iteration === 2) stage2El.textContent = `🔍 ${data.message}`;
+        else if (data.iteration === 3) stage3El.textContent = `✨ ${data.message}`;
+      } else if (event === 'stage') {
+        if (data.iteration === 1 || data.type === 'draft') stage1El.textContent = data.content;
+        else if (data.iteration === 2 || data.type === 'review') stage2El.textContent = data.content;
+        else if (data.iteration === 3 || data.type === 'refinement') stage3El.textContent = data.content;
+      } else if (event === 'complete') {
+        if (typeof data === 'object') {
+          if (data.draft) stage1El.textContent = data.draft;
+          if (data.critique) stage2El.textContent = data.critique;
+          if (data.finalOutput) stage3El.textContent = data.finalOutput;
+        } else if (typeof data === 'string') {
+          stage3El.textContent = data;
         }
+      } else if (event === 'error') {
+        stage3El.textContent = `Goal error: ${data.message || data}`;
       }
-    }
+    });
   } catch (err) {
-    document.getElementById('m-goal-stage-3').textContent = `Goal error: ${err.message}`;
+    stage3El.textContent = `Goal error: ${err.message}`;
   }
 }
 

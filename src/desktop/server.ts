@@ -584,7 +584,11 @@ export class DesktopServer {
 
           try {
             sendEvent('start', { query, depth });
-            const result = await engine.debate(query, depth);
+            const result = await engine.debate(query, depth, {
+              onStatus: (status) => sendEvent('status', status),
+              onStage: (stage) => sendEvent('stage', stage),
+              onToken: (persona, token) => sendEvent('token', { persona, token }),
+            });
             sendEvent('complete', result);
             res.end();
           } catch (err: any) {
@@ -611,7 +615,11 @@ export class DesktopServer {
 
           try {
             sendEvent('start', { objective });
-            const result = await engine.runGoal(objective);
+            const result = await engine.runGoal(objective, 3, {
+              onStatus: (status) => sendEvent('status', status),
+              onStage: (stage) => sendEvent('stage', stage),
+              onToken: (iteration, token) => sendEvent('token', { iteration, token }),
+            });
             sendEvent('complete', result);
             res.end();
           } catch (err: any) {

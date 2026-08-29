@@ -75,7 +75,7 @@ test('ToolExecutor identifies privacy & security sensitive tools', () => {
 
 test('Updater reports correct package name and current version', () => {
   assert.strictEqual(Updater.PACKAGE_NAME, 'antri_cli');
-  assert.strictEqual(Updater.CURRENT_VERSION, '1.57.33');
+  assert.strictEqual(Updater.CURRENT_VERSION, '1.57.36');
 });
 
 test('GoalLoopEngine initializes with active configuration', () => {
@@ -666,6 +666,95 @@ test('DialecticEngine and GoalLoopEngine execute silent background pipelines wit
   // Test silent goal
   const goalRes = await goalEngine.runSilentGoal('Design a fault-tolerant distributed lock service');
   assert.ok(goalRes.startsWith('> 🎯 [Goal Loop Plan Synthesized]'));
+});
+
+test('DialecticEngine and GoalLoopEngine stream real-time stages and emit structured results for Desktop panel', async () => {
+  const mockConfig = { ...new ConfigManager().get(), provider: 'mock' };
+  const dialectic = new DialecticEngine(mockConfig);
+  const goalEngine = new GoalLoopEngine(mockConfig);
+
+  // 1. DialecticEngine debate with streaming callbacks
+  const dialecticStages = [];
+  const dialecticTokens = [];
+  const dialecticStatuses = [];
+
+  const debateResult = await dialectic.debate('WebSockets vs Server-Sent Events', 'quick', {
+    onStatus: (status) => dialecticStatuses.push(status),
+    onStage: (stage) => dialecticStages.push(stage),
+    onToken: (persona, token) => dialecticTokens.push({ persona, token }),
+  });
+
+  assert.ok(debateResult);
+  assert.strictEqual(typeof debateResult.thesis, 'string');
+  assert.strictEqual(typeof debateResult.antithesis, 'string');
+  assert.strictEqual(typeof debateResult.synthesis, 'string');
+  assert.ok(dialecticStages.length >= 2, 'Dialectic should emit at least 2 stages in quick depth');
+  assert.ok(dialecticStatuses.length >= 2, 'Dialectic should emit status updates for personas');
+  assert.ok(dialecticTokens.length > 0, 'Dialectic should stream tokens to callbacks');
+
+  // 2. GoalLoopEngine runGoal with streaming callbacks and structured result
+  const goalStages = [];
+  const goalTokens = [];
+  const goalStatuses = [];
+
+  const goalResult = await goalEngine.runGoal('Implement a zero-dependency LRU cache with TTL in TypeScript', 3, {
+    onStatus: (status) => goalStatuses.push(status),
+    onStage: (stage) => goalStages.push(stage),
+    onToken: (iter, token) => goalTokens.push({ iter, token }),
+  });
+
+  assert.ok(goalResult);
+  assert.strictEqual(typeof goalResult.draft, 'string');
+  assert.strictEqual(typeof goalResult.critique, 'string');
+  assert.strictEqual(typeof goalResult.finalOutput, 'string');
+  assert.ok(goalResult.iterations.length === 3, 'GoalLoop should track all 3 iterations');
+  assert.ok(goalStages.length === 3, 'GoalLoop should emit 3 stage events');
+  assert.ok(goalStatuses.length === 3, 'GoalLoop should emit 3 status events');
+  assert.ok(goalTokens.length > 0, 'GoalLoop should stream tokens to callbacks');
+});
+
+test('DesktopServer /api/debate and /api/goal stream SSE events cleanly', async () => {
+  const prevProvider = configManager.get().provider;
+  configManager.setProvider('mock');
+
+  const server = new DesktopServer();
+  const port = await server.start();
+
+  try {
+    // 1. Test POST /api/debate SSE stream
+    const debateRes = await fetch(`http://localhost:${port}/api/debate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: 'Redis vs Memcached', depth: 'quick' }),
+    });
+    assert.strictEqual(debateRes.status, 200);
+    assert.strictEqual(debateRes.headers.get('content-type'), 'text/event-stream');
+
+    const debateText = await debateRes.text();
+    assert.ok(debateText.includes('event: start'));
+    assert.ok(debateText.includes('event: stage') || debateText.includes('event: token'));
+    assert.ok(debateText.includes('event: complete'));
+
+    // 2. Test POST /api/goal SSE stream
+    const goalRes = await fetch(`http://localhost:${port}/api/goal`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ objective: 'Build a JWT validator in TypeScript' }),
+    });
+    assert.strictEqual(goalRes.status, 200);
+    assert.strictEqual(goalRes.headers.get('content-type'), 'text/event-stream');
+
+    const goalText = await goalRes.text();
+    assert.ok(goalText.includes('event: start'));
+    assert.ok(goalText.includes('event: stage') || goalText.includes('event: token'));
+    assert.ok(goalText.includes('event: complete'));
+    assert.ok(goalText.includes('"draft"'));
+    assert.ok(goalText.includes('"critique"'));
+    assert.ok(goalText.includes('"finalOutput"'));
+  } finally {
+    await server.stop();
+    configManager.setProvider(prevProvider);
+  }
 });
 
 test('ToolExecutor executes run_silent_debate and run_silent_goal tools', async () => {

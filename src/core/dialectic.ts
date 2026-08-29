@@ -6,6 +6,12 @@ import { AVAILABLE_TOOLS, ToolExecutor } from './tools.js';
 import { TerminalRenderer } from '../cli/renderer.js';
 import { CitationEngine } from './citations.js';
 
+export interface DialecticCallbacks {
+  onStatus?: (status: { stage: string; message: string; persona: string }) => void;
+  onStage?: (stage: DialecticStage) => void;
+  onToken?: (persona: string, token: string) => void;
+}
+
 export class DialecticEngine {
   private config: AntriConfig;
   private toolExecutor: ToolExecutor;
@@ -20,7 +26,7 @@ export class DialecticEngine {
   /**
    * Executes the full Dialectic Reasoning Pipeline with visual rendering
    */
-  public async debate(query: string, depth: DebateDepth = 'deep'): Promise<DialecticResult> {
+  public async debate(query: string, depth: DebateDepth = 'deep', callbacks?: DialecticCallbacks): Promise<DialecticResult> {
     this.citationEngine.clear();
     const stages: DialecticStage[] = [];
 
@@ -30,6 +36,8 @@ export class DialecticEngine {
     // STAGE 1: The Proposer (Thesis)
     // ==========================================
     this.renderPersonaBanner('💡 The Proposer (Thesis)', '#34d399', 'Generating primary hypothesis and strategic argument...');
+    callbacks?.onStatus?.({ stage: 'proposer', message: 'Generating primary hypothesis and strategic argument...', persona: 'proposer' });
+
     const thesisPrompt = `You are The Proposer & Chief Strategist in a multi-perspective dialectic consensus engine.
 User Query / Debate Topic: "${query}"
 
@@ -39,17 +47,23 @@ Your task:
 3. Use real domain data, accurate metrics, structural principles, and empirical facts.
 4. Do NOT write toy boilerplate script files unless explicitly requested to write software. Focus deeply on domain substance, comparison factors, and mechanics.`;
 
-    const thesisContent = await this.runPersona('proposer', thesisPrompt, []);
-    stages.push({
+    const thesisContent = await this.runPersona('proposer', thesisPrompt, [], (token) => {
+      callbacks?.onToken?.('proposer', token);
+    });
+    const thesisStage: DialecticStage = {
       persona: 'proposer',
       title: 'Initial Thesis & Solution',
       content: thesisContent,
-    });
+    };
+    stages.push(thesisStage);
+    callbacks?.onStage?.(thesisStage);
 
     // ==========================================
     // STAGE 2: The Adversary / Critic (Antithesis)
     // ==========================================
     this.renderPersonaBanner('⚔️ The Adversary / Critic (Antithesis)', '#f87171', 'Stress-testing thesis for vulnerabilities, flaws, and trade-offs...');
+    callbacks?.onStatus?.({ stage: 'adversary', message: 'Stress-testing thesis for vulnerabilities, flaws, and trade-offs...', persona: 'adversary' });
+
     const antithesisPrompt = `You are The Adversary, Chief Security/Economics Critic, and Logic Inquisitor in a dialectic consensus engine.
 User Query / Debate Topic: "${query}"
 
@@ -64,12 +78,16 @@ Your task:
 3. Ground your critique in hard realities, real-world case studies, counter-metrics, and edge cases.
 4. Be rigorous, objective, and analytically sharp.`;
 
-    const antithesisContent = await this.runPersona('adversary', antithesisPrompt, []);
-    stages.push({
+    const antithesisContent = await this.runPersona('adversary', antithesisPrompt, [], (token) => {
+      callbacks?.onToken?.('adversary', token);
+    });
+    const antithesisStage: DialecticStage = {
       persona: 'adversary',
       title: 'Critical Antithesis & Edge-Case Analysis',
       content: antithesisContent,
-    });
+    };
+    stages.push(antithesisStage);
+    callbacks?.onStage?.(antithesisStage);
 
     let verificationContent = '';
     let revisedThesisContent = '';
@@ -79,6 +97,8 @@ Your task:
     // ==========================================
     if (depth === 'deep' || depth === 'rigorous') {
       this.renderPersonaBanner('🔬 The Researcher / Verifier', '#38bdf8', 'Autonomously deploying Level 2 web & workspace tools to verify contested claims...');
+      callbacks?.onStatus?.({ stage: 'researcher', message: 'Autonomously deploying Level 2 web & workspace tools to verify contested claims...', persona: 'researcher' });
+
       const researchPrompt = `You are The Researcher and Empirical Verifier.
 User Query / Debate Topic: "${query}"
 
@@ -97,12 +117,16 @@ Your task:
 2. Use tools (web_search, scrape_url, run_command, read_file) if needed to verify documentation, library versions, or empirical behaviors.
 3. Deliver a concise verification report summarizing what holds true and what is debunked with concrete facts.`;
 
-      verificationContent = await this.runPersonaWithTools('researcher', researchPrompt);
-      stages.push({
+      verificationContent = await this.runPersonaWithTools('researcher', researchPrompt, 0, (token) => {
+        callbacks?.onToken?.('researcher', token);
+      });
+      const verifierStage: DialecticStage = {
         persona: 'researcher',
         title: 'Empirical Fact-Check & Tool Verification',
         content: verificationContent,
-      });
+      };
+      stages.push(verifierStage);
+      callbacks?.onStage?.(verifierStage);
     }
 
     // ==========================================
@@ -110,6 +134,8 @@ Your task:
     // ==========================================
     if (depth === 'rigorous') {
       this.renderPersonaBanner('💡 The Proposer (Refined Thesis - Round 2)', '#34d399', 'Refining solution against adversarial critiques and empirical data...');
+      callbacks?.onStatus?.({ stage: 'proposer_round2', message: 'Refining solution against adversarial critiques and empirical data...', persona: 'proposer' });
+
       const round2ProposerPrompt = `You are The Proposer incorporating feedback.
 User Query / Debate Topic: "${query}"
 Criticisms:
@@ -124,18 +150,24 @@ ${verificationContent}
 Your task:
 Provide an updated, hardened revision of the argument addressing all valid points while defending key strengths.`;
 
-      revisedThesisContent = await this.runPersona('proposer', round2ProposerPrompt, []);
-      stages.push({
+      revisedThesisContent = await this.runPersona('proposer', round2ProposerPrompt, [], (token) => {
+        callbacks?.onToken?.('proposer', token);
+      });
+      const revisedStage: DialecticStage = {
         persona: 'proposer',
         title: 'Hardened Revised Thesis',
         content: revisedThesisContent,
-      });
+      };
+      stages.push(revisedStage);
+      callbacks?.onStage?.(revisedStage);
     }
 
     // ==========================================
     // FINAL STAGE: The Judge / Synthesizer (Synthesis)
     // ==========================================
     this.renderPersonaBanner('⚖️ The Judge / Synthesizer (Final Consensus)', '#c084fc', 'Merging valid counterpoints, resolving contradictions, delivering final consensus...');
+    callbacks?.onStatus?.({ stage: 'judge', message: 'Merging valid counterpoints, resolving contradictions, delivering final consensus...', persona: 'judge' });
+
     const judgePrompt = `You are The Supreme Judge and Master Synthesizer in a dialectic consensus engine.
 User Query / Debate Topic: "${query}"
 
@@ -166,12 +198,16 @@ CRITICAL INSTRUCTIONS:
 - Do NOT output generic boilerplate code (such as mock pandas/sklearn toy models) unless explicitly requested to write software. Provide deep, authentic, substantive domain intelligence.
 - Keep emojis tasteful and minimal — maximum 2 emojis in your entire response.`;
 
-    const synthesisContent = await this.runPersona('judge', judgePrompt, []);
-    stages.push({
+    const synthesisContent = await this.runPersona('judge', judgePrompt, [], (token) => {
+      callbacks?.onToken?.('judge', token);
+    });
+    const judgeStage: DialecticStage = {
       persona: 'judge',
       title: 'Supreme Consensus & Battle-Tested Synthesis',
       content: synthesisContent,
-    });
+    };
+    stages.push(judgeStage);
+    callbacks?.onStage?.(judgeStage);
 
     this.renderConsensusFooter(stages, depth);
 
@@ -290,7 +326,7 @@ ${synthesisContent}`;
   /**
    * Runs an individual persona without tools
    */
-  private async runPersona(persona: string, promptText: string, chatHistory: ChatMessage[]): Promise<string> {
+  private async runPersona(persona: string, promptText: string, chatHistory: ChatMessage[], onToken?: (token: string) => void): Promise<string> {
     const provider = createProvider(this.config);
     const messages: ChatMessage[] = [
       ...chatHistory,
@@ -317,6 +353,7 @@ ${synthesisContent}`;
             hasStreamed = true;
           }
           TerminalRenderer.printToken(token);
+          if (onToken) onToken(token);
         },
       });
 
@@ -336,7 +373,7 @@ ${synthesisContent}`;
   /**
    * Runs the Researcher persona with full autonomous tool calling
    */
-  private async runPersonaWithTools(persona: string, promptText: string, depth = 0): Promise<string> {
+  private async runPersonaWithTools(persona: string, promptText: string, depth = 0, onToken?: (token: string) => void): Promise<string> {
     if (depth > 4) return '';
     const provider = createProvider(this.config);
     const messages: ChatMessage[] = [{ role: 'user', content: promptText }];
@@ -362,6 +399,7 @@ ${synthesisContent}`;
             hasStreamed = true;
           }
           TerminalRenderer.printToken(token);
+          if (onToken) onToken(token);
         },
         onToolCall: (tc: ToolCall) => {
           if (spinner) {

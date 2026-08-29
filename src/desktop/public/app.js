@@ -460,6 +460,8 @@ function renderActiveSessionMessages(messages) {
         <p>Minimalist environment for autonomous coding, architectural planning, and self-refinement. State, memory, profiles, and skills are synchronized across CLI and Desktop.</p>
         <div class="quick-action-pills">
           <button onclick="setPrompt('Plan the architecture for a real-time collaborative code editor')">Plan Editor Architecture</button>
+          <button onclick="setPrompt('/reproduce TypeError: Cannot read properties of undefined in calculateCartTotal')">🧬 BugTwin Reproduce</button>
+          <button onclick="setPrompt('/replay TypeError: Unhandled exception at src/server.ts:42:15')">⏱️ CrashZero Replay</button>
           <button onclick="setPrompt('/debate What are the trade-offs between WebSockets vs Server-Sent Events?')">Start Dialectic Debate</button>
           <button onclick="setPrompt('/goal Implement a zero-dependency LRU cache with TTL in TypeScript')">Run Goal Loop</button>
         </div>
@@ -561,6 +563,7 @@ async function deleteCurrentChatSession() {
 async function submitPrompt() {
   const input = document.getElementById('prompt-input');
   let prompt = input.value.trim();
+  let lastServerArtifacts = null;
 
   // Attach any uploaded files to prompt
   if (attachedFiles.length > 0) {
@@ -794,113 +797,7 @@ function appendMessage(role, text) {
   return row;
 }
 
-// Artifact Hub Management
-async function loadArtifactsTab() {
-  try {
-    const res = await fetch('/api/artifacts');
-    const data = await res.json();
-    const container = document.getElementById('artifacts-grouped-container');
-    if (!container) return;
-    container.innerHTML = '';
 
-    if (!data.grouped || data.grouped.length === 0) {
-      container.innerHTML = `
-        <div style="text-align:center;padding:48px 16px;color:var(--text-muted);">
-          <div style="font-size:36px;margin-bottom:12px;">🎨</div>
-          <h3 style="color:var(--text-primary);margin-bottom:6px;">No Artifacts Generated Yet</h3>
-          <p style="font-size:13px;">Generate interactive HTML plans, architecture graphs, or mind maps with <code>/view</code>, <code>/mindmap</code>, or <code>/imagine</code> in chat.</p>
-        </div>
-      `;
-      return;
-    }
-
-    const totalCount = data.artifacts ? data.artifacts.length : 0;
-    const toolbar = document.createElement('div');
-    toolbar.className = 'artifacts-toolbar';
-    toolbar.innerHTML = `
-      <div style="font-size:13px;color:var(--text-muted);font-weight:600;">
-        Showing <span style="color:var(--text-primary);font-weight:700;">${totalCount}</span> artifact${totalCount === 1 ? '' : 's'} across <span style="color:var(--text-primary);font-weight:700;">${data.grouped.length}</span> chat session${data.grouped.length === 1 ? '' : 's'}
-      </div>
-      <button class="artifacts-toggle-all-btn" id="artifactsToggleAllBtn" onclick="toggleAllArtifactGroups()">📁 Collapse All</button>
-    `;
-    container.appendChild(toolbar);
-
-    data.grouped.forEach((grp, idx) => {
-      const groupEl = document.createElement('div');
-      groupEl.className = 'artifact-session-group';
-      groupEl.id = `artifact-group-${idx}`;
-
-      let cardsHtml = '';
-      grp.artifacts.forEach((art) => {
-        const isMindmap = art.type === 'mindmap';
-        const isGraph = art.type === 'graph';
-        const typeClass = isMindmap ? 'badge-mindmap' : isGraph ? 'badge-graph' : 'badge-html';
-        const typeText = isMindmap ? 'Mind Map' : isGraph ? 'Code Graph' : 'Interactive HTML';
-        const icon = isMindmap ? '🧠' : isGraph ? '📊' : '🌐';
-        const dateStr = new Date(art.createdAt).toLocaleDateString();
-
-        cardsHtml += `
-          <div class="artifact-item-card">
-            <div>
-              <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
-                <span class="artifact-card-badge ${typeClass}">${icon} ${typeText}</span>
-                <span style="font-size:11px;color:var(--text-muted);">${dateStr}</span>
-              </div>
-              <div style="font-weight:700;font-size:14px;color:var(--text-primary);margin-bottom:4px;">${escapeHtml(art.title)}</div>
-              <div style="font-size:12px;color:var(--text-muted);">ID: ${art.id}</div>
-            </div>
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">
-              <button class="chat-artifact-btn" onclick="openArtifactViewer('${encodeURIComponent(art.id)}', '${escapeHtml(art.title)}', '${art.type}')">👁️ View Artifact</button>
-              <button style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px;" title="Delete Artifact" onclick="deleteArtifactDesktop('${art.id}')">🗑️</button>
-            </div>
-          </div>
-        `;
-      });
-
-      groupEl.innerHTML = `
-        <div class="artifact-session-header" onclick="toggleArtifactGroup('${groupEl.id}')">
-          <div class="artifact-session-title">
-            <span class="artifact-collapse-chevron">▼</span>
-            <span>📁</span>
-            <span>${escapeHtml(grp.sessionTitle || 'Chat Session')}</span>
-          </div>
-          <span style="font-size:12px;color:var(--text-muted);">${grp.artifacts.length} ${grp.artifacts.length === 1 ? 'artifact' : 'artifacts'}</span>
-        </div>
-        <div class="artifacts-grid">
-          ${cardsHtml}
-        </div>
-      `;
-      container.appendChild(groupEl);
-    });
-  } catch (err) {
-    console.error('Failed to load artifacts tab:', err);
-  }
-}
-
-function toggleArtifactGroup(groupId) {
-  const el = document.getElementById(groupId);
-  if (el) {
-    el.classList.toggle('collapsed');
-  }
-}
-
-function toggleAllArtifactGroups() {
-  const groups = document.querySelectorAll('.artifact-session-group');
-  const btn = document.getElementById('artifactsToggleAllBtn');
-  const anyOpen = Array.from(groups).some((g) => !g.classList.contains('collapsed'));
-
-  groups.forEach((g) => {
-    if (anyOpen) {
-      g.classList.add('collapsed');
-    } else {
-      g.classList.remove('collapsed');
-    }
-  });
-
-  if (btn) {
-    btn.textContent = anyOpen ? '📂 Expand All' : '📁 Collapse All';
-  }
-}
 
 function openArtifactViewer(id, title = 'Artifact View', type = 'html') {
   const modal = document.getElementById('artifact-viewer-modal');
@@ -962,18 +859,114 @@ function setPrompt(text) {
   input.focus();
 }
 
-// Dialectic Debate Runner
+// Markdown & Structured Content Renderer for Desktop Views
+function renderFormattedMarkdown(text) {
+  if (!text) return '';
+  let html = escapeHtml(text);
+
+  // Code blocks: ```lang ... ```
+  html = html.replace(/```([a-zA-Z0-9_-]*)\n([\s\S]*?)```/g, (match, lang, code) => {
+    return `<div class="formatted-code-block"><div class="code-block-header">${lang || 'code'}</div><pre><code>${code.trim()}</code></pre></div>`;
+  });
+
+  // Inline code: `...`
+  html = html.replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>');
+
+  // Headers
+  html = html.replace(/^#### (.*?)$/gm, '<h5 class="formatted-h5">$1</h5>');
+  html = html.replace(/^### (.*?)$/gm, '<h4 class="formatted-h4">$1</h4>');
+  html = html.replace(/^## (.*?)$/gm, '<h3 class="formatted-h3">$1</h3>');
+  html = html.replace(/^# (.*?)$/gm, '<h2 class="formatted-h2">$1</h2>');
+
+  // Bold & Italic
+  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+
+  // Blockquotes
+  html = html.replace(/^> (.*?)$/gm, '<blockquote class="formatted-quote">$1</blockquote>');
+
+  // Bullet points
+  html = html.replace(/^[•\-\*] (.*?)$/gm, '<div class="bullet-item">• $1</div>');
+
+  // Numbered lists
+  html = html.replace(/^(\d+)\. (.*?)$/gm, '<div class="number-item"><span class="num-badge">$1.</span> $2</div>');
+
+  return html;
+}
+
+// Robust SSE Stream Reader with Chunk Buffer Persistence
+async function readSSEStream(response, onEvent) {
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+
+    let currentEvent = 'message';
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) {
+        currentEvent = 'message';
+        continue;
+      }
+      if (line.startsWith('event: ')) {
+        currentEvent = line.slice(7).trim();
+      } else if (line.startsWith('data: ')) {
+        const rawData = line.slice(6);
+        let parsed = rawData;
+        try {
+          parsed = JSON.parse(rawData);
+        } catch (_) {}
+        onEvent(currentEvent, parsed);
+      }
+    }
+  }
+
+  if (buffer.trim().startsWith('data: ')) {
+    const rawData = buffer.trim().slice(6);
+    let parsed = rawData;
+    try {
+      parsed = JSON.parse(rawData);
+    } catch (_) {}
+    onEvent('complete', parsed);
+  }
+}
+
+// Dialectic Debate Runner with Live Multi-Persona Streaming
 async function startDebate() {
   const input = document.getElementById('debate-query-input');
   const query = input.value.trim();
   if (!query) return;
 
-  const depth = document.getElementById('debate-depth-select').value;
+  const depth = document.getElementById('debate-depth-select')?.value || 'deep';
+  const launchBtn = document.querySelector('#tab-dialectic .action-btn');
+  if (launchBtn) {
+    launchBtn.disabled = true;
+    launchBtn.textContent = 'Debating...';
+  }
 
-  document.getElementById('dialectic-thesis').textContent = 'Generating initial thesis & hypothesis...';
-  document.getElementById('dialectic-antithesis').textContent = 'Awaiting thesis to challenge assumptions...';
-  document.getElementById('dialectic-verification').textContent = 'Researcher standby for fact-checking...';
-  document.getElementById('dialectic-synthesis').textContent = 'Synthesizer awaiting debate completion...';
+  const thesisEl = document.getElementById('dialectic-thesis');
+  const antithesisEl = document.getElementById('dialectic-antithesis');
+  const verificationEl = document.getElementById('dialectic-verification');
+  const synthesisEl = document.getElementById('dialectic-synthesis');
+
+  thesisEl.innerHTML = '<div class="streaming-pulse">💡 The Proposer formulating thesis & core hypothesis...</div>';
+  antithesisEl.innerHTML = '<div class="placeholder-text">⏳ Awaiting thesis to challenge assumptions...</div>';
+  verificationEl.innerHTML = '<div class="placeholder-text">🔬 Researcher standby for empirical fact-checking...</div>';
+  synthesisEl.innerHTML = '<div class="placeholder-text">⚖️ Synthesizer awaiting debate completion...</div>';
+
+  let currentPersonaTokens = {
+    proposer: '',
+    adversary: '',
+    researcher: '',
+    judge: '',
+  };
 
   try {
     const res = await fetch('/api/debate', {
@@ -982,42 +975,87 @@ async function startDebate() {
       body: JSON.stringify({ query, depth }),
     });
 
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      const chunk = decoder.decode(value);
-      const lines = chunk.split('\n');
-
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          try {
-            const data = JSON.parse(line.slice(6));
-            if (data.thesis) document.getElementById('dialectic-thesis').textContent = data.thesis;
-            if (data.antithesis) document.getElementById('dialectic-antithesis').textContent = data.antithesis;
-            if (data.verification) document.getElementById('dialectic-verification').textContent = data.verification;
-            if (data.synthesis) document.getElementById('dialectic-synthesis').textContent = data.synthesis;
-          } catch (e) {}
+    await readSSEStream(res, (event, data) => {
+      if (event === 'status') {
+        if (data.stage === 'proposer') {
+          thesisEl.innerHTML = `<div class="streaming-pulse">💡 ${escapeHtml(data.message)}</div>`;
+        } else if (data.stage === 'adversary') {
+          antithesisEl.innerHTML = `<div class="streaming-pulse">⚔️ ${escapeHtml(data.message)}</div>`;
+        } else if (data.stage === 'researcher') {
+          verificationEl.innerHTML = `<div class="streaming-pulse">🔬 ${escapeHtml(data.message)}</div>`;
+        } else if (data.stage === 'judge') {
+          synthesisEl.innerHTML = `<div class="streaming-pulse">⚖️ ${escapeHtml(data.message)}</div>`;
         }
+      } else if (event === 'token') {
+        const persona = data.persona || 'proposer';
+        currentPersonaTokens[persona] = (currentPersonaTokens[persona] || '') + (data.token || '');
+        if (persona === 'proposer') {
+          thesisEl.innerHTML = renderFormattedMarkdown(currentPersonaTokens.proposer);
+        } else if (persona === 'adversary') {
+          antithesisEl.innerHTML = renderFormattedMarkdown(currentPersonaTokens.adversary);
+        } else if (persona === 'researcher') {
+          verificationEl.innerHTML = renderFormattedMarkdown(currentPersonaTokens.researcher);
+        } else if (persona === 'judge') {
+          synthesisEl.innerHTML = renderFormattedMarkdown(currentPersonaTokens.judge);
+        }
+      } else if (event === 'stage') {
+        if (data.persona === 'proposer') {
+          thesisEl.innerHTML = renderFormattedMarkdown(data.content);
+        } else if (data.persona === 'adversary') {
+          antithesisEl.innerHTML = renderFormattedMarkdown(data.content);
+        } else if (data.persona === 'researcher') {
+          verificationEl.innerHTML = renderFormattedMarkdown(data.content);
+        } else if (data.persona === 'judge') {
+          synthesisEl.innerHTML = renderFormattedMarkdown(data.content);
+        }
+      } else if (event === 'complete') {
+        if (typeof data === 'object') {
+          if (data.thesis) thesisEl.innerHTML = renderFormattedMarkdown(data.thesis);
+          if (data.antithesis) antithesisEl.innerHTML = renderFormattedMarkdown(data.antithesis);
+          if (data.verification) {
+            verificationEl.innerHTML = renderFormattedMarkdown(data.verification);
+          } else if (depth === 'quick') {
+            verificationEl.innerHTML = '<div class="placeholder-text">Empirical verification bypassed (Quick Depth).</div>';
+          }
+          if (data.synthesis) synthesisEl.innerHTML = renderFormattedMarkdown(data.synthesis);
+        }
+        showToast('Dialectic debate reached consensus!');
+        loadArtifactsTab().catch(() => {});
+      } else if (event === 'error') {
+        synthesisEl.innerHTML = `<div style="color:#ef4444;">Debate Error: ${escapeHtml(data.message || data)}</div>`;
       }
-    }
+    });
   } catch (err) {
-    document.getElementById('dialectic-synthesis').textContent = `Debate error: ${err.message}`;
+    synthesisEl.innerHTML = `<div style="color:#ef4444;">Debate connection error: ${escapeHtml(err.message)}</div>`;
+  } finally {
+    if (launchBtn) {
+      launchBtn.disabled = false;
+      launchBtn.textContent = 'Launch Debate';
+    }
   }
 }
 
-// Goal Loop Runner
+// Goal Loop Runner with Live 3-Stage Streaming
 async function startGoalLoop() {
   const input = document.getElementById('goal-objective-input');
   const objective = input.value.trim();
   if (!objective) return;
 
-  document.getElementById('goal-stage-1-content').textContent = 'Stage 1 executing: Drafting initial plan and solution...';
-  document.getElementById('goal-stage-2-content').textContent = 'Stage 2 standby: Awaiting draft for adversarial critique...';
-  document.getElementById('goal-stage-3-content').textContent = 'Stage 3 standby: Awaiting synthesis for hardened output...';
+  const launchBtn = document.querySelector('#tab-goal .action-btn');
+  if (launchBtn) {
+    launchBtn.disabled = true;
+    launchBtn.textContent = 'Executing...';
+  }
+
+  const stage1El = document.getElementById('goal-stage-1-content');
+  const stage2El = document.getElementById('goal-stage-2-content');
+  const stage3El = document.getElementById('goal-stage-3-content');
+
+  stage1El.innerHTML = '<div class="streaming-pulse">⚙️ Stage 1 executing: Drafting initial plan and solution...</div>';
+  stage2El.innerHTML = '<div class="placeholder-text">⏳ Stage 2 standby: Awaiting draft for adversarial critique...</div>';
+  stage3El.innerHTML = '<div class="placeholder-text">✨ Stage 3 standby: Awaiting synthesis for hardened output...</div>';
+
+  let currentIterTokens = { 1: '', 2: '', 3: '' };
 
   try {
     const res = await fetch('/api/goal', {
@@ -1026,29 +1064,54 @@ async function startGoalLoop() {
       body: JSON.stringify({ objective }),
     });
 
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      const chunk = decoder.decode(value);
-      const lines = chunk.split('\n');
-
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          try {
-            const data = JSON.parse(line.slice(6));
-            if (data.draft) document.getElementById('goal-stage-1-content').textContent = data.draft;
-            if (data.critique) document.getElementById('goal-stage-2-content').textContent = data.critique;
-            if (data.finalOutput) document.getElementById('goal-stage-3-content').textContent = data.finalOutput;
-          } catch (e) {}
+    await readSSEStream(res, (event, data) => {
+      if (event === 'status') {
+        if (data.iteration === 1) {
+          stage1El.innerHTML = `<div class="streaming-pulse">⚙️ ${escapeHtml(data.message)}</div>`;
+        } else if (data.iteration === 2) {
+          stage2El.innerHTML = `<div class="streaming-pulse">🔍 ${escapeHtml(data.message)}</div>`;
+        } else if (data.iteration === 3) {
+          stage3El.innerHTML = `<div class="streaming-pulse">✨ ${escapeHtml(data.message)}</div>`;
         }
+      } else if (event === 'token') {
+        const iter = data.iteration || 1;
+        currentIterTokens[iter] = (currentIterTokens[iter] || '') + (data.token || '');
+        if (iter === 1) {
+          stage1El.innerHTML = renderFormattedMarkdown(currentIterTokens[1]);
+        } else if (iter === 2) {
+          stage2El.innerHTML = renderFormattedMarkdown(currentIterTokens[2]);
+        } else if (iter === 3) {
+          stage3El.innerHTML = renderFormattedMarkdown(currentIterTokens[3]);
+        }
+      } else if (event === 'stage') {
+        if (data.iteration === 1 || data.type === 'draft') {
+          stage1El.innerHTML = renderFormattedMarkdown(data.content);
+        } else if (data.iteration === 2 || data.type === 'review') {
+          stage2El.innerHTML = renderFormattedMarkdown(data.content);
+        } else if (data.iteration === 3 || data.type === 'refinement') {
+          stage3El.innerHTML = renderFormattedMarkdown(data.content);
+        }
+      } else if (event === 'complete') {
+        if (typeof data === 'object') {
+          if (data.draft) stage1El.innerHTML = renderFormattedMarkdown(data.draft);
+          if (data.critique) stage2El.innerHTML = renderFormattedMarkdown(data.critique);
+          if (data.finalOutput) stage3El.innerHTML = renderFormattedMarkdown(data.finalOutput);
+        } else if (typeof data === 'string') {
+          stage3El.innerHTML = renderFormattedMarkdown(data);
+        }
+        showToast('Goal loop convergence reached!');
+        loadArtifactsTab().catch(() => {});
+      } else if (event === 'error') {
+        stage3El.innerHTML = `<div style="color:#ef4444;">Goal Loop Error: ${escapeHtml(data.message || data)}</div>`;
       }
-    }
+    });
   } catch (err) {
-    document.getElementById('goal-stage-3-content').textContent = `Goal execution error: ${err.message}`;
+    stage3El.innerHTML = `<div style="color:#ef4444;">Goal execution error: ${escapeHtml(err.message)}</div>`;
+  } finally {
+    if (launchBtn) {
+      launchBtn.disabled = false;
+      launchBtn.textContent = 'Execute Goal Loop';
+    }
   }
 }
 

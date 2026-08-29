@@ -140,6 +140,18 @@ const List<PromptCommand> _promptCommands = [
     color: Color(0xFF8B5CF6),
   ),
   PromptCommand(
+    name: '/diff',
+    description: 'Inspect code modifications and unified terminal diffs',
+    icon: Icons.difference_outlined,
+    color: Color(0xFF0284C7),
+  ),
+  PromptCommand(
+    name: '/revert',
+    description: 'Roll back or undo file modifications made in session',
+    icon: Icons.undo_outlined,
+    color: Color(0xFFE11D48),
+  ),
+  PromptCommand(
     name: '/clear',
     description: 'Clear current conversation messages',
     icon: Icons.delete_outline,

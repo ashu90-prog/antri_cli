@@ -2159,6 +2159,118 @@ body.antri-app {
   flex-wrap: wrap;
 }
 
+/* Dialectic & Goal Output Formatting */
+.streaming-pulse {
+  color: var(--primary);
+  font-weight: 500;
+  animation: pulse-glow 1.5s ease-in-out infinite alternate;
+}
 
+@keyframes pulse-glow {
+  0% { opacity: 0.6; }
+  100% { opacity: 1; }
+}
 
+.formatted-code-block {
+  background: var(--bg-sidebar);
+  border: 1px solid var(--border-main);
+  border-radius: var(--radius-sm);
+  margin: 0.75rem 0;
+  overflow: hidden;
+}
 
+.code-block-header {
+  background: rgba(0, 0, 0, 0.2);
+  padding: 0.25rem 0.6rem;
+  font-size: 0.72rem;
+  font-family: var(--font-mono);
+  color: var(--text-tertiary);
+  border-bottom: 1px solid var(--border-main);
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.formatted-code-block pre {
+  margin: 0;
+  padding: 0.75rem;
+  overflow-x: auto;
+}
+
+.formatted-code-block code {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--text-primary);
+  white-space: pre;
+}
+
+.inline-code {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  background: var(--bg-sidebar);
+  border: 1px solid var(--border-main);
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  color: var(--accent-primary, #6366f1);
+}
+
+.formatted-h2 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 1rem 0 0.5rem 0;
+  border-bottom: 1px solid var(--border-light);
+  padding-bottom: 0.25rem;
+}
+
+.formatted-h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0.85rem 0 0.4rem 0;
+}
+
+.formatted-h4 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0.7rem 0 0.3rem 0;
+}
+
+.formatted-h5 {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: 0.5rem 0 0.25rem 0;
+}
+
+.formatted-quote {
+  border-left: 3px solid var(--primary);
+  padding: 0.4rem 0.75rem;
+  margin: 0.5rem 0;
+  background: var(--bg-sidebar);
+  border-radius: 0 var(--radius-xs) var(--radius-xs) 0;
+  font-style: italic;
+  color: var(--text-secondary);
+}
+
+.bullet-item {
+  margin: 0.25rem 0 0.25rem 0.5rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.number-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  margin: 0.3rem 0;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.num-badge {
+  font-weight: 700;
+  color: var(--primary);
+  min-width: 1.2rem;
+}
