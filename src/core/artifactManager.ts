@@ -268,6 +268,21 @@ export class ArtifactManager {
       return this.generateRichPortfolioHtml(title || 'Developer Portfolio');
     }
 
+    const isWorkoutRequest = lower.includes('workout') || lower.includes('fitness') || lower.includes('exercise') || lower.includes('gym') || lower.includes('training plan');
+    if (isWorkoutRequest && (lower.includes('sample') || html.length < 500)) {
+      return this.generateRichWorkoutHtml(title || 'Personalized Workout & Conditioning Plan');
+    }
+
+    const isDietRequest = lower.includes('diet') || lower.includes('meal plan') || lower.includes('nutrition') || lower.includes('calorie');
+    if (isDietRequest && (lower.includes('sample') || html.length < 500)) {
+      return this.generateRichDietHtml(title || 'Targeted Nutrition & Meal Plan');
+    }
+
+    const isStudyRequest = lower.includes('study plan') || lower.includes('learning roadmap') || lower.includes('curriculum');
+    if (isStudyRequest && (lower.includes('sample') || html.length < 500)) {
+      return this.generateRichStudyRoadmapHtml(title || 'Curriculum & Learning Roadmap');
+    }
+
     const isSampleTodo = (lower.includes('todo') || lower.includes('task')) && (lower.includes('sample') || html.length < 400);
     if (isSampleTodo) {
       return this.generateRichTodoHtml(title || 'Task & Project Manager');
@@ -975,6 +990,630 @@ export class ArtifactManager {
   </script>
 </body>
 </html>`;
+  }
+
+  public generateRichWorkoutHtml(title: string, _rawPlan?: string): string {
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${title} · Interactive Fitness & Workout Planner</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .font-mono { font-family: 'JetBrains Mono', monospace; }
+    .glass-card {
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .active-day-tab {
+      background: linear-gradient(135deg, #10b981, #06b6d4);
+      color: #ffffff !important;
+      box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+    }
+    @keyframes pulse-ring {
+      0% { transform: scale(0.95); opacity: 0.8; }
+      50% { transform: scale(1.05); opacity: 1; }
+      100% { transform: scale(0.95); opacity: 0.8; }
+    }
+    .timer-pulsing { animation: pulse-ring 2s infinite ease-in-out; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen p-4 sm:p-6 md:p-10 antialiased selection:bg-emerald-500 selection:text-white">
+  <div class="max-w-5xl mx-auto space-y-6">
+    
+    <!-- Top Header -->
+    <div class="glass-card rounded-2xl p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div>
+        <div class="flex items-center gap-2 mb-1">
+          <span class="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-semibold uppercase tracking-wider flex items-center gap-1">
+            <i data-lucide="dumbbell" class="w-3.5 h-3.5"></i> Pro Fitness Engine
+          </span>
+          <span class="px-2.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 text-xs font-semibold">4-Day Split Routine</span>
+        </div>
+        <h1 class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">${title}</h1>
+        <p class="text-xs sm:text-sm text-slate-400 mt-1">Structured progressive overload, set tracking, audio rest timers & recovery metrics.</p>
+      </div>
+
+      <!-- Quick Metrics -->
+      <div class="flex items-center gap-3 bg-slate-900/90 p-3 rounded-xl border border-slate-800">
+        <div class="text-center px-2">
+          <div class="text-xs text-slate-400 font-medium">Completed</div>
+          <div class="text-lg font-bold text-emerald-400 font-mono" id="stat-completed-sets">0 / 16</div>
+        </div>
+        <div class="w-px h-8 bg-slate-800"></div>
+        <div class="text-center px-2">
+          <div class="text-xs text-slate-400 font-medium">Rest Timer</div>
+          <div class="text-lg font-bold text-cyan-400 font-mono" id="header-timer">01:00</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Day Navigation Split Tabs -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3" id="day-tabs">
+      <button onclick="switchDay(1)" id="day-btn-1" class="day-tab active-day-tab p-3.5 rounded-xl font-bold text-xs sm:text-sm flex flex-col items-center gap-1 transition-all">
+        <span class="text-[10px] uppercase tracking-wider opacity-80">Day 1</span>
+        <span>Push & Chest</span>
+      </button>
+      <button onclick="switchDay(2)" id="day-btn-2" class="day-tab glass-card hover:bg-slate-800/80 text-slate-300 p-3.5 rounded-xl font-bold text-xs sm:text-sm flex flex-col items-center gap-1 transition-all">
+        <span class="text-[10px] uppercase tracking-wider opacity-80">Day 2</span>
+        <span>Legs & Quads</span>
+      </button>
+      <button onclick="switchDay(3)" id="day-btn-3" class="day-tab glass-card hover:bg-slate-800/80 text-slate-300 p-3.5 rounded-xl font-bold text-xs sm:text-sm flex flex-col items-center gap-1 transition-all">
+        <span class="text-[10px] uppercase tracking-wider opacity-80">Day 3</span>
+        <span>Pull & Back</span>
+      </button>
+      <button onclick="switchDay(4)" id="day-btn-4" class="day-tab glass-card hover:bg-slate-800/80 text-slate-300 p-3.5 rounded-xl font-bold text-xs sm:text-sm flex flex-col items-center gap-1 transition-all">
+        <span class="text-[10px] uppercase tracking-wider opacity-80">Day 4</span>
+        <span>Core & HIIT</span>
+      </button>
+    </div>
+
+    <!-- Main Workout View Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      
+      <!-- Exercises List (Left 2 cols) -->
+      <div class="lg:col-span-2 space-y-4">
+        
+        <!-- Warmup Card -->
+        <div class="glass-card rounded-2xl p-5 border-l-4 border-l-emerald-500">
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="text-sm font-bold text-emerald-400 flex items-center gap-2">
+              <i data-lucide="flame" class="w-4 h-4"></i> Dynamic Warmup (5-8 Mins)
+            </h3>
+            <span class="text-xs text-slate-400">Mobility & Activation</span>
+          </div>
+          <div class="text-xs text-slate-300 grid grid-cols-1 sm:grid-cols-3 gap-2 mt-2">
+            <div class="bg-slate-900/60 p-2.5 rounded-lg border border-slate-800">• Arm Circles & Band Pull-Aparts (2x15)</div>
+            <div class="bg-slate-900/60 p-2.5 rounded-lg border border-slate-800">• World's Greatest Stretch (5/side)</div>
+            <div class="bg-slate-900/60 p-2.5 rounded-lg border border-slate-800">• Light Cat-Cow & Scapular Pushups</div>
+          </div>
+        </div>
+
+        <!-- Exercises Container -->
+        <div class="space-y-4" id="exercises-container">
+          <!-- Populated by JavaScript -->
+        </div>
+
+      </div>
+
+      <!-- Sidebar: Interactive Rest Timer, Hydration & Notes -->
+      <div class="space-y-4">
+        
+        <!-- Rest Timer Card -->
+        <div class="glass-card rounded-2xl p-5 text-center space-y-4">
+          <div class="flex items-center justify-between">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+              <i data-lucide="timer" class="w-4 h-4 text-cyan-400"></i> Rest Interval Timer
+            </h3>
+            <button onclick="toggleAudio()" id="btn-audio" class="text-xs text-slate-400 hover:text-white flex items-center gap-1">
+              <i data-lucide="volume-2" class="w-3.5 h-3.5 text-emerald-400"></i> Sound ON
+            </button>
+          </div>
+
+          <!-- Circular Countdown Display -->
+          <div class="relative w-36 h-36 mx-auto flex items-center justify-center">
+            <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+              <circle cx="50" cy="50" r="42" stroke="currentColor" stroke-width="6" class="text-slate-800 fill-none" />
+              <circle id="timer-svg-circle" cx="50" cy="50" r="42" stroke="currentColor" stroke-width="6" stroke-dasharray="264" stroke-dashoffset="0" stroke-linecap="round" class="text-cyan-400 fill-none transition-all duration-500" />
+            </svg>
+            <div class="absolute flex flex-col items-center">
+              <span class="text-3xl font-extrabold text-white font-mono tracking-tight" id="timer-display">60</span>
+              <span class="text-[10px] text-slate-400 uppercase tracking-wider">Seconds</span>
+            </div>
+          </div>
+
+          <!-- Timer Controls -->
+          <div class="flex items-center justify-center gap-2">
+            <button onclick="startTimer()" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-lg shadow-emerald-600/20 transition-all">
+              <i data-lucide="play" class="w-3.5 h-3.5"></i> Start
+            </button>
+            <button onclick="pauseTimer()" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition-all">
+              <i data-lucide="pause" class="w-3.5 h-3.5"></i> Pause
+            </button>
+            <button onclick="resetTimer()" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition-all">
+              <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> Reset
+            </button>
+          </div>
+
+          <!-- Preset Intervals -->
+          <div class="grid grid-cols-4 gap-1.5 pt-2 border-t border-slate-800/80">
+            <button onclick="setTimerDuration(30)" class="py-1 rounded bg-slate-900 hover:bg-slate-800 text-[11px] font-mono text-slate-300 border border-slate-800">30s</button>
+            <button onclick="setTimerDuration(60)" class="py-1 rounded bg-slate-900 hover:bg-slate-800 text-[11px] font-mono text-slate-300 border border-slate-800">60s</button>
+            <button onclick="setTimerDuration(90)" class="py-1 rounded bg-slate-900 hover:bg-slate-800 text-[11px] font-mono text-slate-300 border border-slate-800">90s</button>
+            <button onclick="setTimerDuration(120)" class="py-1 rounded bg-slate-900 hover:bg-slate-800 text-[11px] font-mono text-slate-300 border border-slate-800">120s</button>
+          </div>
+        </div>
+
+        <!-- Hydration Tracker -->
+        <div class="glass-card rounded-2xl p-4 space-y-3">
+          <div class="flex items-center justify-between text-xs font-bold text-slate-400 uppercase tracking-wider">
+            <span class="flex items-center gap-1.5"><i data-lucide="droplet" class="w-4 h-4 text-cyan-400"></i> Water Intake</span>
+            <span class="font-mono text-cyan-400" id="water-count">0 / 8 Glasses</span>
+          </div>
+          <div class="grid grid-cols-8 gap-1.5" id="water-grid">
+            <!-- 8 glasses -->
+          </div>
+        </div>
+
+        <!-- Training Notes & Intensity -->
+        <div class="glass-card rounded-2xl p-4 space-y-2">
+          <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+            <i data-lucide="sparkles" class="w-4 h-4 text-amber-400"></i> Form & Intensity Cues
+          </h3>
+          <ul class="text-xs text-slate-300 space-y-1.5 list-disc list-inside">
+            <li>Aim for <strong>RPE 7.5 - 8.5</strong> on working sets (1-2 reps in reserve).</li>
+            <li>Maintain a 2-second controlled eccentric (lowering) tempo.</li>
+            <li>Breathe out on exertion; keep core braced throughout.</li>
+          </ul>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <script>
+    const workoutData = {
+      1: {
+        title: "Day 1: Upper Body / Push & Chest Specialization",
+        focus: "Chest, Anterior Deltoids, Triceps & Core",
+        exercises: [
+          { name: "Barbell / Dumbbell Bench Press", target: "Chest / Pectorals", sets: 4, reps: "8-10 reps", rpe: "RPE 8", rest: 90 },
+          { name: "Incline Dumbbell Chest Press", target: "Upper Chest", sets: 3, reps: "10-12 reps", rpe: "RPE 8", rest: 75 },
+          { name: "Standing Overhead Overhead Press (OHP)", target: "Shoulders", sets: 3, reps: "8-10 reps", rpe: "RPE 8", rest: 90 },
+          { name: "Dumbbell Lateral Raises", target: "Side Delts", sets: 4, reps: "12-15 reps", rpe: "RPE 9", rest: 60 },
+          { name: "Cable Tricep Rope Pushdowns", target: "Triceps", sets: 3, reps: "12-15 reps", rpe: "RPE 8.5", rest: 60 }
+        ]
+      },
+      2: {
+        title: "Day 2: Lower Body Power & Quad/Hamstring Focus",
+        focus: "Quadriceps, Hamstrings, Glutes & Calves",
+        exercises: [
+          { name: "Barbell Back Squats / Goblet Squats", target: "Quads & Glutes", sets: 4, reps: "6-8 reps", rpe: "RPE 8", rest: 120 },
+          { name: "Romanian Deadlifts (RDL)", target: "Hamstrings & Glutes", sets: 3, reps: "8-10 reps", rpe: "RPE 8", rest: 90 },
+          { name: "Walking Dumbbell Lunges", target: "Legs & Stability", sets: 3, reps: "10/leg", rpe: "RPE 8", rest: 75 },
+          { name: "Leg Extensions (Superset w/ Curls)", target: "Quad Isolation", sets: 3, reps: "12-15 reps", rpe: "RPE 9", rest: 60 },
+          { name: "Standing Calf Raises", target: "Calves", sets: 4, reps: "15-20 reps", rpe: "RPE 9", rest: 45 }
+        ]
+      },
+      3: {
+        title: "Day 3: Pull, Lats & Posterior Chain",
+        focus: "Lats, Upper Back, Rear Delts & Biceps",
+        exercises: [
+          { name: "Pull-Ups / Lat Pulldowns", target: "Lats & Width", sets: 4, reps: "8-10 reps", rpe: "RPE 8", rest: 90 },
+          { name: "Bent-Over Barbell / Chest-Supported Rows", target: "Upper Back & Rhomboids", sets: 4, reps: "8-10 reps", rpe: "RPE 8", rest: 90 },
+          { name: "Seated Cable Rows", target: "Mid-Back", sets: 3, reps: "10-12 reps", rpe: "RPE 8", rest: 75 },
+          { name: "Face Pulls (External Rotation)", target: "Rear Delts & Rotator Cuff", sets: 4, reps: "15 reps", rpe: "RPE 8.5", rest: 60 },
+          { name: "Incline Dumbbell Bicep Curls", target: "Biceps", sets: 3, reps: "10-12 reps", rpe: "RPE 8.5", rest: 60 }
+        ]
+      },
+      4: {
+        title: "Day 4: Core, HIIT Intervals & Active Mobility",
+        focus: "Core Stability, Cardiovascular Capacity & Flexibility",
+        exercises: [
+          { name: "Hanging Leg Raises / Knee Tucks", target: "Lower Abs & Hip Flexors", sets: 3, reps: "12-15 reps", rpe: "RPE 8", rest: 60 },
+          { name: "Cable Woodchoppers", target: "Obliques & Rotational Core", sets: 3, reps: "12/side", rpe: "RPE 8", rest: 60 },
+          { name: "Kettlebell Swings / Dumbbell Snatches", target: "Posterior Chain & Power", sets: 4, reps: "15 reps", rpe: "RPE 8.5", rest: 60 },
+          { name: "HIIT Sprint Intervals (Bike/Row/Run)", target: "Cardiovascular Engine", sets: 6, reps: "30s Work / 30s Rest", rpe: "RPE 9", rest: 60 },
+          { name: "Full-Body Mobility & Yoga Cooldown", target: "Recovery & Joints", sets: 1, reps: "10 mins", rpe: "RPE 2", rest: 0 }
+        ]
+      }
+    };
+
+    let activeDay = 1;
+    let timerTotal = 60;
+    let timerRemaining = 60;
+    let timerInterval = null;
+    let isTimerRunning = false;
+    let soundEnabled = true;
+    let audioCtx = null;
+    let completedState = {};
+    let waterState = [false, false, false, false, false, false, false, false];
+
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+    }
+
+    function playTick() {
+      if (!soundEnabled) return;
+      initAudio();
+      try {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(480, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.05);
+      } catch (_) {}
+    }
+
+    function playBell() {
+      if (!soundEnabled) return;
+      initAudio();
+      try {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(440, audioCtx.currentTime + 0.8);
+        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.8);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.8);
+      } catch (_) {}
+    }
+
+    function toggleAudio() {
+      soundEnabled = !soundEnabled;
+      const btn = document.getElementById('btn-audio');
+      if (btn) {
+        btn.innerHTML = soundEnabled 
+          ? '<i data-lucide="volume-2" class="w-3.5 h-3.5 text-emerald-400"></i> Sound ON'
+          : '<i data-lucide="volume-x" class="w-3.5 h-3.5 text-slate-500"></i> Muted';
+        if (window.lucide) window.lucide.createIcons();
+      }
+    }
+
+    function switchDay(day) {
+      activeDay = day;
+      document.querySelectorAll('.day-tab').forEach((b, idx) => {
+        if (idx + 1 === day) {
+          b.className = 'day-tab active-day-tab p-3.5 rounded-xl font-bold text-xs sm:text-sm flex flex-col items-center gap-1 transition-all';
+        } else {
+          b.className = 'day-tab glass-card hover:bg-slate-800/80 text-slate-300 p-3.5 rounded-xl font-bold text-xs sm:text-sm flex flex-col items-center gap-1 transition-all';
+        }
+      });
+      renderExercises();
+      updateStats();
+    }
+
+    function renderExercises() {
+      const container = document.getElementById('exercises-container');
+      const data = workoutData[activeDay];
+      if (!container || !data) return;
+
+      container.innerHTML = data.exercises.map((ex, exIdx) => {
+        const exKey = \`d\${activeDay}_e\${exIdx}\`;
+        const setsHtml = Array.from({ length: ex.sets }).map((_, sIdx) => {
+          const setKey = \`\${exKey}_s\${sIdx}\`;
+          const isDone = completedState[setKey] || false;
+          return \`
+            <div class="flex items-center gap-2 bg-slate-900/80 px-3 py-2 rounded-lg border border-slate-800/80">
+              <input type="checkbox" \${isDone ? 'checked' : ''} onchange="toggleSet('\${setKey}', \${ex.rest})" class="w-4 h-4 rounded text-emerald-500 bg-slate-800 border-slate-700 accent-emerald-500 cursor-pointer">
+              <span class="text-xs font-mono \${isDone ? 'line-through text-slate-500' : 'text-slate-200'}">Set \${sIdx + 1}</span>
+            </div>
+          \`;
+        }).join('');
+
+        return \`
+          <div class="glass-card rounded-2xl p-4 sm:p-5 space-y-3 hover:border-slate-700 transition-all">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <h4 class="text-base font-bold text-white">\${ex.name}</h4>
+                <div class="flex items-center gap-2 mt-1">
+                  <span class="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[11px] font-semibold">\${ex.target}</span>
+                  <span class="text-xs text-slate-400 font-mono">\${ex.sets} Sets × \${ex.reps}</span>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="px-2 py-0.5 rounded bg-slate-800 text-cyan-400 text-xs font-mono font-semibold">\${ex.rpe}</span>
+                <button onclick="setTimerDuration(\${ex.rest}); startTimer();" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 font-mono flex items-center gap-1 transition-all">
+                  <i data-lucide="timer" class="w-3 h-3 text-cyan-400"></i> \${ex.rest}s Rest
+                </button>
+              </div>
+            </div>
+
+            <!-- Set Checkboxes Grid -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-slate-800/60">
+              \${setsHtml}
+            </div>
+          </div>
+        \`;
+      }).join('');
+
+      if (window.lucide) window.lucide.createIcons();
+    }
+
+    function toggleSet(setKey, restSeconds) {
+      completedState[setKey] = !completedState[setKey];
+      playTick();
+      if (completedState[setKey]) {
+        setTimerDuration(restSeconds || 60);
+        startTimer();
+      }
+      saveState();
+      updateStats();
+      checkDayCompletion();
+    }
+
+    function updateStats() {
+      const data = workoutData[activeDay];
+      let totalSets = 0;
+      let doneSets = 0;
+
+      data.exercises.forEach((ex, exIdx) => {
+        totalSets += ex.sets;
+        for (let s = 0; s < ex.sets; s++) {
+          if (completedState[\`d\${activeDay}_e\${exIdx}_s\${s}\`]) {
+            doneSets++;
+          }
+        }
+      });
+
+      const statEl = document.getElementById('stat-completed-sets');
+      if (statEl) statEl.textContent = \`\${doneSets} / \${totalSets}\`;
+    }
+
+    function checkDayCompletion() {
+      const data = workoutData[activeDay];
+      let allDone = true;
+      data.exercises.forEach((ex, exIdx) => {
+        for (let s = 0; s < ex.sets; s++) {
+          if (!completedState[\`d\${activeDay}_e\${exIdx}_s\${s}\`]) {
+            allDone = false;
+          }
+        }
+      });
+
+      if (allDone && window.confetti) {
+        window.confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
+      }
+    }
+
+    function setTimerDuration(sec) {
+      pauseTimer();
+      timerTotal = sec;
+      timerRemaining = sec;
+      updateTimerUI();
+    }
+
+    function startTimer() {
+      if (isTimerRunning) return;
+      isTimerRunning = true;
+      clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        if (timerRemaining > 0) {
+          timerRemaining--;
+          updateTimerUI();
+        } else {
+          pauseTimer();
+          playBell();
+          if (window.confetti) window.confetti({ particleCount: 40, spread: 50 });
+        }
+      }, 1000);
+    }
+
+    function pauseTimer() {
+      isTimerRunning = false;
+      clearInterval(timerInterval);
+    }
+
+    function resetTimer() {
+      pauseTimer();
+      timerRemaining = timerTotal;
+      updateTimerUI();
+    }
+
+    function updateTimerUI() {
+      const display = document.getElementById('timer-display');
+      const headerDisplay = document.getElementById('header-timer');
+      const circle = document.getElementById('timer-svg-circle');
+
+      const mins = Math.floor(timerRemaining / 60);
+      const secs = timerRemaining % 60;
+      const formatted = String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
+
+      if (display) display.textContent = timerRemaining;
+      if (headerDisplay) headerDisplay.textContent = formatted;
+
+      if (circle && timerTotal > 0) {
+        const offset = 264 * (1 - (timerRemaining / timerTotal));
+        circle.style.strokeDashoffset = offset;
+      }
+    }
+
+    function renderWater() {
+      const grid = document.getElementById('water-grid');
+      const countEl = document.getElementById('water-count');
+      if (!grid) return;
+
+      const done = waterState.filter(Boolean).length;
+      if (countEl) countEl.textContent = \`\${done} / 8 Glasses\`;
+
+      grid.innerHTML = waterState.map((active, idx) => \`
+        <button onclick="toggleWater(\${idx})" class="p-2 rounded-lg text-center transition-all \${active ? 'bg-cyan-500 text-white shadow-md shadow-cyan-500/20' : 'bg-slate-900 text-slate-500 hover:text-slate-300'}">
+          <i data-lucide="droplet" class="w-4 h-4 mx-auto"></i>
+        </button>
+      \`).join('');
+
+      if (window.lucide) window.lucide.createIcons();
+    }
+
+    function toggleWater(idx) {
+      waterState[idx] = !waterState[idx];
+      playTick();
+      saveState();
+      renderWater();
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem('antri_workout_completed_sets', JSON.stringify(completedState));
+        localStorage.setItem('antri_workout_water', JSON.stringify(waterState));
+      } catch (_) {}
+    }
+
+    function loadState() {
+      try {
+        const savedSets = localStorage.getItem('antri_workout_completed_sets');
+        if (savedSets) completedState = JSON.parse(savedSets);
+        const savedWater = localStorage.getItem('antri_workout_water');
+        if (savedWater) waterState = JSON.parse(savedWater);
+      } catch (_) {}
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadState();
+      renderExercises();
+      renderWater();
+      updateStats();
+      updateTimerUI();
+      if (window.lucide) window.lucide.createIcons();
+    });
+  </script>
+</body>
+</html>`;
+  }
+
+  public generateRichDietHtml(title: string, _rawPlan?: string): string {
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${title} · Targeted Nutrition & Meal Planner</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen p-4 sm:p-6 md:p-10 antialiased font-sans">
+  <div class="max-w-5xl mx-auto space-y-6">
+    <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div>
+        <span class="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-semibold uppercase tracking-wider">Nutrition & Macro Engine</span>
+        <h1 class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mt-1">${title}</h1>
+        <p class="text-sm text-slate-400 mt-1">Calorie targets, macro distribution, whole-food meal timing & hydration.</p>
+      </div>
+      <div class="grid grid-cols-4 gap-2 bg-slate-950 p-3 rounded-xl border border-slate-800 text-center font-mono">
+        <div class="px-2"><div class="text-[10px] text-slate-400">Calories</div><div class="text-sm font-bold text-white">2,400</div></div>
+        <div class="px-2"><div class="text-[10px] text-slate-400">Protein</div><div class="text-sm font-bold text-emerald-400">180g</div></div>
+        <div class="px-2"><div class="text-[10px] text-slate-400">Carbs</div><div class="text-sm font-bold text-cyan-400">260g</div></div>
+        <div class="px-2"><div class="text-[10px] text-slate-400">Fats</div><div class="text-sm font-bold text-amber-400">65g</div></div>
+      </div>
+    </div>
+
+    <!-- Daily Meals Schedule -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-2">
+        <div class="flex items-center justify-between"><h3 class="font-bold text-emerald-400 text-sm">🍳 Meal 1: Breakfast (7:30 AM)</h3><span class="text-xs font-mono text-slate-400">550 kcal · 40g P</span></div>
+        <p class="text-xs text-slate-300">4 Whole Eggs / Egg Whites scramble, 1 cup Rolled Oats with berries & 1 tbsp Chia Seeds.</p>
+      </div>
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-2">
+        <div class="flex items-center justify-between"><h3 class="font-bold text-cyan-400 text-sm">🥗 Meal 2: Lunch (12:30 PM)</h3><span class="text-xs font-mono text-slate-400">650 kcal · 45g P</span></div>
+        <p class="text-xs text-slate-300">Grilled Chicken Breast (200g), Jasmine Rice (1.5 cups), Steamed Broccoli & 1 tbsp Extra Virgin Olive Oil.</p>
+      </div>
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-2">
+        <div class="flex items-center justify-between"><h3 class="font-bold text-amber-400 text-sm">⚡ Meal 3: Pre/Post-Workout (4:30 PM)</h3><span class="text-xs font-mono text-slate-400">450 kcal · 35g P</span></div>
+        <p class="text-xs text-slate-300">Whey Isolate Shake with 1 Banana, 1 Rice Cake with 1 tbsp Natural Peanut Butter.</p>
+      </div>
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-2">
+        <div class="flex items-center justify-between"><h3 class="font-bold text-purple-400 text-sm">🐟 Meal 4: Dinner (8:00 PM)</h3><span class="text-xs font-mono text-slate-400">600 kcal · 45g P</span></div>
+        <p class="text-xs text-slate-300">Wild Salmon / Lean Sirloin Steak (180g), Roasted Sweet Potatoes (200g) & Mixed Green Salad with Avocado.</p>
+      </div>
+    </div>
+  </div>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => { if (window.lucide) window.lucide.createIcons(); });
+  </script>
+</body>
+</html>`;
+  }
+
+  public generateRichStudyRoadmapHtml(title: string, _rawPlan?: string): string {
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${title} · Study Roadmap & Curriculum</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen p-4 sm:p-6 md:p-10 antialiased font-sans">
+  <div class="max-w-4xl mx-auto space-y-6">
+    <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-6">
+      <span class="px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 text-xs font-semibold uppercase tracking-wider">Curriculum Roadmap</span>
+      <h1 class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mt-1">${title}</h1>
+      <p class="text-sm text-slate-400 mt-1">Multi-week structured study milestones, core concepts & revision checklists.</p>
+    </div>
+    <div class="space-y-4">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
+        <h3 class="font-bold text-white text-base">Phase 1: Foundations & Core Principles</h3>
+        <p class="text-xs text-slate-300">Master fundamental paradigms, mental models, and environment setup.</p>
+      </div>
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
+        <h3 class="font-bold text-white text-base">Phase 2: Deep Dive & Practical Applications</h3>
+        <p class="text-xs text-slate-300">Hands-on problem sets, building small projects, and analyzing trade-offs.</p>
+      </div>
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
+        <h3 class="font-bold text-white text-base">Phase 3: Advanced Mastery & Real-World Projects</h3>
+        <p class="text-xs text-slate-300">Architecting complete systems, edge case hardening, and comprehensive review.</p>
+      </div>
+    </div>
+  </div>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => { if (window.lucide) window.lucide.createIcons(); });
+  </script>
+</body>
+</html>`;
+  }
+
+  public generatePlanSpaHtml(title: string, prompt: string, rawPlan?: string): string {
+    const p = (prompt + ' ' + title).toLowerCase();
+    if (/\b(diet|meal|nutrition|food|macro|calorie|recipe|keto|protein shake|weight loss diet|cutting diet|bulking diet)\b/i.test(p)) {
+      return this.generateRichDietHtml(title, rawPlan);
+    }
+    if (/\b(workout|fitness|exercise|gym|training|sport|hypertrophy|crossfit|running|cardio|stretching|strength|calisthenics|push pull legs|upper lower)\b/i.test(p) || (/\b(muscle)\b/i.test(p) && !/\b(diet|meal)\b/i.test(p))) {
+      return this.generateRichWorkoutHtml(title, rawPlan);
+    }
+    if (/\b(study|learning|curriculum|course|roadmap|syllabus|exam|revision)\b/i.test(p)) {
+      return this.generateRichStudyRoadmapHtml(title, rawPlan);
+    }
+    return this.generateRichTodoHtml(title);
   }
 
   public getArtifactHtml(artifact: Artifact): string {

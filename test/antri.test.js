@@ -75,7 +75,7 @@ test('ToolExecutor identifies privacy & security sensitive tools', () => {
 
 test('Updater reports correct package name and current version', () => {
   assert.strictEqual(Updater.PACKAGE_NAME, 'antri_cli');
-  assert.strictEqual(Updater.CURRENT_VERSION, '1.57.36');
+  assert.strictEqual(Updater.CURRENT_VERSION, '1.57.37');
 });
 
 test('GoalLoopEngine initializes with active configuration', () => {
@@ -755,6 +755,36 @@ test('DesktopServer /api/debate and /api/goal stream SSE events cleanly', async 
     await server.stop();
     configManager.setProvider(prevProvider);
   }
+});
+
+test('ArtifactManager smartly differentiates workout, diet, study, and todo plans', async () => {
+  const { ArtifactManager } = await import('../dist/core/artifactManager.js');
+  const { isCodingQuery, isGoalOrPlanQuery } = await import('../dist/core/agent.js');
+  const tempDir = path.join(os.tmpdir(), 'antri_test_plans_' + Date.now());
+  const manager = new ArtifactManager(tempDir);
+
+  // 1. Query Categorization
+  assert.strictEqual(isCodingQuery('create a workout plan for me'), false);
+  assert.strictEqual(isCodingQuery('create a 7-day keto diet meal plan'), false);
+  assert.strictEqual(isCodingQuery('build a todo app in React with Tailwind'), true);
+  assert.strictEqual(isGoalOrPlanQuery('create a workout plan for me'), true);
+  assert.strictEqual(isGoalOrPlanQuery('create a 7-day diet meal plan'), true);
+
+  // 2. Workout Plan Generation (Must produce workout app with exercises and rest timer, NOT a todo app)
+  const workoutHtml = manager.generatePlanSpaHtml('3-Day Hypertrophy Workout Plan', 'create a workout plan for me');
+  assert.ok(workoutHtml.includes('Fitness & Workout Planner'));
+  assert.ok(workoutHtml.includes('Rest Interval Timer'));
+  assert.ok(workoutHtml.includes('Push & Chest') || workoutHtml.includes('Sets'));
+  assert.ok(!workoutHtml.includes('Architect Database Schema'), 'Workout plan must NOT contain todo placeholder tasks');
+
+  // 3. Diet Plan Generation
+  const dietHtml = manager.generatePlanSpaHtml('7-Day Muscle Building Meal Plan', 'create a diet meal plan for me');
+  assert.ok(dietHtml.includes('Targeted Nutrition & Meal Planner') || dietHtml.includes('Nutrition & Macro Engine'));
+  assert.ok(dietHtml.includes('Calories') || dietHtml.includes('Protein'));
+
+  // 4. Todo App Generation
+  const todoHtml = manager.generatePlanSpaHtml('Sprint Tasks', 'create a todo task manager');
+  assert.ok(todoHtml.includes('Task Manager'));
 });
 
 test('ToolExecutor executes run_silent_debate and run_silent_goal tools', async () => {

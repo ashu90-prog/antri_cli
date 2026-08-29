@@ -85,6 +85,11 @@ export function isCodingQuery(prompt: string): boolean {
   if (p.startsWith('how to') || p.startsWith('why does') || p.startsWith('what is') || p.startsWith('explain')) {
     return false;
   }
+  // Exclude non-software / fitness / lifestyle / advisory / general planning queries
+  const nonSoftware = /\b(workout\b|fitness\b|exercise\b|gym\b|diet\b|meal\b|nutrition\b|travel\b|itinerary\b|trip\b|vacation\b|study schedule\b|routine\b|habit\b|recipe\b|story\b|poem\b|essay\b|letter\b|dating\b|life partner\b|marriage\b)/i;
+  if (nonSoftware.test(p)) {
+    return false;
+  }
   const pattern = /\b(code\b|build\b|make a\b|create a\b|develop\b|implement\b|write a\b|program\b|fastapi\b|express\b|react\b|next\.?js\b|algorithm\b|todo app\b|portfolio\b|website\b|component\b|server\b|script\b|refactor\b|fullstack\b)/i;
   return pattern.test(p);
 }
@@ -414,7 +419,9 @@ ${visualArtifactSection}
         .slice(0, 50) || 'Multi-Stage Interactive Plan';
       
       const artifactId = 'art_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-      const visualSpaHtml = artifactManager.generateRichTodoHtml ? artifactManager.generateRichTodoHtml(planTitle) : '';
+      const visualSpaHtml = artifactManager.generatePlanSpaHtml
+        ? artifactManager.generatePlanSpaHtml(planTitle, userPrompt, cleanPlan)
+        : (artifactManager.generateRichTodoHtml ? artifactManager.generateRichTodoHtml(planTitle) : '');
       
       let fullResponse = cleanPlan;
       if (visualSpaHtml) {
