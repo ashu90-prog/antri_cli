@@ -84,15 +84,22 @@ export class ConfigManager {
     return this.config;
   }
 
+  public getCurrentUserId(): string {
+    return this.currentUserId;
+  }
+
   private loadConfig(targetUserId?: string): AntriConfig {
+    const uid = targetUserId || this.currentUserId;
+    const isGuest = uid === 'default_user';
+
     let merged: AntriConfig = {
       ...DEFAULT_CONFIG,
-      apiKeys: { ...DEFAULT_CONFIG.apiKeys },
+      apiKeys: isGuest ? { ...DEFAULT_CONFIG.apiKeys } : {},
       customBaseUrls: { ...DEFAULT_CONFIG.customBaseUrls },
     };
 
     let hasSavedProvider = false;
-    const partitionFile = getPartitionConfigFile(targetUserId || this.currentUserId);
+    const partitionFile = getPartitionConfigFile(uid);
 
     // 1. Try to load user partition config (~/.antri/partitions/<userId>/config.json)
     if (fs.existsSync(partitionFile)) {
@@ -121,8 +128,8 @@ export class ConfigManager {
     // Always enforce the actual package runtime version (never stale from saved config)
     merged.version = DEFAULT_CONFIG.version;
 
-    // Only auto-detect if the user has NOT previously chosen and saved a provider
-    if (!hasSavedProvider && !merged.apiKeys.gemini && !process.env.GEMINI_API_KEY && !process.env.GOOGLE_API_KEY && !process.env.GOOGLE_GENAI_API_KEY) {
+    // Only auto-detect if in guest mode or if explicit keys are configured
+    if (isGuest && !hasSavedProvider && !merged.apiKeys.gemini && !process.env.GEMINI_API_KEY && !process.env.GOOGLE_API_KEY && !process.env.GOOGLE_GENAI_API_KEY) {
       if (merged.apiKeys.openai || process.env.OPENAI_API_KEY) {
         merged.provider = 'openai';
         merged.model = 'gpt-4o';
@@ -188,6 +195,11 @@ export class ConfigManager {
     this.saveGlobalConfig();
   }
 
+  public getApiKey(provider: string): string | undefined {
+    const formattedProvider = provider.replace(/-/g, '_');
+    return (this.config.apiKeys as any)[formattedProvider];
+  }
+
   public setBaseUrl(provider: string, url: string): void {
     const formattedProvider = provider.replace(/-/g, '_');
     if (!this.config.customBaseUrls) {
@@ -249,52 +261,53 @@ export class ConfigManager {
 
   public hasActiveApiKey(targetProvider?: ProviderType): { configured: boolean; provider: ProviderType; envVar: string; key?: string } {
     const provider = targetProvider || this.config.provider;
+    const isGuest = this.currentUserId === 'default_user';
     let key: string | undefined;
     let envVar = 'API_KEY';
 
     switch (provider) {
       case 'gemini':
-        key = this.config.apiKeys.gemini || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GOOGLE_GENAI_API_KEY;
+        key = this.config.apiKeys.gemini || (isGuest ? (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GOOGLE_GENAI_API_KEY) : undefined);
         envVar = 'GEMINI_API_KEY';
         break;
       case 'deepseek':
-        key = this.config.apiKeys.deepseek || process.env.DEEPSEEK_API_KEY || process.env.ANTRI_API_KEY;
+        key = this.config.apiKeys.deepseek || (isGuest ? (process.env.DEEPSEEK_API_KEY || process.env.ANTRI_API_KEY) : undefined);
         envVar = 'DEEPSEEK_API_KEY';
         break;
       case 'openai':
-        key = this.config.apiKeys.openai || process.env.OPENAI_API_KEY;
+        key = this.config.apiKeys.openai || (isGuest ? process.env.OPENAI_API_KEY : undefined);
         envVar = 'OPENAI_API_KEY';
         break;
       case 'anthropic':
-        key = this.config.apiKeys.anthropic || process.env.ANTHROPIC_API_KEY;
+        key = this.config.apiKeys.anthropic || (isGuest ? process.env.ANTHROPIC_API_KEY : undefined);
         envVar = 'ANTHROPIC_API_KEY';
         break;
       case 'nvidia-nim':
-        key = this.config.apiKeys.nvidia_nim || process.env.NVIDIA_API_KEY || process.env.NVIDIA_NIM_API_KEY;
+        key = this.config.apiKeys.nvidia_nim || (isGuest ? (process.env.NVIDIA_API_KEY || process.env.NVIDIA_NIM_API_KEY) : undefined);
         envVar = 'NVIDIA_API_KEY';
         break;
       case 'cerebras':
-        key = this.config.apiKeys.cerebras || process.env.CEREBRAS_API_KEY;
+        key = this.config.apiKeys.cerebras || (isGuest ? process.env.CEREBRAS_API_KEY : undefined);
         envVar = 'CEREBRAS_API_KEY';
         break;
       case 'cohere':
-        key = this.config.apiKeys.cohere || process.env.COHERE_API_KEY;
+        key = this.config.apiKeys.cohere || (isGuest ? process.env.COHERE_API_KEY : undefined);
         envVar = 'COHERE_API_KEY';
         break;
       case 'vortex':
-        key = this.config.apiKeys.vortex || process.env.VORTEX_API_KEY;
+        key = this.config.apiKeys.vortex || (isGuest ? process.env.VORTEX_API_KEY : undefined);
         envVar = 'VORTEX_API_KEY';
         break;
       case 'opencode':
-        key = this.config.apiKeys.opencode || process.env.OPENCODE_API_KEY;
+        key = this.config.apiKeys.opencode || (isGuest ? process.env.OPENCODE_API_KEY : undefined);
         envVar = 'OPENCODE_API_KEY';
         break;
       case 'openrouter':
-        key = this.config.apiKeys.openrouter || process.env.OPENROUTER_API_KEY;
+        key = this.config.apiKeys.openrouter || (isGuest ? process.env.OPENROUTER_API_KEY : undefined);
         envVar = 'OPENROUTER_API_KEY';
         break;
       case 'custom':
-        key = this.config.apiKeys.custom || process.env.CUSTOM_API_KEY;
+        key = this.config.apiKeys.custom || (isGuest ? process.env.CUSTOM_API_KEY : undefined);
         envVar = 'CUSTOM_API_KEY';
         break;
       case 'ollama':

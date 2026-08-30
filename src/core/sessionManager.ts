@@ -3,29 +3,65 @@ import path from 'path';
 import os from 'os';
 import { ChatMessage, ChatSession, ChatSessionSummary } from '../types.js';
 
-const CHATS_DIR = path.join(os.homedir(), '.antri', 'chats');
-const ACTIVE_SESSION_FILE = path.join(CHATS_DIR, '.active_session');
+function getCurrentUserId(): string {
+  try {
+    const authPath = path.join(os.homedir(), '.antri', 'auth.json');
+    if (fs.existsSync(authPath)) {
+      const raw = JSON.parse(fs.readFileSync(authPath, 'utf-8'));
+      const user = raw.user || raw;
+      if (user && user.email && typeof user.email === 'string') {
+        const clean = user.email.toLowerCase().trim();
+        return user.userId || clean.replace(/[^a-z0-9_]/g, '_');
+      }
+    }
+  } catch (_) {}
+  return 'default_user';
+}
 
 export class SessionManager {
-  private chatsDir: string;
+  private customDir?: string;
+  private currentUserId: string = 'default_user';
   private activeSessionId: string = '';
 
   constructor(customDir?: string) {
-    this.chatsDir = customDir || CHATS_DIR;
+    this.customDir = customDir;
+    this.currentUserId = customDir ? 'custom' : getCurrentUserId();
     this.ensureDirectory();
     this.initActiveSession();
   }
 
+  public switchUser(userId?: string): void {
+    this.currentUserId = userId || getCurrentUserId();
+    this.ensureDirectory();
+    this.initActiveSession();
+  }
+
+  public getChatsDir(): string {
+    if (this.customDir) return this.customDir;
+    const uid = this.currentUserId || getCurrentUserId();
+    const dir = path.join(os.homedir(), '.antri', 'partitions', uid, 'chats');
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    return dir;
+  }
+
+  public getActiveSessionFile(): string {
+    return path.join(this.getChatsDir(), '.active_session');
+  }
+
   private ensureDirectory(): void {
-    if (!fs.existsSync(this.chatsDir)) {
-      fs.mkdirSync(this.chatsDir, { recursive: true });
+    const dir = this.getChatsDir();
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
     }
   }
 
   private initActiveSession(): void {
     try {
-      if (fs.existsSync(ACTIVE_SESSION_FILE)) {
-        const id = fs.readFileSync(ACTIVE_SESSION_FILE, 'utf-8').trim();
+      const activeFile = this.getActiveSessionFile();
+      if (fs.existsSync(activeFile)) {
+        const id = fs.readFileSync(activeFile, 'utf-8').trim();
         if (id && fs.existsSync(this.getSessionFilePath(id))) {
           this.activeSessionId = id;
           return;
@@ -46,13 +82,13 @@ export class SessionManager {
 
   private getSessionFilePath(id: string): string {
     const cleanId = id.replace(/[^a-zA-Z0-9_-]/g, '_');
-    return path.join(this.chatsDir, `${cleanId}.json`);
+    return path.join(this.getChatsDir(), `${cleanId}.json`);
   }
 
   private saveActiveSessionId(): void {
     try {
       this.ensureDirectory();
-      fs.writeFileSync(ACTIVE_SESSION_FILE, this.activeSessionId, 'utf-8');
+      fs.writeFileSync(this.getActiveSessionFile(), this.activeSessionId, 'utf-8');
     } catch {}
   }
 
@@ -133,12 +169,13 @@ export class SessionManager {
   public listSessions(): ChatSessionSummary[] {
     this.ensureDirectory();
     try {
-      const files = fs.readdirSync(this.chatsDir).filter((f) => f.endsWith('.json') && !f.startsWith('.'));
+      const chatsDir = this.getChatsDir();
+      const files = fs.readdirSync(chatsDir).filter((f) => f.endsWith('.json') && !f.startsWith('.'));
       const summaries: ChatSessionSummary[] = [];
 
       for (const file of files) {
         try {
-          const filePath = path.join(this.chatsDir, file);
+          const filePath = path.join(chatsDir, file);
           const raw = fs.readFileSync(filePath, 'utf-8');
           const data: ChatSession = JSON.parse(raw);
           if (data && data.id) {

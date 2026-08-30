@@ -162,7 +162,7 @@ export class AuthManager {
     const syncCfg = FirestoreSyncManager.getSyncConfig();
     FirestoreSyncManager.saveSyncConfig(syncCfg.projectId || 'antri-agentic-hackathon', userId, syncCfg.apiKey);
 
-    // Switch config and profile partition context to the authenticated user
+    // Switch config, profile, session, and memory partition context to the authenticated user
     try {
       const { configManager } = await import('../core/config.js');
       configManager.reloadForUser(userId);
@@ -171,6 +171,16 @@ export class AuthManager {
     try {
       const { profileManager } = await import('../profiles/profileManager.js');
       profileManager.switchUser(userId);
+    } catch (_) {}
+
+    try {
+      const { sessionManager } = await import('../core/sessionManager.js');
+      sessionManager.switchUser(userId);
+    } catch (_) {}
+
+    try {
+      const { memoryManager } = await import('../memory/manager.js');
+      memoryManager.switchUser(userId);
     } catch (_) {}
 
     // Ensure partition workspace directory exists
@@ -240,7 +250,7 @@ export class AuthManager {
     const syncCfg = FirestoreSyncManager.getSyncConfig();
     FirestoreSyncManager.saveSyncConfig(syncCfg.projectId || 'antri-agentic-hackathon', userId, syncCfg.apiKey);
 
-    // Switch config and profile partition context to the authenticated user
+    // Switch config, profile, session, and memory partition context to the authenticated user
     try {
       const { configManager } = await import('../core/config.js');
       configManager.reloadForUser(userId);
@@ -249,6 +259,16 @@ export class AuthManager {
     try {
       const { profileManager } = await import('../profiles/profileManager.js');
       profileManager.switchUser(userId);
+    } catch (_) {}
+
+    try {
+      const { sessionManager } = await import('../core/sessionManager.js');
+      sessionManager.switchUser(userId);
+    } catch (_) {}
+
+    try {
+      const { memoryManager } = await import('../memory/manager.js');
+      memoryManager.switchUser(userId);
     } catch (_) {}
 
     return { success: true, user };
@@ -270,6 +290,14 @@ export class AuthManager {
 
     try {
       import('../profiles/profileManager.js').then(({ profileManager }) => profileManager.switchUser('default_user'));
+    } catch (_) {}
+
+    try {
+      import('../core/sessionManager.js').then(({ sessionManager }) => sessionManager.switchUser('default_user'));
+    } catch (_) {}
+
+    try {
+      import('../memory/manager.js').then(({ memoryManager }) => memoryManager.switchUser('default_user'));
     } catch (_) {}
   }
 }

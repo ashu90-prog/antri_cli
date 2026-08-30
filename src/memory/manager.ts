@@ -18,6 +18,12 @@ export class MemoryManager {
     this.consolidator = new MemoryConsolidator(this.episodic, this.semantic, this.profile);
   }
 
+  public switchUser(userId?: string): void {
+    this.episodic.switchUser(userId);
+    this.semantic.switchUser(userId);
+    this.profile.switchUser(userId);
+  }
+
   /**
    * Autonomous Self-Recall: Queries across Episodic, Semantic, and Profile memory
    */

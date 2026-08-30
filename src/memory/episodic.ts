@@ -3,28 +3,68 @@ import path from 'path';
 import os from 'os';
 import { Episode } from './types.js';
 
-const MEMORY_DIR = path.join(os.homedir(), '.antri', 'memory');
-const EPISODIC_FILE = path.join(MEMORY_DIR, 'episodic_store.json');
+function getCurrentUserId(): string {
+  try {
+    const authPath = path.join(os.homedir(), '.antri', 'auth.json');
+    if (fs.existsSync(authPath)) {
+      const raw = JSON.parse(fs.readFileSync(authPath, 'utf-8'));
+      const user = raw.user || raw;
+      if (user && user.email && typeof user.email === 'string') {
+        const clean = user.email.toLowerCase().trim();
+        return user.userId || clean.replace(/[^a-z0-9_]/g, '_');
+      }
+    }
+  } catch (_) {}
+  return 'default_user';
+}
 
 export class EpisodicMemory {
+  private customDir?: string;
+  private currentUserId: string = 'default_user';
   private episodes: Episode[] = [];
 
-  constructor() {
+  constructor(customDir?: string) {
+    this.customDir = customDir;
+    this.currentUserId = customDir ? 'custom' : getCurrentUserId();
     this.ensureDirectory();
     this.load();
   }
 
+  public switchUser(userId?: string): void {
+    this.currentUserId = userId || getCurrentUserId();
+    this.ensureDirectory();
+    this.load();
+  }
+
+  public getMemoryDir(): string {
+    if (this.customDir) return this.customDir;
+    const uid = this.currentUserId || getCurrentUserId();
+    const dir = path.join(os.homedir(), '.antri', 'partitions', uid, 'memory');
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    return dir;
+  }
+
+  public getEpisodicFile(): string {
+    return path.join(this.getMemoryDir(), 'episodic_store.json');
+  }
+
   private ensureDirectory(): void {
-    if (!fs.existsSync(MEMORY_DIR)) {
-      fs.mkdirSync(MEMORY_DIR, { recursive: true });
+    const dir = this.getMemoryDir();
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
     }
   }
 
   private load(): void {
     try {
-      if (fs.existsSync(EPISODIC_FILE)) {
-        const raw = fs.readFileSync(EPISODIC_FILE, 'utf-8');
+      const file = this.getEpisodicFile();
+      if (fs.existsSync(file)) {
+        const raw = fs.readFileSync(file, 'utf-8');
         this.episodes = JSON.parse(raw);
+      } else {
+        this.episodes = [];
       }
     } catch {
       this.episodes = [];
@@ -38,7 +78,7 @@ export class EpisodicMemory {
       if (this.episodes.length > 1000) {
         this.episodes = this.episodes.slice(-1000);
       }
-      fs.writeFileSync(EPISODIC_FILE, JSON.stringify(this.episodes, null, 2), 'utf-8');
+      fs.writeFileSync(this.getEpisodicFile(), JSON.stringify(this.episodes, null, 2), 'utf-8');
     } catch {}
   }
 

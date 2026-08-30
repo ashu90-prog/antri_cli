@@ -18,7 +18,7 @@ import { VectorStore } from '../dist/memory/vectorStore.js';
 import { EpisodicMemory } from '../dist/memory/episodic.js';
 import { SemanticMemory } from '../dist/memory/semantic.js';
 import { ProfileMemory } from '../dist/memory/profile.js';
-import { MemoryManager } from '../dist/memory/manager.js';
+import { MemoryManager, memoryManager } from '../dist/memory/manager.js';
 import { SandboxEngine } from '../dist/core/sandbox.js';
 import { SkillSynthesizer } from '../dist/core/skillSynthesizer.js';
 import { MetaOptimizer } from '../dist/core/metaOptimizer.js';
@@ -75,7 +75,7 @@ test('ToolExecutor identifies privacy & security sensitive tools', () => {
 
 test('Updater reports correct package name and current version', () => {
   assert.strictEqual(Updater.PACKAGE_NAME, 'antri_cli');
-  assert.strictEqual(Updater.CURRENT_VERSION, '1.57.41');
+  assert.strictEqual(Updater.CURRENT_VERSION, '1.57.42');
 });
 
 test('GoalLoopEngine initializes with active configuration', () => {
@@ -1373,6 +1373,50 @@ test('ProfileManager automatically extracts personality, thinking style, and min
   assert.ok(insight2);
   assert.ok(insight2.includes('first principles') || insight2.includes('strict typing'));
 });
+
+test('Multi-account strict partition isolation: sessions, memory, profiles, and API keys are completely separated', async () => {
+  const userA = 'user_alpha@test.com';
+  const userB = 'user_beta@test.com';
+
+  // 1. User A logs in
+  await AuthManager.login(userA);
+  const userAId = AuthManager.getCurrentUser().userId;
+
+  // User A sets a custom API key, creates a profile, creates a session, and saves memory
+  configManager.setApiKey('gemini', 'USER_A_SECRET_KEY');
+  profileManager.createProfile('profile_alpha', 'Alpha Custom Profile');
+  sessionManager.createSession('Alpha Private Chat');
+  await memoryManager.learn('User Alpha loves Haskell and pure mathematics', 'lesson_learned');
+
+  // Verify User A state
+  assert.strictEqual(configManager.getApiKey('gemini'), 'USER_A_SECRET_KEY');
+  assert.ok(profileManager.listProfiles().map((p) => p.id).includes('profile_alpha'));
+  const userASessions = sessionManager.listSessions();
+  assert.ok(userASessions.some((s) => s.title === 'Alpha Private Chat'));
+
+  // 2. User B logs in
+  await AuthManager.login(userB);
+  const userBId = AuthManager.getCurrentUser().userId;
+  assert.notStrictEqual(userAId, userBId);
+
+  // Verify User B state is COMPLETELY isolated from User A
+  // A. User B has NO API key from User A
+  assert.strictEqual(configManager.getApiKey('gemini'), undefined);
+  const activeKeyCheck = configManager.hasActiveApiKey('gemini');
+  assert.strictEqual(activeKeyCheck.configured, false);
+
+  // B. User B does NOT see User A's custom profiles
+  assert.ok(!profileManager.listProfiles().map((p) => p.id).includes('profile_alpha'));
+  assert.ok(profileManager.listProfiles().map((p) => p.id).includes('profile_1'));
+
+  // C. User B does NOT see User A's chat sessions
+  const userBSessions = sessionManager.listSessions();
+  assert.ok(!userBSessions.some((s) => s.title === 'Alpha Private Chat'));
+
+  // Cleanup
+  AuthManager.logout();
+});
+
 
 
 

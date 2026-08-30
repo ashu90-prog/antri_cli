@@ -457,7 +457,7 @@ ${visualArtifactSection}
     }
 
     // 3. Autonomous Self-Recall into Persistent Memory Hierarchy with fast timeout guard
-    const geminiKey = this.config.apiKeys.gemini || process.env.GEMINI_API_KEY;
+    const geminiKey = this.config.apiKeys.gemini;
     let contextText = '';
     try {
       const recallPromise = memoryManager.selfRecall(userPrompt, this.config.workingDir, geminiKey);

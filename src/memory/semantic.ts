@@ -4,29 +4,70 @@ import os from 'os';
 import { SemanticVectorItem } from './types.js';
 import { VectorStore } from './vectorStore.js';
 
-const MEMORY_DIR = path.join(os.homedir(), '.antri', 'memory');
-const SEMANTIC_FILE = path.join(MEMORY_DIR, 'semantic_store.json');
+function getCurrentUserId(): string {
+  try {
+    const authPath = path.join(os.homedir(), '.antri', 'auth.json');
+    if (fs.existsSync(authPath)) {
+      const raw = JSON.parse(fs.readFileSync(authPath, 'utf-8'));
+      const user = raw.user || raw;
+      if (user && user.email && typeof user.email === 'string') {
+        const clean = user.email.toLowerCase().trim();
+        return user.userId || clean.replace(/[^a-z0-9_]/g, '_');
+      }
+    }
+  } catch (_) {}
+  return 'default_user';
+}
 
 export class SemanticMemory {
+  private customDir?: string;
+  private currentUserId: string = 'default_user';
   private items: SemanticVectorItem[] = [];
 
-  constructor() {
+  constructor(customDir?: string) {
+    this.customDir = customDir;
+    this.currentUserId = customDir ? 'custom' : getCurrentUserId();
     this.ensureDirectory();
     this.load();
     this.seedInitialKnowledge();
   }
 
+  public switchUser(userId?: string): void {
+    this.currentUserId = userId || getCurrentUserId();
+    this.ensureDirectory();
+    this.load();
+    this.seedInitialKnowledge();
+  }
+
+  public getMemoryDir(): string {
+    if (this.customDir) return this.customDir;
+    const uid = this.currentUserId || getCurrentUserId();
+    const dir = path.join(os.homedir(), '.antri', 'partitions', uid, 'memory');
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    return dir;
+  }
+
+  public getSemanticFile(): string {
+    return path.join(this.getMemoryDir(), 'semantic_store.json');
+  }
+
   private ensureDirectory(): void {
-    if (!fs.existsSync(MEMORY_DIR)) {
-      fs.mkdirSync(MEMORY_DIR, { recursive: true });
+    const dir = this.getMemoryDir();
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
     }
   }
 
   private load(): void {
     try {
-      if (fs.existsSync(SEMANTIC_FILE)) {
-        const raw = fs.readFileSync(SEMANTIC_FILE, 'utf-8');
+      const file = this.getSemanticFile();
+      if (fs.existsSync(file)) {
+        const raw = fs.readFileSync(file, 'utf-8');
         this.items = JSON.parse(raw);
+      } else {
+        this.items = [];
       }
     } catch {
       this.items = [];
@@ -36,7 +77,7 @@ export class SemanticMemory {
   private save(): void {
     try {
       this.ensureDirectory();
-      fs.writeFileSync(SEMANTIC_FILE, JSON.stringify(this.items, null, 2), 'utf-8');
+      fs.writeFileSync(this.getSemanticFile(), JSON.stringify(this.items, null, 2), 'utf-8');
     } catch {}
   }
 

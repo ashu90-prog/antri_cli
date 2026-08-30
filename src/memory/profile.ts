@@ -3,8 +3,20 @@ import path from 'path';
 import os from 'os';
 import { UserProfileMemory } from './types.js';
 
-const MEMORY_DIR = path.join(os.homedir(), '.antri', 'memory');
-const PROFILE_FILE = path.join(MEMORY_DIR, 'profile.json');
+function getCurrentUserId(): string {
+  try {
+    const authPath = path.join(os.homedir(), '.antri', 'auth.json');
+    if (fs.existsSync(authPath)) {
+      const raw = JSON.parse(fs.readFileSync(authPath, 'utf-8'));
+      const user = raw.user || raw;
+      if (user && user.email && typeof user.email === 'string') {
+        const clean = user.email.toLowerCase().trim();
+        return user.userId || clean.replace(/[^a-z0-9_]/g, '_');
+      }
+    }
+  } catch (_) {}
+  return 'default_user';
+}
 
 const DEFAULT_PROFILE: UserProfileMemory = {
   preferredLanguage: 'TypeScript',
@@ -23,23 +35,49 @@ const DEFAULT_PROFILE: UserProfileMemory = {
 };
 
 export class ProfileMemory {
+  private customDir?: string;
+  private currentUserId: string = 'default_user';
   private profile: UserProfileMemory;
 
-  constructor() {
+  constructor(customDir?: string) {
+    this.customDir = customDir;
+    this.currentUserId = customDir ? 'custom' : getCurrentUserId();
     this.ensureDirectory();
     this.profile = this.load();
   }
 
+  public switchUser(userId?: string): void {
+    this.currentUserId = userId || getCurrentUserId();
+    this.ensureDirectory();
+    this.profile = this.load();
+  }
+
+  public getMemoryDir(): string {
+    if (this.customDir) return this.customDir;
+    const uid = this.currentUserId || getCurrentUserId();
+    const dir = path.join(os.homedir(), '.antri', 'partitions', uid, 'memory');
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    return dir;
+  }
+
+  public getProfileFile(): string {
+    return path.join(this.getMemoryDir(), 'profile.json');
+  }
+
   private ensureDirectory(): void {
-    if (!fs.existsSync(MEMORY_DIR)) {
-      fs.mkdirSync(MEMORY_DIR, { recursive: true });
+    const dir = this.getMemoryDir();
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
     }
   }
 
   private load(): UserProfileMemory {
     try {
-      if (fs.existsSync(PROFILE_FILE)) {
-        const raw = fs.readFileSync(PROFILE_FILE, 'utf-8');
+      const file = this.getProfileFile();
+      if (fs.existsSync(file)) {
+        const raw = fs.readFileSync(file, 'utf-8');
         return { ...DEFAULT_PROFILE, ...JSON.parse(raw) };
       }
     } catch {}
@@ -49,7 +87,7 @@ export class ProfileMemory {
   public save(): void {
     try {
       this.ensureDirectory();
-      fs.writeFileSync(PROFILE_FILE, JSON.stringify(this.profile, null, 2), 'utf-8');
+      fs.writeFileSync(this.getProfileFile(), JSON.stringify(this.profile, null, 2), 'utf-8');
     } catch {}
   }
 
