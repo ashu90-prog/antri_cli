@@ -85,7 +85,7 @@ def create_bw_architecture_diagram():
     draw_box(910, box_y, box_w, box_h, "DESKTOP CONTROL PLANE (11 TABS)", [
         "Agent Studio · Codebase Radar · Code Workspace · Timeline",
         "Dialectic Arena · Goal Pipeline · Dynamic Skills · Memory",
-        "BugTwin Visual Sandbox & CrashZero Time-Travel Replay",
+        "BugTwin Visual Sandbox & Interactive Verification Stage",
         "Artifacts Hub (Desktop / Tablet / Mobile Viewport Toggles)",
         "Interactive Prompt Toolkit Autocomplete Palette (/)"
     ], "DESKTOP")
@@ -126,7 +126,7 @@ def create_bw_architecture_diagram():
     draw.text((1330, core_y + 68), "• Subprocess Runner & Python Sandbox Manager", fill="black", font=font_item)
 
     draw.text((1960, core_y + 44), "• Cloud Run Health Probes (/api/health)", fill="black", font=font_item)
-    draw.text((1960, core_y + 68), "• Zero-Config Judge Session Manager", fill="black", font=font_item)
+    draw.text((1960, core_y + 72), "• Zero-Config Judge Session Manager", fill="black", font=font_item)
 
     # Horizontal bus and down connectors from Layer 2 to Layer 3
     bus_y = 570
@@ -139,7 +139,6 @@ def create_bw_architecture_diagram():
         draw_down_arrow(x, bus_y, 630)
 
     # ==================== LAYER 3: AUTONOMOUS AGENTIC ENGINES ====================
-    # Draw label above Layer 3 with white backing to prevent line clash
     draw.rectangle([75, 592, 595, 616], fill="white", outline="white")
     draw.text((80, 595), "LAYER 3: AUTONOMOUS AGENTIC ENGINES & SUBSYSTEMS", fill="black", font=font_layer_label)
 
@@ -177,15 +176,15 @@ def create_bw_architecture_diagram():
         "Zero Human Intervention"
     ], "BUG-FIX")
 
-    draw_box(1310, sub_y, sub_w, sub_h, "CRASHZERO DEBUGGER", [
-        "Time-Travel Incident Replay",
-        "Call Stack De-Minification",
-        "Millisecond Frame Slicing",
-        "Scrubbable Timeline Player",
-        "Live Variable State Inspection",
-        "Root-Cause Dialectic Analysis",
-        "Automated Fix PR Generator"
-    ], "REPLAY")
+    draw_box(1310, sub_y, sub_w, sub_h, "THINKING PROFILES", [
+        "Autonomous Cognitive Blueprints",
+        "Silent Philosophy & Style Capture",
+        "Minute Nuance & Habit Extraction",
+        "Dynamic Profile Switcher (/profile)",
+        "Active Markdown Store (profile_1.md)",
+        "RAG Active Context Injection",
+        "Zero Interruptive Popups"
+    ], "COGNITIVE")
 
     draw_box(1720, sub_y, sub_w, sub_h, "DYNAMIC SKILLS", [
         "Autonomous Tool Synthesis",
@@ -242,7 +241,7 @@ def create_bw_architecture_diagram():
         "Episodic Session Store: Transcript histories, debate logs, goal iterations, and conversation trees",
         "Workspace Conventions Memory: Repository-specific architectural patterns (~/.antri/conventions.md)",
         "Google Cloud Firestore Sync: Real-time bi-directional state synchronization across Mobile, CLI & Desktop",
-        "Artifact Storage Hub: Persistent storage for BugTwin sandboxes, CrashZero replays, and mind maps",
+        "Artifact Storage Hub: Persistent storage for BugTwin sandboxes, interactive plans, and mind maps",
         "Offline-First Resilience: Local JSON snapshot fallback when disconnected from Cloud Firestore",
         "Knowledge Compounding Loop: Autonomous memory reflection and rule consolidation (/consolidate, /learn)"
     ], "PERSISTENCE")
@@ -258,7 +257,7 @@ def create_bw_architecture_diagram():
     
     img.save(out_path, "PNG")
     img.save(out_path_bw, "PNG")
-    print(f"Successfully generated perfect black and white architecture diagram: {out_path}")
+    print(f"Successfully generated black and white architecture diagram: {out_path}")
 
 if __name__ == "__main__":
     create_bw_architecture_diagram()
