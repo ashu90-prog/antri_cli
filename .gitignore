@@ -1,5 +1,7 @@
 # Dependencies
 node_modules/
+.dart_tool/
+antri_flutter/build/
 
 # Production builds
 dist/
@@ -12,15 +14,35 @@ dist/
 .antri/
 
 # Internal Agent Memory & References (Not needed for production repo)
+Memory/
 /Memory/
+Refrence/
 /Refrence/
+Reference/
 /Reference/
-/refrence/
-/reference/
+refrence/
+reference/
 AGENTS.md
 GEMINI.md
 .agents/
 !src/memory/
+
+# Benchmarks, Sandboxes & Temporary Demos
+cloned_benchmarks/
+/cloned_benchmarks/
+demo-sandbox/
+/demo-sandbox/
+demo_sandbox/
+/demo_sandbox/
+standalone-goal-demo/
+/standalone-goal-demo/
+showcase_artifacts/
+/showcase_artifacts/
+portfolio/
+/portfolio/
+ItemList.tsx
+
+# HTML files in root
 *.html
 !src/desktop/public/index.html
 !src/mobile/public/index.html
@@ -34,9 +56,9 @@ yarn-error.log*
 
 # Binaries & APKs (Provided via GitHub Releases)
 *.apk
+antri-*.apk
 antri-release.apk
 
 # System
 .DS_Store
 Thumbs.db
-

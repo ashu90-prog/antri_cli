@@ -237,7 +237,7 @@ export class DesktopServer {
     // GET /api/commands (Prompt Toolkit Slash Commands)
     if (pathname === '/api/commands' && req.method === 'GET') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ commands: PROMPT_TOOLKIT_COMMANDS }));
+      res.end(JSON.stringify({ success: true, commands: PROMPT_TOOLKIT_COMMANDS }));
       return;
     }
 
@@ -413,14 +413,6 @@ export class DesktopServer {
       const fullHtml = artifactManager.getArtifactHtml(artifact);
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
       res.end(fullHtml);
-      return;
-    }
-
-    // GET /api/commands (List all available slash commands for desktop autocomplete)
-    if (pathname === '/api/commands' && req.method === 'GET') {
-      const { PROMPT_TOOLKIT_COMMANDS } = await import('../cli/promptToolkit.js');
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ success: true, commands: PROMPT_TOOLKIT_COMMANDS }));
       return;
     }
 
