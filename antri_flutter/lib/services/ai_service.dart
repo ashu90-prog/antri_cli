@@ -144,13 +144,41 @@ class AIService {
         });
       }
 
-      final endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/$normalizedModel:generateContent?key=$apiKey';
+      final Map<String, String> headers = {'Content-Type': 'application/json'};
+      String endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/$normalizedModel:generateContent';
+
+      if (apiKey.startsWith('AQ.') || apiKey.startsWith('ya29.')) {
+        headers['Authorization'] = 'Bearer $apiKey';
+      } else {
+        endpoint += '?key=$apiKey';
+      }
 
       var response = await http.post(
         Uri.parse(endpoint),
-        headers: {'Content-Type': 'application/json'},
+        headers: headers,
         body: jsonEncode({'contents': contents}),
       );
+
+      // If Bearer failed, retry with ?key= or vice-versa
+      if (response.statusCode != 200) {
+        final altHeaders = {'Content-Type': 'application/json'};
+        String altEndpoint = 'https://generativelanguage.googleapis.com/v1beta/models/$normalizedModel:generateContent';
+        if (headers.containsKey('Authorization')) {
+          altEndpoint += '?key=$apiKey';
+        } else {
+          altHeaders['Authorization'] = 'Bearer $apiKey';
+        }
+        try {
+          final altResp = await http.post(
+            Uri.parse(altEndpoint),
+            headers: altHeaders,
+            body: jsonEncode({'contents': contents}),
+          );
+          if (altResp.statusCode >= 200 && altResp.statusCode < 300) {
+            response = altResp;
+          }
+        } catch (_) {}
+      }
 
       // Automatic resilient fallback if 404 (model not found), 503 (high demand), or 429
       if (response.statusCode != 200 && normalizedModel != 'gemini-2.5-flash') {
@@ -167,7 +195,7 @@ class AIService {
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
-        return data['candidates']?[0]?['content']?['parts']?[0]?['text'] ?? 'No output generated.';
+        return data['candidates']?[0]?['content']?[0]?['text'] ?? data['candidates']?[0]?['content']?['parts']?[0]?['text'] ?? 'No output generated.';
       } else {
         throw Exception('Gemini ${response.statusCode}: ${response.body}');
       }
