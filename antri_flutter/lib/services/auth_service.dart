@@ -51,6 +51,11 @@ class AuthService {
 
   Future<UserAccount> login(String email, [String? password]) async {
     final cleanEmail = email.toLowerCase().trim();
+    if (cleanEmail == 'antri@judge.com') {
+      if (password != null && password.isNotEmpty && password != 'Judge123') {
+        throw Exception('Invalid password for Judge Partition. Please enter "Judge123".');
+      }
+    }
     final userId = generateUserId(cleanEmail);
     final user = UserAccount(
       email: cleanEmail,
