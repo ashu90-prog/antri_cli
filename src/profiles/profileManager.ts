@@ -522,6 +522,9 @@ Use this active knowledge naturally to inform responses, adhere to coding prefer
     // 7. Check for Minute Nuances, Habits, Quirks & Mindset
     const nuancePatterns = [
       /(?:i tend to|my habit is|i get frustrated when|i feel best when|i usually think|my mindset is|i care deeply about)\s+([^.!?\n]+)/i,
+      /(?:my personality is|my nature is|i consider myself|as a person i am|i am an? (?:introvert|extrovert|ambivert|pragmatist|realist|idealist|perfectionist))\s*([^.!?\n]*)/i,
+      /(?:my thinking style is|the way i think is|i think in|i analyze things|my thought process is)\s+([^.!?\n]+)/i,
+      /(?:my mental model is|my approach to (?:coding|life|problems|work) is)\s+([^.!?\n]+)/i,
     ];
 
     for (const pattern of nuancePatterns) {
@@ -529,12 +532,55 @@ Use this active knowledge naturally to inform responses, adhere to coding prefer
       if (match && match[0]) {
         const extracted = match[0].trim();
         if (extracted.length > 5 && extracted.length < 250) {
-          const noteEntry = `Mindset & Nuance: ${extracted}`;
+          const noteEntry = `Mindset & Personality: ${extracted}`;
           this.appendNoteToActiveProfile(noteEntry);
           this.appendToNotesFiles(noteEntry, workingDir);
           recordedNotes.push(noteEntry);
           break;
         }
+      }
+    }
+
+    // 8. Explicit Learn / Rule statement patterns
+    const explicitLearnPatterns = [
+      /(?:(?:please |can you )?(?:learn|remember|note down|record) (?:that |this:? )?)([^.!?\n]+)/i,
+      /(?:new rule:? |important rule:? |my rule:? )([^.!?\n]+)/i,
+    ];
+
+    for (const pattern of explicitLearnPatterns) {
+      const match = cleanPrompt.match(pattern);
+      if (match && match[1]) {
+        const extracted = match[1].trim();
+        if (extracted.length > 3 && extracted.length < 250) {
+          const noteEntry = `Rule & Direct Insight: ${extracted}`;
+          this.appendNoteToActiveProfile(noteEntry);
+          this.appendToNotesFiles(noteEntry, workingDir);
+          recordedNotes.push(noteEntry);
+          break;
+        }
+      }
+    }
+
+    // 9. Broad Fallback for Short Preference / Style statements
+    if (recordedNotes.length === 0) {
+      const lower = cleanPrompt.toLowerCase();
+      if (
+        (lower.startsWith('i prefer') ||
+          lower.startsWith('i like') ||
+          lower.startsWith('i always') ||
+          lower.startsWith('my personality') ||
+          lower.startsWith('my thinking') ||
+          lower.startsWith('i think') ||
+          lower.startsWith('remember') ||
+          lower.includes('my style is') ||
+          lower.includes('my philosophy is')) &&
+        cleanPrompt.length >= 8 &&
+        cleanPrompt.length <= 250
+      ) {
+        const noteEntry = `Observed Preference: ${cleanPrompt}`;
+        this.appendNoteToActiveProfile(noteEntry);
+        this.appendToNotesFiles(noteEntry, workingDir);
+        recordedNotes.push(noteEntry);
       }
     }
 

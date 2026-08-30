@@ -102,10 +102,11 @@ export class MemoryManager {
     }
   }
 
-  public getMemoryDetails(workingDir: string): { episodicCount: number; semanticCount: number; semanticItems: SemanticVectorItem[]; episodes: any[] } {
+  public getMemoryDetails(workingDir: string): { episodicCount: number; semanticCount: number; conventionsCount: number; semanticItems: SemanticVectorItem[]; episodes: any[] } {
     return {
       episodicCount: this.episodic.count(),
       semanticCount: this.semantic.count(),
+      conventionsCount: this.profile.getWorkspaceConventions(workingDir).length,
       semanticItems: this.semantic.getAll(),
       episodes: this.episodic.getAll(),
     };

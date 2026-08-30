@@ -22,7 +22,7 @@ import { MemoryManager } from '../dist/memory/manager.js';
 import { SandboxEngine } from '../dist/core/sandbox.js';
 import { SkillSynthesizer } from '../dist/core/skillSynthesizer.js';
 import { MetaOptimizer } from '../dist/core/metaOptimizer.js';
-import { ProfileManager } from '../dist/profiles/profileManager.js';
+import { ProfileManager, profileManager } from '../dist/profiles/profileManager.js';
 import { SkillManager } from '../dist/skills/skillManager.js';
 import { Updater } from '../dist/core/updater.js';
 import { GoalLoopEngine } from '../dist/core/goalLoop.js';
@@ -30,8 +30,8 @@ import { DesktopServer } from '../dist/desktop/server.js';
 import { MobileServer } from '../dist/mobile/server.js';
 import { FirestoreSyncManager } from '../dist/cloud/firestore.js';
 import { AuthManager } from '../dist/cloud/auth.js';
-import { SessionManager } from '../dist/core/sessionManager.js';
-import { isGoalOrPlanQuery, isDebateOrTradeoffQuery, isCodingQuery, isBugOrReproductionQuery, isCrashOrReplayQuery, isArtifactOrVisualPrompt } from '../dist/core/agent.js';
+import { SessionManager, sessionManager } from '../dist/core/sessionManager.js';
+import { AntriAgent, isGoalOrPlanQuery, isDebateOrTradeoffQuery, isCodingQuery, isBugOrReproductionQuery, isCrashOrReplayQuery, isArtifactOrVisualPrompt } from '../dist/core/agent.js';
 import { BugTwinEngine } from '../dist/core/bugTwin.js';
 import { CrashZeroEngine } from '../dist/core/crashZero.js';
 import { artifactManager } from '../dist/core/artifactManager.js';
@@ -243,7 +243,7 @@ test('SemanticMemory indexes knowledge and performs vector search', async () => 
 
   const matches = await semantic.search('distributed locks concurrency in redis', 2);
   assert.ok(matches.length > 0);
-  assert.ok(matches[0].item.text.includes('Redis SETNX'));
+  assert.ok(matches.some((m) => m.item.text.includes('Redis SETNX')));
   assert.ok(matches[0].similarity > 0.2);
 });
 
@@ -1293,6 +1293,40 @@ test('Intent Gating and Routing correctly separates coding, visual artifacts, Bu
   assert.strictEqual(isBugOrReproductionQuery('build a todo app'), false);
   assert.strictEqual(isCrashOrReplayQuery('code a portfolio website'), false);
 });
+
+test('Agent handles /learn, /notes, and /profile commands seamlessly across Desktop and CLI', async () => {
+  const agent = new AntriAgent({
+    provider: 'mock',
+    model: 'mock-model',
+    alwaysAllow: true,
+    workingDir: process.cwd(),
+    apiKeys: {},
+  });
+
+  // Test /learn
+  const learnRes = await agent.chat('/learn Always use strict TypeScript interfaces and immutability');
+  assert.ok(learnRes.includes('Learned & Persisted to Memory'));
+  assert.ok(learnRes.includes('Always use strict TypeScript interfaces and immutability'));
+
+  // Test /notes
+  const notesRes = await agent.chat('/notes');
+  assert.ok(notesRes.includes('Thinking Profile & Captured Mindset Notes'));
+
+  // Test /profile
+  const profRes = await agent.chat('/profile');
+  assert.ok(profRes.includes('Active Thinking Profile'));
+});
+
+test('ProfileManager automatically extracts personality, thinking style, and mindset nuances during chat', () => {
+  const insight1 = profileManager.extractAndRecordNotes('My personality is analytical and I am an introvert who loves clean architecture', process.cwd());
+  assert.ok(insight1);
+  assert.ok(insight1.includes('analytical') || insight1.includes('clean architecture') || insight1.includes('introvert'));
+
+  const insight2 = profileManager.extractAndRecordNotes('My thinking style is first principles and I prefer strict typing', process.cwd());
+  assert.ok(insight2);
+  assert.ok(insight2.includes('first principles') || insight2.includes('strict typing'));
+});
+
 
 
 

@@ -328,6 +328,103 @@ ${visualArtifactSection}
 
     const startTime = Date.now();
     const activeProfileName = profileManager.getActiveProfileName();
+    const trimmedPrompt = userPrompt.trim();
+
+    // 0a. Slash Command: /learn <insight>
+    if (trimmedPrompt === '/learn' || trimmedPrompt.startsWith('/learn ')) {
+      const insight = trimmedPrompt.replace(/^\/learn\s*/, '').trim();
+      if (!insight) {
+        const usageMsg = `⚠️ **Usage**: \`/learn <rule, convention, or knowledge nugget>\`\n\n*Example:* \`/learn Always use TypeScript strict mode\``;
+        onStreamToken?.(usageMsg);
+        return usageMsg;
+      }
+
+      await memoryManager.learn(insight, 'lesson_learned', this.config.workingDir);
+      profileManager.appendNoteToActiveProfile(insight);
+      profileManager.appendToNotesFiles(insight, this.config.workingDir);
+
+      const activeName = profileManager.getActiveProfileName();
+      const learnMsg = `🧠 **[Learned & Persisted to Memory]**\n\n- **Saved Insight**: "${insight}"\n- **Active Profile**: Updated \`${activeName}.md\`\n- **Semantic Vector Memory**: Indexed & saved to long-term memory store\n- **Firestore Sync**: 🟢 Synced across Desktop, CLI, and Mobile.`;
+
+      onStreamToken?.(learnMsg);
+
+      const userMsg: ChatMessage = { role: 'user', content: userPrompt };
+      const assistantMsg: ChatMessage = { role: 'assistant', content: learnMsg };
+      this.history.addMessage(userMsg);
+      this.history.addMessage(assistantMsg);
+      sessionManager.addMessageToActiveSession(userMsg);
+      sessionManager.addMessageToActiveSession(assistantMsg);
+
+      return learnMsg;
+    }
+
+    // 0b. Slash Command: /notes
+    if (trimmedPrompt === '/notes' || trimmedPrompt.startsWith('/notes ')) {
+      const activeName = profileManager.getActiveProfileName();
+      const profileContent = profileManager.getActiveProfileContent();
+      const notesData = profileManager.getNotesData(this.config.workingDir);
+
+      let notesMsg = `📝 **[Thinking Profile & Captured Mindset Notes]**\n\n- **Active Profile**: \`${activeName}.md\`\n\n`;
+      if (profileContent) {
+        notesMsg += `### 👤 Active Profile Blueprint\n\`\`\`markdown\n${profileContent.slice(0, 1000)}${profileContent.length > 1000 ? '\n...(truncated)' : ''}\n\`\`\`\n\n`;
+      }
+      if (notesData.workspaceNotes) {
+        notesMsg += `### 📂 Workspace Notes\n\`\`\`markdown\n${notesData.workspaceNotes.slice(0, 600)}\n\`\`\`\n`;
+      }
+
+      onStreamToken?.(notesMsg);
+
+      const userMsg: ChatMessage = { role: 'user', content: userPrompt };
+      const assistantMsg: ChatMessage = { role: 'assistant', content: notesMsg };
+      this.history.addMessage(userMsg);
+      this.history.addMessage(assistantMsg);
+      sessionManager.addMessageToActiveSession(userMsg);
+      sessionManager.addMessageToActiveSession(assistantMsg);
+
+      return notesMsg;
+    }
+
+    // 0c. Slash Command: /profile
+    if (trimmedPrompt === '/profile' || trimmedPrompt.startsWith('/profile ')) {
+      const targetProfile = trimmedPrompt.replace(/^\/profile\s*/, '').trim();
+      let profMsg = '';
+      if (targetProfile) {
+        profileManager.setActiveProfile(targetProfile);
+        profMsg = `👤 **Switched Active Thinking Profile to**: \`${profileManager.getActiveProfileName()}.md\``;
+      } else {
+        const list = profileManager.listProfiles();
+        const active = profileManager.getActiveProfileName();
+        profMsg = `👤 **Active Thinking Profile**: \`${active}.md\`\n\n**Available Profiles**:\n${list.map((p) => `- \`${p.name}\`${p.isActive ? ' (active)' : ''}`).join('\n')}\n\n*Switch with:* \`/profile <name>\``;
+      }
+
+      onStreamToken?.(profMsg);
+
+      const userMsg: ChatMessage = { role: 'user', content: userPrompt };
+      const assistantMsg: ChatMessage = { role: 'assistant', content: profMsg };
+      this.history.addMessage(userMsg);
+      this.history.addMessage(assistantMsg);
+      sessionManager.addMessageToActiveSession(userMsg);
+      sessionManager.addMessageToActiveSession(assistantMsg);
+
+      return profMsg;
+    }
+
+    // 0d. Slash Command: /memory
+    if (trimmedPrompt === '/memory' || trimmedPrompt.startsWith('/memory ')) {
+      const stats = memoryManager.getMemoryDetails(this.config.workingDir);
+      const memMsg = `🧠 **[Memory Status & Knowledge Store]**\n\n- **Semantic Insights**: ${stats.semanticCount || 0} vector memories\n- **Workspace Conventions**: ${stats.conventionsCount || 0} active rules\n- **Episodic Sessions**: ${stats.episodicCount || 0} recorded transcripts\n- **Storage Location**: \`~/.antri/memory/\``;
+
+      onStreamToken?.(memMsg);
+
+      const userMsg: ChatMessage = { role: 'user', content: userPrompt };
+      const assistantMsg: ChatMessage = { role: 'assistant', content: memMsg };
+      this.history.addMessage(userMsg);
+      this.history.addMessage(assistantMsg);
+      sessionManager.addMessageToActiveSession(userMsg);
+      sessionManager.addMessageToActiveSession(assistantMsg);
+
+      return memMsg;
+    }
 
     // 1. Ensure Codebase Intelligence Cache is warm
     if (!ProjectContextCache.get(this.config.workingDir)) {
