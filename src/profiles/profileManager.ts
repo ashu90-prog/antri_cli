@@ -4,17 +4,30 @@ import os from 'os';
 import chalk from 'chalk';
 import { ProfileInfo } from '../types.js';
 
-const PROFILES_DIR = path.join(os.homedir(), '.antri', 'profiles');
-const ACTIVE_PROFILE_FILE = path.join(PROFILES_DIR, '.active_profile');
-const GLOBAL_NOTES_FILE = path.join(PROFILES_DIR, 'notes.md');
+function getCurrentUserId(): string {
+  try {
+    const authPath = path.join(os.homedir(), '.antri', 'auth.json');
+    if (fs.existsSync(authPath)) {
+      const raw = JSON.parse(fs.readFileSync(authPath, 'utf-8'));
+      const user = raw.user || raw;
+      if (user && user.email && typeof user.email === 'string') {
+        const clean = user.email.toLowerCase().trim();
+        return user.userId || clean.replace(/[^a-z0-9_]/g, '_');
+      }
+    }
+  } catch (_) {}
+  return 'default_user';
+}
 
 export class ProfileManager {
-  private profilesDir: string;
+  private customDir?: string;
+  private currentUserId: string = 'default_user';
   private activeProfile: string = 'profile_1';
   private userName: string = '';
 
   constructor(customDir?: string) {
-    this.profilesDir = customDir || PROFILES_DIR;
+    this.customDir = customDir;
+    this.currentUserId = customDir ? 'custom' : getCurrentUserId();
     this.ensureDirectory();
     this.initDefaultProfile();
     this.initGlobalNotes();
@@ -22,14 +35,41 @@ export class ProfileManager {
     this.ensureWorkspaceProfiles(process.cwd());
   }
 
+  public switchUser(userId?: string): void {
+    this.currentUserId = userId || getCurrentUserId();
+    this.ensureDirectory();
+    this.initDefaultProfile();
+    this.initGlobalNotes();
+    this.loadActiveProfileName();
+  }
+
+  public getProfilesDir(): string {
+    if (this.customDir) return this.customDir;
+    const uid = this.currentUserId || getCurrentUserId();
+    const dir = path.join(os.homedir(), '.antri', 'partitions', uid, 'profiles');
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    return dir;
+  }
+
+  public getActiveProfileFile(): string {
+    return path.join(this.getProfilesDir(), '.active_profile');
+  }
+
+  public getGlobalNotesFile(): string {
+    return path.join(this.getProfilesDir(), 'notes.md');
+  }
+
   private ensureDirectory(): void {
-    if (!fs.existsSync(this.profilesDir)) {
-      fs.mkdirSync(this.profilesDir, { recursive: true });
+    const dir = this.getProfilesDir();
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
     }
   }
 
   private initDefaultProfile(): void {
-    const profile1Path = path.join(this.profilesDir, 'profile_1.md');
+    const profile1Path = path.join(this.getProfilesDir(), 'profile_1.md');
     if (!fs.existsSync(profile1Path)) {
       const template = `# 👤 Profile: profile_1
 
@@ -55,7 +95,8 @@ export class ProfileManager {
   }
 
   private initGlobalNotes(): void {
-    if (!fs.existsSync(GLOBAL_NOTES_FILE)) {
+    const notesFile = this.getGlobalNotesFile();
+    if (!fs.existsSync(notesFile)) {
       const template = `# 📝 Global User Notes & Identity
 
 ## 👤 User Identity & Facts
@@ -73,7 +114,7 @@ export class ProfileManager {
 ## 📌 Cross-Project Directives
 - 
 `;
-      fs.writeFileSync(GLOBAL_NOTES_FILE, template, 'utf-8');
+      fs.writeFileSync(notesFile, template, 'utf-8');
     }
   }
 
@@ -116,9 +157,10 @@ export class ProfileManager {
 
   private loadActiveProfileName(): void {
     try {
-      if (fs.existsSync(ACTIVE_PROFILE_FILE)) {
-        const name = fs.readFileSync(ACTIVE_PROFILE_FILE, 'utf-8').trim();
-        if (name && fs.existsSync(path.join(this.profilesDir, `${name}.md`))) {
+      const activeFile = this.getActiveProfileFile();
+      if (fs.existsSync(activeFile)) {
+        const name = fs.readFileSync(activeFile, 'utf-8').trim();
+        if (name && fs.existsSync(path.join(this.getProfilesDir(), `${name}.md`))) {
           this.activeProfile = name;
           return;
         }
@@ -133,7 +175,7 @@ export class ProfileManager {
 
   public setActiveProfile(name: string): boolean {
     const cleanName = name.replace(/\.md$/, '').trim();
-    const targetPath = path.join(this.profilesDir, `${cleanName}.md`);
+    const targetPath = path.join(this.getProfilesDir(), `${cleanName}.md`);
 
     if (!fs.existsSync(targetPath)) {
       this.createProfile(cleanName);
@@ -141,7 +183,7 @@ export class ProfileManager {
 
     this.activeProfile = cleanName;
     try {
-      fs.writeFileSync(ACTIVE_PROFILE_FILE, cleanName, 'utf-8');
+      fs.writeFileSync(this.getActiveProfileFile(), cleanName, 'utf-8');
       return true;
     } catch {
       return false;
@@ -150,12 +192,13 @@ export class ProfileManager {
 
   public listProfiles(): ProfileInfo[] {
     this.ensureDirectory();
-    const files = fs.readdirSync(this.profilesDir).filter((f) => f.endsWith('.md') && f !== 'notes.md');
+    const dir = this.getProfilesDir();
+    const files = fs.readdirSync(dir).filter((f) => f.endsWith('.md') && f !== 'notes.md');
     const profiles: ProfileInfo[] = [];
 
     for (const file of files) {
       const id = file.replace(/\.md$/, '');
-      const filePath = path.join(this.profilesDir, file);
+      const filePath = path.join(dir, file);
       const stat = fs.statSync(filePath);
       const content = fs.readFileSync(filePath, 'utf-8');
       const lines = content.split('\n');
@@ -190,7 +233,7 @@ export class ProfileManager {
   }
 
   public getActiveProfileContent(): string {
-    const filePath = path.join(this.profilesDir, `${this.activeProfile}.md`);
+    const filePath = path.join(this.getProfilesDir(), `${this.activeProfile}.md`);
     if (fs.existsSync(filePath)) {
       try {
         return fs.readFileSync(filePath, 'utf-8');
@@ -200,9 +243,10 @@ export class ProfileManager {
   }
 
   public getGlobalNotesContent(): string {
-    if (fs.existsSync(GLOBAL_NOTES_FILE)) {
+    const notesFile = this.getGlobalNotesFile();
+    if (fs.existsSync(notesFile)) {
       try {
-        return fs.readFileSync(GLOBAL_NOTES_FILE, 'utf-8');
+        return fs.readFileSync(notesFile, 'utf-8');
       } catch {}
     }
     return '';
@@ -221,7 +265,7 @@ export class ProfileManager {
 
   public getProfile(name: string): string {
     const cleanName = name.replace(/\.md$/, '').trim();
-    const targetPath = path.join(this.profilesDir, `${cleanName}.md`);
+    const targetPath = path.join(this.getProfilesDir(), `${cleanName}.md`);
     if (fs.existsSync(targetPath)) {
       try {
         return fs.readFileSync(targetPath, 'utf-8');
@@ -233,7 +277,7 @@ export class ProfileManager {
   public saveGlobalNotes(content: string): boolean {
     try {
       this.ensureDirectory();
-      fs.writeFileSync(GLOBAL_NOTES_FILE, content, 'utf-8');
+      fs.writeFileSync(this.getGlobalNotesFile(), content, 'utf-8');
       return true;
     } catch {
       return false;
@@ -294,7 +338,7 @@ Use this active knowledge naturally to inform responses, adhere to coding prefer
 
   public createProfile(name: string, description?: string): ProfileInfo {
     const cleanName = name.toLowerCase().replace(/[^a-z0-9_-]/g, '_').trim() || `profile_${Date.now()}`;
-    const filePath = path.join(this.profilesDir, `${cleanName}.md`);
+    const filePath = path.join(this.getProfilesDir(), `${cleanName}.md`);
 
     const template = `# 👤 Profile: ${cleanName}
 
@@ -331,7 +375,7 @@ Use this active knowledge naturally to inform responses, adhere to coding prefer
   }
 
   public appendNoteToActiveProfile(note: string): void {
-    const filePath = path.join(this.profilesDir, `${this.activeProfile}.md`);
+    const filePath = path.join(this.getProfilesDir(), `${this.activeProfile}.md`);
     if (!fs.existsSync(filePath)) return;
 
     try {
@@ -362,11 +406,12 @@ Use this active knowledge naturally to inform responses, adhere to coding prefer
   public appendToNotesFiles(entry: string, workingDir?: string): void {
     // 1. Global notes
     try {
-      if (fs.existsSync(GLOBAL_NOTES_FILE)) {
-        let globalText = fs.readFileSync(GLOBAL_NOTES_FILE, 'utf-8');
+      const notesFile = this.getGlobalNotesFile();
+      if (fs.existsSync(notesFile)) {
+        let globalText = fs.readFileSync(notesFile, 'utf-8');
         if (!globalText.includes(entry)) {
           globalText += `\n- [${new Date().toLocaleDateString()}]: ${entry}`;
-          fs.writeFileSync(GLOBAL_NOTES_FILE, globalText, 'utf-8');
+          fs.writeFileSync(notesFile, globalText, 'utf-8');
         }
       }
     } catch {}
@@ -589,7 +634,7 @@ Use this active knowledge naturally to inform responses, adhere to coding prefer
 
   public importProfile(name: string, content: string): ProfileInfo {
     const cleanName = name.toLowerCase().replace(/\.md$/, '').replace(/[^a-z0-9_-]/g, '_').trim() || `profile_${Date.now()}`;
-    const filePath = path.join(this.profilesDir, `${cleanName}.md`);
+    const filePath = path.join(this.getProfilesDir(), `${cleanName}.md`);
     fs.writeFileSync(filePath, content, 'utf-8');
     this.setActiveProfile(cleanName);
 
@@ -607,7 +652,7 @@ Use this active knowledge naturally to inform responses, adhere to coding prefer
 
   public saveProfile(name: string, content: string): boolean {
     const cleanName = name.toLowerCase().replace(/\.md$/, '').trim();
-    const filePath = path.join(this.profilesDir, `${cleanName}.md`);
+    const filePath = path.join(this.getProfilesDir(), `${cleanName}.md`);
     try {
       fs.writeFileSync(filePath, content, 'utf-8');
       return true;
@@ -621,7 +666,7 @@ Use this active knowledge naturally to inform responses, adhere to coding prefer
     if (cleanName === 'profile_1') {
       return false;
     }
-    const filePath = path.join(this.profilesDir, `${cleanName}.md`);
+    const filePath = path.join(this.getProfilesDir(), `${cleanName}.md`);
     try {
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);

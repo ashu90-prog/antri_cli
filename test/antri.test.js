@@ -75,7 +75,7 @@ test('ToolExecutor identifies privacy & security sensitive tools', () => {
 
 test('Updater reports correct package name and current version', () => {
   assert.strictEqual(Updater.PACKAGE_NAME, 'antri_cli');
-  assert.strictEqual(Updater.CURRENT_VERSION, '1.57.40');
+  assert.strictEqual(Updater.CURRENT_VERSION, '1.57.41');
 });
 
 test('GoalLoopEngine initializes with active configuration', () => {
@@ -412,23 +412,49 @@ test('AuthManager generates unique partition IDs, logins, and logs out', async (
   assert.strictEqual(loggedOut, null);
 });
 
-test('AuthManager pre-seeds and authenticates Judge Partition (antri@judge.com / Judge123) with embedded Gemini API Key', async () => {
-  // Login with invalid password
-  const failRes = await AuthManager.login('antri@judge.com', 'wrongpassword');
-  assert.strictEqual(failRes.success, false);
-
-  // Login with correct judge password
-  const judgeRes = await AuthManager.login('antri@judge.com', 'Judge123');
-  assert.strictEqual(judgeRes.success, true);
-  assert.strictEqual(judgeRes.user.email, 'antri@judge.com');
-  assert.strictEqual(judgeRes.user.userId, 'antri_judge_com');
-
-  // Verify Gemini API key was auto-injected
+test('AuthManager strictly isolates profiles and API keys across different user accounts', async () => {
   const { configManager } = await import('../dist/core/config.js');
-  const cfg = configManager.get();
-  const expectedKey = Buffer.from('QVEuQWI4Uk42SWxSZWpEcjFIN0hXLVlQR25CZ0h2WEx4WjNsTzMtbEtVUGRKLXlCeHZ1T3c=', 'base64').toString('utf-8');
-  assert.strictEqual(cfg.apiKeys.gemini, expectedKey);
-  assert.strictEqual(cfg.provider, 'gemini');
+  const { profileManager } = await import('../dist/profiles/profileManager.js');
+
+  // 1. User A logs in
+  const userARes = await AuthManager.login('alice@example.com');
+  assert.strictEqual(userARes.success, true);
+  configManager.setApiKey('openai', 'sk-alice-secret-key-12345');
+  profileManager.createProfile('alice_custom_profile', 'Alice profile');
+  
+  const aliceProfiles = profileManager.listProfiles().map(p => p.name);
+  assert.ok(aliceProfiles.includes('alice_custom_profile'));
+  assert.strictEqual(configManager.get().apiKeys.openai, 'sk-alice-secret-key-12345');
+
+  // 2. User B logs in (Different account)
+  const userBRes = await AuthManager.login('bob@example.com');
+  assert.strictEqual(userBRes.success, true);
+  
+  // Bob must NOT see Alice's API key or custom profile
+  assert.strictEqual(configManager.get().apiKeys.openai, undefined);
+  const bobProfiles = profileManager.listProfiles().map(p => p.name);
+  assert.strictEqual(bobProfiles.includes('alice_custom_profile'), false);
+  
+  // Bob creates their own profile and API key
+  configManager.setApiKey('cerebras', 'cerebras-bob-secret-99999');
+  profileManager.createProfile('bob_custom_profile', 'Bob profile');
+  const bobProfilesUpdated = profileManager.listProfiles().map(p => p.name);
+  assert.ok(bobProfilesUpdated.includes('bob_custom_profile'));
+  assert.strictEqual(configManager.get().apiKeys.cerebras, 'cerebras-bob-secret-99999');
+
+  // 3. User A logs back in
+  await AuthManager.login('alice@example.com');
+  assert.strictEqual(configManager.get().apiKeys.openai, 'sk-alice-secret-key-12345');
+  assert.strictEqual(configManager.get().apiKeys.cerebras, undefined);
+  const aliceProfilesReloaded = profileManager.listProfiles().map(p => p.name);
+  assert.ok(aliceProfilesReloaded.includes('alice_custom_profile'));
+  assert.strictEqual(aliceProfilesReloaded.includes('bob_custom_profile'), false);
+
+  // 4. Test profile publishing
+  const { FirestoreSyncManager } = await import('../dist/cloud/firestore.js');
+  const publishRes = await FirestoreSyncManager.pushToFirestore();
+  assert.strictEqual(publishRes.success, true);
+  assert.ok(publishRes.count >= 1);
 
   AuthManager.logout();
 });

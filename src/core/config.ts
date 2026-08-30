@@ -43,29 +43,64 @@ export const DEFAULT_CONFIG: AntriConfig = {
   debateDepth: 'deep',
 };
 
-const GLOBAL_CONFIG_DIR = path.join(os.homedir(), '.antri');
-const GLOBAL_CONFIG_FILE = path.join(GLOBAL_CONFIG_DIR, 'config.json');
+function getCurrentUserId(): string {
+  try {
+    const authPath = path.join(os.homedir(), '.antri', 'auth.json');
+    if (fs.existsSync(authPath)) {
+      const raw = JSON.parse(fs.readFileSync(authPath, 'utf-8'));
+      const user = raw.user || raw;
+      if (user && user.email && typeof user.email === 'string') {
+        const clean = user.email.toLowerCase().trim();
+        return user.userId || clean.replace(/[^a-z0-9_]/g, '_');
+      }
+    }
+  } catch (_) {}
+  return 'default_user';
+}
+
+function getPartitionConfigFile(userId?: string): string {
+  const uid = userId || getCurrentUserId();
+  const dir = path.join(os.homedir(), '.antri', 'partitions', uid);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  return path.join(dir, 'config.json');
+}
+
 const LOCAL_CONFIG_FILE = path.join(process.cwd(), '.antrirc.json');
 
 export class ConfigManager {
   private config: AntriConfig;
+  private currentUserId: string = 'default_user';
 
   constructor() {
+    this.currentUserId = getCurrentUserId();
     this.config = this.loadConfig();
   }
 
-  private loadConfig(): AntriConfig {
-    let merged = { ...DEFAULT_CONFIG };
+  public reloadForUser(userId?: string): AntriConfig {
+    this.currentUserId = userId || getCurrentUserId();
+    this.config = this.loadConfig(this.currentUserId);
+    return this.config;
+  }
+
+  private loadConfig(targetUserId?: string): AntriConfig {
+    let merged: AntriConfig = {
+      ...DEFAULT_CONFIG,
+      apiKeys: { ...DEFAULT_CONFIG.apiKeys },
+      customBaseUrls: { ...DEFAULT_CONFIG.customBaseUrls },
+    };
 
     let hasSavedProvider = false;
+    const partitionFile = getPartitionConfigFile(targetUserId || this.currentUserId);
 
-    // 1. Try to load global ~/.antri/config.json
-    if (fs.existsSync(GLOBAL_CONFIG_FILE)) {
+    // 1. Try to load user partition config (~/.antri/partitions/<userId>/config.json)
+    if (fs.existsSync(partitionFile)) {
       try {
-        const raw = fs.readFileSync(GLOBAL_CONFIG_FILE, 'utf-8');
+        const raw = fs.readFileSync(partitionFile, 'utf-8');
         const parsed = JSON.parse(raw);
         if (parsed.provider) hasSavedProvider = true;
-        merged = { ...merged, ...parsed };
+        merged = { ...merged, ...parsed, apiKeys: { ...merged.apiKeys, ...(parsed.apiKeys || {}) } };
       } catch {
         // Ignore read errors
       }
@@ -77,7 +112,7 @@ export class ConfigManager {
         const raw = fs.readFileSync(LOCAL_CONFIG_FILE, 'utf-8');
         const parsed = JSON.parse(raw);
         if (parsed.provider) hasSavedProvider = true;
-        merged = { ...merged, ...parsed };
+        merged = { ...merged, ...parsed, apiKeys: { ...merged.apiKeys, ...(parsed.apiKeys || {}) } };
       } catch {
         // Ignore read errors
       }
@@ -277,10 +312,8 @@ export class ConfigManager {
 
   public saveGlobalConfig(): void {
     try {
-      if (!fs.existsSync(GLOBAL_CONFIG_DIR)) {
-        fs.mkdirSync(GLOBAL_CONFIG_DIR, { recursive: true });
-      }
-      fs.writeFileSync(GLOBAL_CONFIG_FILE, JSON.stringify(this.config, null, 2), 'utf-8');
+      const targetFile = getPartitionConfigFile(this.currentUserId);
+      fs.writeFileSync(targetFile, JSON.stringify(this.config, null, 2), 'utf-8');
     } catch {
       // Ignore save failures in restricted environments
     }

@@ -47,11 +47,6 @@ class _AuthGateViewState extends State<AuthGateView> {
     try {
       final user = await _authService.login(email, password);
       widget.config.syncKey = user.userId;
-      if (email == 'antri@judge.com') {
-        widget.config.apiKey = utf8.decode(base64Decode('QVEuQWI4Uk42SWxSZWpEcjFIN0hXLVlQR25CZ0h2WEx4WjNsTzMtbEtVUGRKLXlCeHZ1T3c='));
-        widget.config.provider = 'gemini';
-        widget.config.model = 'gemini-3.5-flash';
-      }
       if (widget.config.firestoreProjectId.isEmpty) {
         widget.config.firestoreProjectId = 'antri-agentic-hackathon';
       }

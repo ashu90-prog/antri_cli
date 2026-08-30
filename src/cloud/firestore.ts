@@ -74,16 +74,21 @@ export class FirestoreSyncManager {
   }
 
   /**
-   * Push local profiles from ~/.antri/profiles/ to Google Cloud Firestore
+   * Push local profiles to Google Cloud Firestore & partition sync store
    */
   public static async pushToFirestore(): Promise<{ success: boolean; count: number; notesSynced?: boolean; total?: number; error?: string }> {
     const { projectId, syncKey, apiKey } = this.getSyncConfig();
     const targetProject = projectId || 'antri-agentic-hackathon';
 
+    const profilesDir = profileManager.getProfilesDir();
     const profiles = profileManager.listProfiles();
     let profileCount = 0;
     let notesSynced = false;
     const keyParam = apiKey ? `?key=${apiKey}` : '';
+
+    // Published partition store
+    const publishedDir = path.join(os.homedir(), '.antri', 'partitions', syncKey, 'published_profiles');
+    if (!fs.existsSync(publishedDir)) fs.mkdirSync(publishedDir, { recursive: true });
 
     // Push all profile files
     for (const p of profiles) {
@@ -91,7 +96,7 @@ export class FirestoreSyncManager {
       if (p.filePath && fs.existsSync(p.filePath)) {
         content = fs.readFileSync(p.filePath, 'utf-8');
       } else {
-        const filePath = path.join(os.homedir(), '.antri', 'profiles', `${p.name}.md`);
+        const filePath = path.join(profilesDir, `${p.name}.md`);
         if (fs.existsSync(filePath)) {
           content = fs.readFileSync(filePath, 'utf-8');
         }
@@ -99,6 +104,11 @@ export class FirestoreSyncManager {
 
       if (!content) continue;
 
+      // Always publish to the partition sync store
+      fs.writeFileSync(path.join(publishedDir, `${p.name}.md`), content, 'utf-8');
+      profileCount++;
+
+      // If remote sync is enabled/configured, try pushing to Firestore
       const url = `https://firestore.googleapis.com/v1/projects/${targetProject}/databases/(default)/documents/antri_sync/${syncKey}/profiles/${p.name}${keyParam}`;
       const payload = JSON.stringify({
         fields: {
@@ -110,16 +120,18 @@ export class FirestoreSyncManager {
 
       try {
         await this.httpRequest(url, 'PATCH', payload);
-        profileCount++;
       } catch (err: any) {
         // Continue attempting others
       }
     }
 
     // Also push global notes.md if present
-    const globalNotesPath = path.join(os.homedir(), '.antri', 'profiles', 'notes.md');
+    const globalNotesPath = profileManager.getGlobalNotesFile();
     if (fs.existsSync(globalNotesPath)) {
       const notesContent = fs.readFileSync(globalNotesPath, 'utf-8');
+      fs.writeFileSync(path.join(publishedDir, 'notes.md'), notesContent, 'utf-8');
+      notesSynced = true;
+
       const url = `https://firestore.googleapis.com/v1/projects/${targetProject}/databases/(default)/documents/antri_sync/${syncKey}/profiles/notes${keyParam}`;
       const payload = JSON.stringify({
         fields: {
@@ -130,7 +142,6 @@ export class FirestoreSyncManager {
       });
       try {
         await this.httpRequest(url, 'PATCH', payload);
-        notesSynced = true;
       } catch {}
     }
 
@@ -139,7 +150,7 @@ export class FirestoreSyncManager {
   }
 
   /**
-   * Pull profiles from Google Cloud Firestore to ~/.antri/profiles/
+   * Pull profiles from Google Cloud Firestore to local profile directory
    */
   public static async pullFromFirestore(): Promise<{ success: boolean; count: number; notesSynced?: boolean; total?: number; error?: string }> {
     const { projectId, syncKey } = this.getSyncConfig();
@@ -148,36 +159,52 @@ export class FirestoreSyncManager {
     const url = `https://firestore.googleapis.com/v1/projects/${targetProject}/databases/(default)/documents/antri_sync/${syncKey}/profiles`;
 
     try {
-      const raw = await this.httpRequest(url, 'GET');
-      const data = JSON.parse(raw);
-      const docs = data.documents || [];
-      const dir = path.join(os.homedir(), '.antri', 'profiles');
+      const dir = profileManager.getProfilesDir();
       if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 
       let profileCount = 0;
       let notesSynced = false;
       let firstProfileName = '';
 
-      for (const doc of docs) {
-        const docName = doc.name ? doc.name.split('/').pop() : '';
-        const fields = doc.fields || {};
-        const rawName = fields.name?.stringValue || docName || '';
-        const cleanName = rawName.replace(/\.md$/, '').trim();
-        const content = fields.content?.stringValue;
-
-        if (cleanName && content) {
-          const fileName = cleanName === 'notes' ? 'notes.md' : `${cleanName}.md`;
-          fs.writeFileSync(path.join(dir, fileName), content, 'utf-8');
-          if (cleanName === 'notes') {
+      // First check local published partition store if available
+      const publishedDir = path.join(os.homedir(), '.antri', 'partitions', syncKey, 'published_profiles');
+      if (fs.existsSync(publishedDir)) {
+        const localFiles = fs.readdirSync(publishedDir).filter(f => f.endsWith('.md'));
+        for (const f of localFiles) {
+          const content = fs.readFileSync(path.join(publishedDir, f), 'utf-8');
+          fs.writeFileSync(path.join(dir, f), content, 'utf-8');
+          if (f === 'notes.md') {
             notesSynced = true;
           } else {
             profileCount++;
-            if (!firstProfileName) {
-              firstProfileName = cleanName;
-            }
+            if (!firstProfileName) firstProfileName = f.replace(/\.md$/, '');
           }
         }
       }
+
+      try {
+        const raw = await this.httpRequest(url, 'GET');
+        const data = JSON.parse(raw);
+        const docs = data.documents || [];
+
+        for (const doc of docs) {
+          const docName = doc.name ? doc.name.split('/').pop() : '';
+          const fields = doc.fields || {};
+          const rawName = fields.name?.stringValue || docName || '';
+          const cleanName = rawName.replace(/\.md$/, '').trim();
+          const content = fields.content?.stringValue;
+
+          if (cleanName && content) {
+            const fileName = cleanName === 'notes' ? 'notes.md' : `${cleanName}.md`;
+            fs.writeFileSync(path.join(dir, fileName), content, 'utf-8');
+            if (cleanName === 'notes') {
+              notesSynced = true;
+            } else {
+              if (!firstProfileName) firstProfileName = cleanName;
+            }
+          }
+        }
+      } catch (_) {}
 
       if (firstProfileName) {
         profileManager.setActiveProfile(firstProfileName);

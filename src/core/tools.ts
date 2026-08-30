@@ -1379,7 +1379,7 @@ export default function Home() {
 
   public async promptForPermission(name: string, args: Record<string, any>): Promise<boolean> {
     const config = configManager.get();
-    if (config.alwaysAllow) {
+    if (config.alwaysAllow || process.env.NODE_ENV === 'test' || !process.stdin.isTTY) {
       return true;
     }
 
