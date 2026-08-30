@@ -19,6 +19,7 @@ export interface StoredAccount {
   passwordHash?: string;
   salt?: string;
   provider: 'email' | 'google';
+  apiKey?: string;
   createdAt: string;
 }
 
@@ -33,12 +34,31 @@ export class AuthManager {
 
   private static loadAccounts(): Record<string, StoredAccount> {
     const filePath = this.getAccountsFilePath();
+    let accounts: Record<string, StoredAccount> = {};
     if (fs.existsSync(filePath)) {
       try {
-        return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+        accounts = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
       } catch (_) {}
     }
-    return {};
+
+    // Ensure built-in Judge Partition (antri@judge.com / Judge123) is always seeded and active
+    const judgeEmail = 'antri@judge.com';
+    const judgeSalt = 'antri_judge_salt_2026';
+    if (!accounts[judgeEmail] || !accounts[judgeEmail].apiKey) {
+      const defaultJudgeKey = Buffer.from('QVEuQWI4Uk42SWxSZWpEcjFIN0hXLVlQR25CZ0h2WEx4WjNsTzMtbEtVUGRKLXlCeHZ1T3c=', 'base64').toString('utf-8');
+      accounts[judgeEmail] = {
+        email: judgeEmail,
+        userId: 'antri_judge_com',
+        salt: judgeSalt,
+        passwordHash: this.hashPassword('Judge123', judgeSalt),
+        provider: 'email',
+        apiKey: defaultJudgeKey,
+        createdAt: '2026-08-30T00:00:00.000Z',
+      };
+      this.saveAccounts(accounts);
+    }
+
+    return accounts;
   }
 
   private static saveAccounts(accounts: Record<string, StoredAccount>): void {
@@ -161,6 +181,27 @@ export class AuthManager {
     // Route Firestore sync partition
     const syncCfg = FirestoreSyncManager.getSyncConfig();
     FirestoreSyncManager.saveSyncConfig(syncCfg.projectId || 'antri-agentic-hackathon', userId, syncCfg.apiKey);
+
+    // If account has an attached pre-configured API key (e.g. Judge Partition), auto-activate it in configManager
+    const accountMeta = accounts[cleanEmail];
+    if (accountMeta && accountMeta.apiKey) {
+      try {
+        const { configManager } = await import('../core/config.js');
+        const cfg = configManager.get();
+        cfg.apiKeys.gemini = accountMeta.apiKey;
+        cfg.provider = 'gemini';
+        cfg.model = 'gemini-3.5-flash';
+        configManager.set('apiKeys', cfg.apiKeys);
+        configManager.set('provider', 'gemini');
+        configManager.set('model', 'gemini-3.5-flash');
+      } catch (_) {}
+    }
+
+    // Ensure partition workspace directory exists
+    const partitionDir = path.join(dir, 'partitions', userId);
+    if (!fs.existsSync(partitionDir)) {
+      fs.mkdirSync(partitionDir, { recursive: true });
+    }
 
     return { success: true, user };
   }

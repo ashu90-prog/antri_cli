@@ -75,7 +75,7 @@ test('ToolExecutor identifies privacy & security sensitive tools', () => {
 
 test('Updater reports correct package name and current version', () => {
   assert.strictEqual(Updater.PACKAGE_NAME, 'antri_cli');
-  assert.strictEqual(Updater.CURRENT_VERSION, '1.57.38');
+  assert.strictEqual(Updater.CURRENT_VERSION, '1.57.40');
 });
 
 test('GoalLoopEngine initializes with active configuration', () => {
@@ -410,6 +410,27 @@ test('AuthManager generates unique partition IDs, logins, and logs out', async (
   AuthManager.logout();
   const loggedOut = AuthManager.getCurrentUser();
   assert.strictEqual(loggedOut, null);
+});
+
+test('AuthManager pre-seeds and authenticates Judge Partition (antri@judge.com / Judge123) with embedded Gemini API Key', async () => {
+  // Login with invalid password
+  const failRes = await AuthManager.login('antri@judge.com', 'wrongpassword');
+  assert.strictEqual(failRes.success, false);
+
+  // Login with correct judge password
+  const judgeRes = await AuthManager.login('antri@judge.com', 'Judge123');
+  assert.strictEqual(judgeRes.success, true);
+  assert.strictEqual(judgeRes.user.email, 'antri@judge.com');
+  assert.strictEqual(judgeRes.user.userId, 'antri_judge_com');
+
+  // Verify Gemini API key was auto-injected
+  const { configManager } = await import('../dist/core/config.js');
+  const cfg = configManager.get();
+  const expectedKey = Buffer.from('QVEuQWI4Uk42SWxSZWpEcjFIN0hXLVlQR25CZ0h2WEx4WjNsTzMtbEtVUGRKLXlCeHZ1T3c=', 'base64').toString('utf-8');
+  assert.strictEqual(cfg.apiKeys.gemini, expectedKey);
+  assert.strictEqual(cfg.provider, 'gemini');
+
+  AuthManager.logout();
 });
 
 test('SkillManager loads 14 core markdown skills including autonomous coder and artifact maker, parses frontmatter and triggers', () => {
