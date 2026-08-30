@@ -4,14 +4,14 @@ import { ChatMessage, ToolDefinition, StreamCallbacks } from '../types.js';
 
 export class GeminiProvider implements LLMProvider {
   public name: string = 'gemini';
-  public defaultModel: string = 'gemini-3.7-flash';
+  public defaultModel: string = 'gemini-3.5-flash';
   private apiKey: string;
   private model: string;
   private ai?: GoogleGenAI;
 
   constructor(options: { apiKey?: string; model?: string }) {
     this.apiKey = options.apiKey || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GOOGLE_GENAI_API_KEY || '';
-    this.model = options.model || 'gemini-3.7-flash';
+    this.model = options.model || 'gemini-3.5-flash';
     this.defaultModel = this.model;
     if (this.apiKey) {
       this.ai = new GoogleGenAI({ apiKey: this.apiKey });

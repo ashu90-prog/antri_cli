@@ -288,7 +288,7 @@ program
     const port = await server.start();
     console.log(chalk.green(`\n⚡ ANTRI Cloud Run Backend API running on port ${port}`));
     console.log(chalk.hex('#94a3b8')(`   Google GenAI SDK: @google/genai`));
-    console.log(chalk.hex('#94a3b8')(`   Default Model:    gemini-3.7-flash`));
+    console.log(chalk.hex('#94a3b8')(`   Default Model:    gemini-3.5-flash`));
     console.log(chalk.hex('#94a3b8')(`   Health Endpoint:  http://localhost:${port}/api/health\n`));
   });
 

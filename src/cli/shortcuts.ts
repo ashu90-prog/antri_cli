@@ -780,7 +780,7 @@ You MUST output the HTML document enclosed in an artifact tag:
           configManager.set('provider', 'gemini');
         }
         this.agent.updateConfig(configManager.get());
-        log.success(`API Key saved for ${provider}! Active model: ${configManager.get().model || 'gemini-3.7-flash'}`);
+        log.success(`API Key saved for ${provider}! Active model: ${configManager.get().model || 'gemini-3.5-flash'}`);
       } else {
         log.warn('Usage: /key <provider> <your-api-key>  or  /key <your-gemini-key>');
         console.log(chalk.hex('#64748b')('Example: /key gemini AIzaSy...  or  /key AQ.Ab8...'));

@@ -11,7 +11,7 @@ dotenv.config();
 export const DEFAULT_CONFIG: AntriConfig = {
   version: Updater.CURRENT_VERSION,
   provider: 'gemini',
-  model: 'gemini-3.7-flash',
+  model: 'gemini-3.5-flash',
   mode: 'vibe',
   alwaysAllow: false,
   apiKeys: {
@@ -193,7 +193,7 @@ export class ConfigManager {
           this.config.model = 'gpt-4o';
           break;
         case 'gemini':
-          this.config.model = 'gemini-3.7-flash';
+          this.config.model = 'gemini-3.5-flash';
           break;
         case 'deepseek':
           this.config.model = 'deepseek-v4-flash-(latest)';
@@ -205,7 +205,7 @@ export class ConfigManager {
           this.config.model = 'deepseek/deepseek-r1';
           break;
         case 'mock':
-          this.config.model = 'gemini-3.7-flash';
+          this.config.model = 'gemini-3.5-flash';
           break;
       }
     }

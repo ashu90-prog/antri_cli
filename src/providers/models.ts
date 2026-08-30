@@ -371,6 +371,14 @@ export const PROVIDER_CATALOGS: Record<ProviderType, ModelInfo[]> = {
   // Google Gemini Models (Primary Google GenAI Suite)
   'gemini': [
     {
+      id: 'gemini-3.5-flash',
+      name: 'Gemini 3.5 Flash',
+      provider: 'gemini',
+      category: 'Gemini 3.5',
+      description: 'Default high-efficiency agentic coding, reasoning & 1M context via Google GenAI SDK',
+      contextWindow: 1000000,
+    },
+    {
       id: 'gemini-3.7-flash',
       name: 'Gemini 3.7 Flash',
       provider: 'gemini',

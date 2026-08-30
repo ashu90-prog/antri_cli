@@ -108,8 +108,8 @@ export class DesktopServer {
               status: 'online',
               service: 'ANTRI Code Google Cloud Run Backend API',
               version: configManager.get().version,
-              provider: 'gemini',
-              model: 'gemini-3.7-flash',
+              provider: configManager.get().provider || 'gemini',
+              model: configManager.get().model || 'gemini-3.5-flash',
               framework: '@google/genai (Google GenAI SDK)',
               platform: 'Google Cloud Run',
               endpoints: {
